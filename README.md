@@ -8,7 +8,7 @@ Create, edit, and sync `.lrc` lyrics files with your music. Supports Android (AP
 ![Desktop](https://img.shields.io/badge/Platform-Linux%20Desktop-FCC624?logo=linux)
 ![Compose](https://img.shields.io/badge/UI-Compose%20Multiplatform-4285F4?logo=jetpackcompose)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin)
-![License](https://img.shields.io/badge/License-MIT-green)
+![License](https://img.shields.io/badge/License-AGPLV3-green)
 
 ---
 
