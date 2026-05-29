@@ -26,10 +26,10 @@ Create, edit, and sync `.lrc` lyrics files with your music. Supports Android (AP
 - **Persistent storage** — songs and settings saved as JSON files
 
 ## Screenshots
-<img src="https://github.com/GoldenWarriorM/lrc-studio/blob/main/screenshots/Editor.webp" alt="Library screen" width="30%" />
-![Editor with synced lyrics](./screenshots/editor.webp)
-![Preview mode](./screenshots/preview.webp)
-![Export](./screenshots/export.webp)
+<img src="https://github.com/GoldenWarriorM/lrc-studio/blob/main/screenshots/Library.webp" alt="Library screen" width="30%" />
+<img src="https://github.com/GoldenWarriorM/lrc-studio/blob/main/screenshots/Editor.webp" alt="Editor with synced lyrics" width="30%" />
+<img src="https://github.com/GoldenWarriorM/lrc-studio/blob/main/screenshots/Preview.webp" alt="Preview" width="30%" />
+<img src="https://github.com/GoldenWarriorM/lrc-studio/blob/main/screenshots/Export.webp" alt="Export screen" width="30%" />
 
 ## Getting Started
 
