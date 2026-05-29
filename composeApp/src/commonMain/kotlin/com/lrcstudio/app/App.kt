@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.SettingsRepository
 import com.lrcstudio.app.data.repository.SongRepository
 import com.lrcstudio.app.domain.usecase.SyncUseCase
@@ -69,6 +70,7 @@ fun App(audioPlayer: AudioPlayer) {
     LRCStudioTheme(darkTheme = settings.isDarkTheme) {
 
         Scaffold(
+            contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
             bottomBar = {
                 if (currentScreen is Screen.Library) {
                     NavigationBar {

@@ -23,6 +23,7 @@ fun SettingsScreen(
     val settings by settingsRepository.settings.collectAsState()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             TopAppBar(
                 title = {

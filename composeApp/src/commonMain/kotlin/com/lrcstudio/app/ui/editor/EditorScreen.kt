@@ -89,6 +89,7 @@ fun EditorScreen(
     val canCapture = state.lyrics.isNotEmpty() && !isPreviewMode
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             TopAppBar(
                 title = {
@@ -292,6 +293,7 @@ fun EditorScreen(
                     onClick = { viewModel.captureCurrentLineTimestamp() },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
                         .padding(bottom = 24.dp)
                         .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
