@@ -27,10 +27,10 @@ Create, edit, and sync `.lrc` lyrics files with your music. Supports Android (AP
 
 ## Screenshots
 
-![Library screen](screenshots/library.webp)
-![Editor with synced lyrics](screenshots/editor.webp)
-![Preview mode](screenshots/preview.webp)
-![Export](screenshots/export.webp)
+![Library screen](./screenshots/library.webp)
+![Editor with synced lyrics](./screenshots/editor.webp)
+![Preview mode](./screenshots/preview.webp)
+![Export](./screenshots/export.webp)
 
 ## Getting Started
 
