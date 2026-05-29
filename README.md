@@ -27,7 +27,7 @@ Create, edit, and sync `.lrc` lyrics files with your music. Supports Android (AP
 
 ## Screenshots
 
-*(Add screenshots here)*
+
 
 ## Getting Started
 
@@ -131,7 +131,7 @@ composeApp/src/
 
 ## License
 
-[MIT](LICENSE)
+LRC Studio is published under the AGPLv3 license.
 
 ## Contributing
 
