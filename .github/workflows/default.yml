@@ -35,8 +35,16 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
 
-      - name: Build Android release APK
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $HOME/release.keystore
+
+      - name: Build signed Android release APK
         run: ./gradlew :composeApp:assembleRelease
+        env:
+          KEYSTORE_PATH: $HOME/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build Desktop distribution
         run: ./gradlew :composeApp:packageDistributionForCurrentOS
