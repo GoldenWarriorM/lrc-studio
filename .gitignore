@@ -1,0 +1,38 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.local/
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Android
+local.properties
+androidApp/build/
+
+# Compose / KMP
+composeApp/build/
+composeApp/local.properties
+
+# SDK
+.sdkmanrc
+.sdkman/
+
+# Environment
+.env
+*.log
+*.hprof

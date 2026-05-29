@@ -1,0 +1,2 @@
+-keep class com.lrcstudio.app.** { *; }
+-dontwarn javax.annotation.**
