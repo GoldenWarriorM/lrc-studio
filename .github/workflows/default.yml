@@ -45,8 +45,20 @@ jobs:
         id: find-apksigner
         run: echo "path=$(ls $ANDROID_HOME/build-tools/*/apksigner | head -1)" >> $GITHUB_OUTPUT
 
+      - name: Validate signing secrets
+        run: |
+          if [[ -z "${{ secrets.KEY_ALIAS }}" ]]; then
+            echo "::error::KEY_ALIAS secret is not set"
+            exit 1
+          fi
+          if [[ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]]; then
+            echo "::error::KEYSTORE_PASSWORD secret is not set"
+            exit 1
+          fi
+
       - name: Sign APK with apksigner
         run: |
+          set -x
           SIGN_ARGS=(
             --ks ${{ runner.temp }}/release.keystore
             --ks-key-alias ${{ secrets.KEY_ALIAS }}
@@ -55,9 +67,10 @@ jobs:
           if [[ -n "${{ secrets.KEY_PASSWORD }}" ]]; then
             SIGN_ARGS+=(--key-pass pass:${{ secrets.KEY_PASSWORD }})
           fi
+          APK_FILE=$(ls composeApp/build/outputs/apk/release/*.apk | head -1)
           ${{ steps.find-apksigner.outputs.path }} sign \
             "${SIGN_ARGS[@]}" \
-            composeApp/build/outputs/apk/release/*.apk
+            "$APK_FILE"
 
       - name: Build Desktop distribution
         run: ./gradlew :composeApp:packageDistributionForCurrentOS
