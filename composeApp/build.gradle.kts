@@ -60,27 +60,17 @@ android {
         versionName = "1.0.0"
     }
 
-    signingConfigs {
-        val keystorePropsFile = rootProject.file("keystore.properties")
-        val hasKeystoreProps = keystorePropsFile.exists()
-        val hasEnv = !System.getenv("KEYSTORE_PATH").isNullOrBlank()
-
-        if (hasKeystoreProps || hasEnv) {
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    if (keystorePropsFile.exists()) {
+        val props = Properties().apply {
+            load(keystorePropsFile.inputStream())
+        }
+        signingConfigs {
             create("release") {
-                if (hasKeystoreProps) {
-                    val props = Properties().apply {
-                        load(keystorePropsFile.inputStream())
-                    }
-                    storeFile = rootProject.file(props["storeFile"] as String)
-                    storePassword = props["storePassword"] as String
-                    keyAlias = props["keyAlias"] as String
-                    keyPassword = props["keyPassword"] as String
-                } else {
-                    storeFile = file(System.getenv("KEYSTORE_PATH"))
-                    storePassword = System.getenv("KEYSTORE_PASSWORD")
-                    keyAlias = System.getenv("KEY_ALIAS")
-                    keyPassword = System.getenv("KEY_PASSWORD")
-                }
+                storeFile = rootProject.file(props["storeFile"] as String)
+                storePassword = props["storePassword"] as String
+                keyAlias = props["keyAlias"] as String
+                keyPassword = props["keyPassword"] as String
             }
         }
     }
@@ -92,7 +82,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.findByName("release")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 
