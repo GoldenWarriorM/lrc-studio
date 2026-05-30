@@ -1,27 +1,31 @@
 package com.lrcstudio.app.ui.picker
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import java.awt.FileDialog
-import java.io.File
-import java.io.FilenameFilter
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.luminance
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 actual fun rememberAudioFilePickerLauncher(
     onFilePicked: (path: String) -> Unit
 ): () -> Unit {
+    val scope = rememberCoroutineScope()
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     return remember {
         {
-            val dialog = FileDialog(null as java.awt.Frame?, "Select audio file", FileDialog.LOAD).apply {
-                filenameFilter = FilenameFilter { _, name ->
-                    name.endsWith(".mp3") || name.endsWith(".flac") || name.endsWith(".ogg") ||
-                    name.endsWith(".opus") || name.endsWith(".aac") || name.endsWith(".wav") ||
-                    name.endsWith(".m4a")
+            scope.launch(Dispatchers.IO) {
+                val path = NativeFileDialog.showOpenDialog(
+                    title = "Select audio file",
+                    extensions = listOf("mp3", "flac", "ogg", "opus", "aac", "wav", "m4a"),
+                    isDark = isDark
+                )
+                if (path != null) {
+                    withContext(Dispatchers.Main) { onFilePicked(path) }
                 }
-                isVisible = true
-            }
-            if (dialog.file != null) {
-                onFilePicked(File(dialog.directory, dialog.file).absolutePath)
             }
         }
     }
