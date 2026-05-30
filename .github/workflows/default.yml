@@ -45,6 +45,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          BUILD_TOOLS_VERSION: "34.0.0"
 
       - name: Build Desktop distribution
         run: ./gradlew :composeApp:packageDistributionForCurrentOS
