@@ -47,11 +47,16 @@ jobs:
 
       - name: Sign APK with apksigner
         run: |
+          SIGN_ARGS=(
+            --ks ${{ runner.temp }}/release.keystore
+            --ks-key-alias ${{ secrets.KEY_ALIAS }}
+            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }}
+          )
+          if [[ -n "${{ secrets.KEY_PASSWORD }}" ]]; then
+            SIGN_ARGS+=(--key-pass pass:${{ secrets.KEY_PASSWORD }})
+          fi
           ${{ steps.find-apksigner.outputs.path }} sign \
-            --ks ${{ runner.temp }}/release.keystore \
-            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
-            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
+            "${SIGN_ARGS[@]}" \
             composeApp/build/outputs/apk/release/*.apk
 
       - name: Build Desktop distribution
