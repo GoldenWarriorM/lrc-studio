@@ -23,11 +23,11 @@ import com.lrcstudio.app.navigation.Screen
 import com.lrcstudio.app.theme.LRCStudioTheme
 import com.lrcstudio.app.ui.editor.EditorScreen
 import com.lrcstudio.app.ui.editor.EditorViewModel
+import com.lrcstudio.app.ui.SystemBackHandler
 import com.lrcstudio.app.ui.library.LibraryScreen
 import com.lrcstudio.app.ui.library.LibraryViewModel
 import com.lrcstudio.app.ui.picker.rememberAudioFilePickerLauncher
 import com.lrcstudio.app.ui.picker.rememberLrcFilePickerLauncher
-import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.ui.player.AudioPlayer
 import com.lrcstudio.app.ui.settings.SettingsScreen
 import com.lrcstudio.app.util.rememberStorageDir
@@ -76,6 +76,17 @@ fun App(audioPlayer: AudioPlayer) {
     }
 
     LRCStudioTheme(darkTheme = settings.isDarkTheme) {
+
+        SystemBackHandler(
+            enabled = currentScreen is Screen.Editor,
+            onBack = {
+                editorViewModel?.release()
+                editorViewModel = null
+                editorSongId = null
+                navDirection = NavDirection.Back
+                screenName = "library"
+            }
+        )
 
         Scaffold(
             contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
