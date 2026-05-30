@@ -10,15 +10,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-actual fun rememberLrcFileSaveLauncher(): (content: String) -> Unit {
+actual fun rememberLrcFileSaveLauncher(defaultName: String): (content: String) -> Unit {
     val scope = rememberCoroutineScope()
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return remember {
+    return remember(defaultName) {
         { content: String ->
             scope.launch(Dispatchers.IO) {
                 val path = NativeFileDialog.showSaveDialog(
                     title = "Save LRC file",
-                    defaultName = "lyrics.lrc",
+                    defaultName = defaultName,
                     isDark = isDark
                 )
                 if (path != null) {

@@ -15,7 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 @Composable
-actual fun rememberLrcFileSaveLauncher(): (content: String) -> Unit {
+actual fun rememberLrcFileSaveLauncher(defaultName: String): (content: String) -> Unit {
     val context = LocalContext.current
     val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
     var pendingContent by remember { mutableStateOf<String?>(null) }
@@ -36,6 +36,6 @@ actual fun rememberLrcFileSaveLauncher(): (content: String) -> Unit {
 
     return {
         pendingContent = it
-        launcher.launch("lyrics.lrc")
+        launcher.launch(defaultName)
     }
 }

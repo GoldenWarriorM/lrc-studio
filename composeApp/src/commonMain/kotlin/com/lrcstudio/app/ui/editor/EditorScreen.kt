@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.parser.LrcParser
+import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import kotlinx.coroutines.launch
@@ -44,8 +45,7 @@ fun EditorScreen(
     viewModel: EditorViewModel,
     onBack: () -> Unit,
     onSave: () -> Unit,
-    onImportAudioFile: () -> Unit,
-    onSaveLrcFile: (String) -> Unit
+    onImportAudioFile: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -59,6 +59,9 @@ fun EditorScreen(
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
     var isPreviewMode by remember { mutableStateOf(false) }
+    val saveLrcFile = rememberLrcFileSaveLauncher(
+        defaultName = "${state.song?.title ?: "lyrics"}.lrc"
+    )
 
     val displayItems = remember(state.lyrics, state.editingLineIndex) {
         buildList {
@@ -397,7 +400,7 @@ fun EditorScreen(
                         composer = composer,
                         creator = creator
                     )
-                    onSaveLrcFile(lrc)
+                    saveLrcFile(lrc)
                 }
             },
             onCopyPlain = {

@@ -75,8 +75,6 @@ fun App(audioPlayer: AudioPlayer) {
         editorViewModel?.importAudio(path)
     }
 
-    val saveLrcFile = rememberLrcFileSaveLauncher()
-
     LRCStudioTheme(darkTheme = settings.isDarkTheme) {
 
         Scaffold(
@@ -177,8 +175,7 @@ fun App(audioPlayer: AudioPlayer) {
                                         screenName = "library"
                                     },
                                     onSave = { },
-                                    onImportAudioFile = launchAudioPicker,
-                                    onSaveLrcFile = saveLrcFile
+                                    onImportAudioFile = launchAudioPicker
                                 )
                             }
                         }
