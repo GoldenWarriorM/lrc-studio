@@ -132,11 +132,17 @@ fun LibraryScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteSong(songId)
-                    showDeleteConfirm = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.errorContainer)
+                Button(
+     			  	onClick = {
+            			viewModel.deleteSong(songId)
+            			showDeleteConfirm = null
+        			},
+        			colors = ButtonDefaults.buttonColors(
+            			containerColor = MaterialTheme.colorScheme.errorContainer
+        			),
+        			shape = RoundedCornerShape(12.dp)
+    			) {
+        			Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             },
             dismissButton = {
