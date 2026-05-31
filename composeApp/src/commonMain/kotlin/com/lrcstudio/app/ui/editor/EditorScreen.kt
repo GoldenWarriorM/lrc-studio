@@ -59,6 +59,8 @@ fun EditorScreen(
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
     var isPreviewMode by remember { mutableStateOf(false) }
+    var speed by remember { mutableStateOf(1f) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
     )
@@ -138,6 +140,12 @@ fun EditorScreen(
                         onPlayPause = { viewModel.playPause() },
                         onSeek = { viewModel.seekTo(it) },
                         onSwitchTrack = onImportAudioFile,
+                        currentSpeed = speed,
+                        onSpeedChange = {
+                            speed = it
+                            viewModel.audioPlayer.setSpeed(it)
+                        },
+                        onSpeedClick = { showSpeedDialog = true },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -410,6 +418,47 @@ fun EditorScreen(
                 }
             },
             onDismiss = { showSaveDialog = false }
+        )
+    }
+
+    if (showSpeedDialog) {
+        var input by remember { mutableStateOf("%.2f".format(speed)) }
+        AlertDialog(
+            onDismissRequest = { showSpeedDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text("Playback Speed", style = MaterialTheme.typography.headlineSmall)
+            },
+            text = {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    label = { Text("Speed (0.25 – 3.0)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newSpeed = input.toFloatOrNull()
+                        if (newSpeed != null && newSpeed in 0.25f..3.0f) {
+                            speed = newSpeed
+                            viewModel.audioPlayer.setSpeed(newSpeed)
+                            showSpeedDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = input.toFloatOrNull()?.let { it in 0.25f..3.0f } == true
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSpeedDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }

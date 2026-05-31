@@ -1,17 +1,23 @@
 package com.lrcstudio.app.ui.player
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -20,6 +26,9 @@ fun PlayerBar(
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onSwitchTrack: () -> Unit = {},
+    currentSpeed: Float = 1f,
+    onSpeedChange: (Float) -> Unit = {},
+    onSpeedClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -73,6 +82,54 @@ fun PlayerBar(
 
                     IconButton(onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) }) {
                         Icon(Icons.Default.SkipNext, contentDescription = "+5s")
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
+
+                    IconButton(
+                        onClick = {
+                            val idx = speeds.indexOf(currentSpeed)
+                            if (idx > 0) onSpeedChange(speeds[idx - 1])
+                        },
+                        modifier = Modifier.size(24.dp),
+                        enabled = speeds.indexOf(currentSpeed) > 0
+                    ) {
+                        Icon(
+                            Icons.Default.Remove, contentDescription = "Decrease speed",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Text(
+                        text = "%.2fx".format(currentSpeed),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 4.dp).clickable { onSpeedClick() }
+                    )
+
+                    IconButton(
+                        onClick = {
+                            val idx = speeds.indexOf(currentSpeed)
+                            if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                        },
+                        modifier = Modifier.size(24.dp),
+                        enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+                    ) {
+                        Icon(
+                            Icons.Default.Add, contentDescription = "Increase speed",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
