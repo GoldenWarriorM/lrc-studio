@@ -48,152 +48,110 @@ fun PlayerBar(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
-                val useVertical = forceVerticalSpeed || maxWidth < 350.dp
+                val speedVertical = forceVerticalSpeed || maxWidth < 300.dp
 
-                if (useVertical) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                IconButton(
+                    onClick = onSwitchTrack,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                }
+
+                Row(
+                    modifier = Modifier.align(Alignment.Center),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    IconButton(
+                        onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.SkipPrevious, contentDescription = "-5s")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    FilledIconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (playerState.state == PlaybackState.PLAYING)
+                                Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (playerState.state == PlaybackState.PLAYING)
+                                "Pause" else "Play",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.SkipNext, contentDescription = "+5s")
+                    }
+                }
+
+                if (speedVertical) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Spacer(Modifier.weight(1f))
-                            IconButton(onClick = onSwitchTrack) {
-                                Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                            }
-                            Spacer(Modifier.weight(1f))
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            IconButton(onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) }) {
-                                Icon(Icons.Default.SkipPrevious, contentDescription = "-5s")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            FilledIconButton(
-                                onClick = onPlayPause,
-                                modifier = Modifier.size(56.dp),
-                                shape = RoundedCornerShape(16.dp)
+                            Text(
+                                text = "%.2fx".format(currentSpeed),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clickable { onSpeedClick() }
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (playerState.state == PlaybackState.PLAYING)
-                                        Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = if (playerState.state == PlaybackState.PLAYING)
-                                        "Pause" else "Play",
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) }) {
-                                Icon(Icons.Default.SkipNext, contentDescription = "+5s")
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        BoxWithConstraints(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "%.2fx".format(currentSpeed),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .clickable { onSpeedClick() }
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                IconButton(
+                                    onClick = {
+                                        val idx = speeds.indexOf(currentSpeed)
+                                        if (idx > 0) onSpeedChange(speeds[idx - 1])
+                                    },
+                                    modifier = Modifier.size(28.dp),
+                                    enabled = speeds.indexOf(currentSpeed) > 0
                                 ) {
-                                    IconButton(
-                                        onClick = {
-                                            val idx = speeds.indexOf(currentSpeed)
-                                            if (idx > 0) onSpeedChange(speeds[idx - 1])
-                                        },
-                                        modifier = Modifier.size(28.dp),
-                                        enabled = speeds.indexOf(currentSpeed) > 0
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Remove, contentDescription = "Decrease speed",
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            val idx = speeds.indexOf(currentSpeed)
-                                            if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
-                                        },
-                                        modifier = Modifier.size(28.dp),
-                                        enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Add, contentDescription = "Increase speed",
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                                    Icon(
+                                        Icons.Default.Remove, contentDescription = "Decrease speed",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        val idx = speeds.indexOf(currentSpeed)
+                                        if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                                    },
+                                    modifier = Modifier.size(28.dp),
+                                    enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add, contentDescription = "Increase speed",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         }
                     }
                 } else {
-                    IconButton(
-                        onClick = onSwitchTrack,
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
-                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                    }
-
-                    Row(
-                        modifier = Modifier.align(Alignment.Center),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        IconButton(
-                            onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.SkipPrevious, contentDescription = "-5s")
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        FilledIconButton(
-                            onClick = onPlayPause,
-                            modifier = Modifier.size(56.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (playerState.state == PlaybackState.PLAYING)
-                                    Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (playerState.state == PlaybackState.PLAYING)
-                                    "Pause" else "Play",
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        IconButton(
-                            onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.SkipNext, contentDescription = "+5s")
-                        }
-                    }
-
                     Row(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
