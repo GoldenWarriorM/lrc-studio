@@ -50,13 +50,6 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSection("Playback") {
-                SettingsRow(
-                    title = "Playback speed",
-                    subtitle = "${settings.playbackSpeed}x"
-                )
-            }
-
             SettingsSection("About") {
                 SettingsRow(
                     title = "Version",

@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class AppSettings(
     val isDarkTheme: Boolean = true,
-    val playbackSpeed: Float = 1.0f,
     val timestampFormat: String = "mm:ss.xx"
 )
 
@@ -28,11 +27,6 @@ class SettingsRepository(private val storageDir: String) {
         _settings.value = _settings.value.copy(
             isDarkTheme = !_settings.value.isDarkTheme
         )
-        saveToDisk()
-    }
-
-    fun setPlaybackSpeed(speed: Float) {
-        _settings.value = _settings.value.copy(playbackSpeed = speed)
         saveToDisk()
     }
 
