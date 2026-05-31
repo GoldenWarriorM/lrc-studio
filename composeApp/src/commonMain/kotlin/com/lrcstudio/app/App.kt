@@ -140,14 +140,14 @@ fun App(audioPlayer: AudioPlayer) {
                                     ) + fadeOut(tween(200)))
                             }
                             NavDirection.Back -> {
-                                (slideInHorizontally(
+                                slideInHorizontally(
                                     animationSpec = tween(200),
                                     initialOffsetX = { -it }
-                                ) + fadeIn(tween(200))) togetherWith
-                                    (slideOutHorizontally(
+                                ) togetherWith
+                                    slideOutHorizontally(
                                         animationSpec = tween(200),
                                         targetOffsetX = { it }
-                                    ) + fadeOut(tween(200)))
+                                    )
                             }
                         }
                     },
