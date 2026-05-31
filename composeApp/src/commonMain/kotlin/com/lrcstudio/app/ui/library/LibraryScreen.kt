@@ -27,6 +27,7 @@ fun LibraryScreen(
     val state by viewModel.state.collectAsState()
     var showNewSongSheet by remember { mutableStateOf(false) }
     var showPasteDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -74,7 +75,7 @@ fun LibraryScreen(
                     SongCard(
                         song = song,
                         onClick = { onSongClick(song) },
-                        onDelete = { viewModel.deleteSong(song.id) }
+                        onDelete = { showDeleteConfirm = song.id }
                     )
                 }
             }
@@ -102,6 +103,53 @@ fun LibraryScreen(
                 showPasteDialog = false
             },
             onDismiss = { showPasteDialog = false }
+        )
+    }
+
+    showDeleteConfirm?.let { songId ->
+        val song = state.songs.find { it.id == songId }
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = null },
+            shape = RoundedCornerShape(24.dp),
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Delete song?",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Text(
+                    text = "\"${song?.title ?: "Untitled"}\" will be permanently deleted. This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSong(songId)
+                        showDeleteConfirm = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = null }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
