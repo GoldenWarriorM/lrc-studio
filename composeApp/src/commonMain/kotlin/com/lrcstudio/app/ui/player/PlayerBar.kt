@@ -85,59 +85,114 @@ fun PlayerBar(
                     }
                 }
 
-                Row(
+                BoxWithConstraints(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 ) {
                     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
+                    val horizontalThreshold = 130.dp
 
-                    IconButton(
-                        onClick = {
-                            val idx = speeds.indexOf(currentSpeed)
-                            if (idx > 0) onSpeedChange(speeds[idx - 1])
-                        },
-                        modifier = Modifier.size(32.dp),
-                        enabled = speeds.indexOf(currentSpeed) > 0
-                    ) {
-                        Icon(
-                            Icons.Default.Remove, contentDescription = "Decrease speed",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    if (maxWidth >= horizontalThreshold) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 2.dp)
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val idx = speeds.indexOf(currentSpeed)
+                                    if (idx > 0) onSpeedChange(speeds[idx - 1])
+                                },
+                                modifier = Modifier.size(32.dp),
+                                enabled = speeds.indexOf(currentSpeed) > 0
+                            ) {
+                                Icon(
+                                    Icons.Default.Remove, contentDescription = "Decrease speed",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                    Box(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .wrapContentWidth()
-                            .clickable { onSpeedClick() }
-                            .padding(horizontal = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "%.2fx".format(currentSpeed),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                            Box(
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .wrapContentWidth()
+                                    .clickable { onSpeedClick() }
+                                    .padding(horizontal = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "%.2fx".format(currentSpeed),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                    IconButton(
-                        onClick = {
-                            val idx = speeds.indexOf(currentSpeed)
-                            if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
-                        },
-                        modifier = Modifier.size(32.dp),
-                        enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
-                    ) {
-                        Icon(
-                            Icons.Default.Add, contentDescription = "Increase speed",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                            IconButton(
+                                onClick = {
+                                    val idx = speeds.indexOf(currentSpeed)
+                                    if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                                },
+                                modifier = Modifier.size(32.dp),
+                                enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+                            ) {
+                                Icon(
+                                    Icons.Default.Add, contentDescription = "Increase speed",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "%.2fx".format(currentSpeed),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clickable { onSpeedClick() }
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        val idx = speeds.indexOf(currentSpeed)
+                                        if (idx > 0) onSpeedChange(speeds[idx - 1])
+                                    },
+                                    modifier = Modifier.size(28.dp),
+                                    enabled = speeds.indexOf(currentSpeed) > 0
+                                ) {
+                                    Icon(
+                                        Icons.Default.Remove, contentDescription = "Decrease speed",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        val idx = speeds.indexOf(currentSpeed)
+                                        if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                                    },
+                                    modifier = Modifier.size(28.dp),
+                                    enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add, contentDescription = "Increase speed",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
