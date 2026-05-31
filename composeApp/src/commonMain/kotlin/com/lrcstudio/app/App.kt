@@ -132,21 +132,21 @@ fun App(audioPlayer: AudioPlayer) {
                             NavDirection.Forward -> {
                                 (slideInHorizontally(
                                     animationSpec = tween(200),
-                                    initialOffsetX = { it / 8 }
+                                    initialOffsetX = { it }
                                 ) + fadeIn(tween(200))) togetherWith
                                     (slideOutHorizontally(
                                         animationSpec = tween(200),
-                                        targetOffsetX = { -it / 8 }
+                                        targetOffsetX = { -it }
                                     ) + fadeOut(tween(200)))
                             }
                             NavDirection.Back -> {
                                 (slideInHorizontally(
                                     animationSpec = tween(200),
-                                    initialOffsetX = { -it / 8 }
+                                    initialOffsetX = { -it }
                                 ) + fadeIn(tween(200))) togetherWith
                                     (slideOutHorizontally(
                                         animationSpec = tween(200),
-                                        targetOffsetX = { it / 8 }
+                                        targetOffsetX = { it }
                                     ) + fadeOut(tween(200)))
                             }
                         }
