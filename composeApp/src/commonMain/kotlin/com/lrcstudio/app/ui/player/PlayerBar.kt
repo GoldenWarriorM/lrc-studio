@@ -99,35 +99,43 @@ fun PlayerBar(
                             val idx = speeds.indexOf(currentSpeed)
                             if (idx > 0) onSpeedChange(speeds[idx - 1])
                         },
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(32.dp),
                         enabled = speeds.indexOf(currentSpeed) > 0
                     ) {
                         Icon(
                             Icons.Default.Remove, contentDescription = "Decrease speed",
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    Text(
-                        text = "%.2fx".format(currentSpeed),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 4.dp).clickable { onSpeedClick() }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .height(32.dp)
+                            .wrapContentWidth()
+                            .clickable { onSpeedClick() }
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "%.2fx".format(currentSpeed),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
                     IconButton(
                         onClick = {
                             val idx = speeds.indexOf(currentSpeed)
                             if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
                         },
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(32.dp),
                         enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
                     ) {
                         Icon(
                             Icons.Default.Add, contentDescription = "Increase speed",
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }

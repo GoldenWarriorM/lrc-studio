@@ -254,7 +254,7 @@ fun EditorScreen(
                                     isEditing = state.editingLineIndex == i && !isPreviewMode,
                                     editingText = if (state.editingLineIndex == i) state.editingText else "",
                                     isPreviewMode = isPreviewMode,
-                                    onTimestampClick = { showAddDialog = true },
+                                    onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
                                     onEditDone = { viewModel.finishEditing() },
@@ -524,7 +524,7 @@ private fun LyricLineCard(
     isEditing: Boolean,
     editingText: String,
     isPreviewMode: Boolean = false,
-    onTimestampClick: () -> Unit,
+    onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
     onEditDone: () -> Unit,
@@ -544,6 +544,7 @@ private fun LyricLineCard(
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
+    var showTimestampDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
@@ -587,10 +588,10 @@ private fun LyricLineCard(
                     ) {
                         IconButton(
                             onClick = onTimestampMinus100,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.Remove, contentDescription = "-100ms",
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
                         Text(
@@ -598,14 +599,14 @@ private fun LyricLineCard(
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 4.dp)
+                            modifier = Modifier.padding(horizontal = 4.dp).clickable { showTimestampDialog = true }
                         )
                         IconButton(
                             onClick = onTimestampPlus100,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "+100ms",
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
                     }
@@ -686,6 +687,46 @@ private fun LyricLineCard(
                 )
             }
         }
+    }
+
+    if (showTimestampDialog) {
+        var input by remember { mutableStateOf(line.timestampFormatted) }
+        AlertDialog(
+            onDismissRequest = { showTimestampDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text("Edit Timestamp", style = MaterialTheme.typography.headlineSmall)
+            },
+            text = {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    label = { Text("Milliseconds (e.g. 123450)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val ms = input.toLongOrNull()
+                        if (ms != null && ms >= 0L) {
+                            onTimestampSet(ms)
+                            showTimestampDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = input.toLongOrNull()?.let { it >= 0L } == true
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimestampDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

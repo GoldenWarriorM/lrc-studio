@@ -232,6 +232,12 @@ class EditorViewModel(
         saveLyrics(newLyrics)
     }
 
+    fun setTimestamp(lineIndex: Int, timestampMs: Long) {
+        val lyrics = _state.value.lyrics
+        if (lineIndex !in lyrics.indices) return
+        updateTimestamp(lineIndex, timestampMs)
+    }
+
     fun clearTimestamp(lineIndex: Int) {
         val lyrics = _state.value.lyrics
         if (lineIndex !in lyrics.indices) return
