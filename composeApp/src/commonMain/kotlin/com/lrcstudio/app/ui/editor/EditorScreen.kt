@@ -45,7 +45,8 @@ fun EditorScreen(
     viewModel: EditorViewModel,
     onBack: () -> Unit,
     onSave: () -> Unit,
-    onImportAudioFile: () -> Unit
+    onImportAudioFile: () -> Unit,
+    forceVerticalSpeed: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -146,6 +147,7 @@ fun EditorScreen(
                             viewModel.audioPlayer.setSpeed(it)
                         },
                         onSpeedClick = { showSpeedDialog = true },
+                        forceVerticalSpeed = forceVerticalSpeed,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }

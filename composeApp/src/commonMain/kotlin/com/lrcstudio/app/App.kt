@@ -186,7 +186,8 @@ fun App(audioPlayer: AudioPlayer) {
                                         screenName = "library"
                                     },
                                     onSave = { },
-                                    onImportAudioFile = launchAudioPicker
+                                    onImportAudioFile = launchAudioPicker,
+                                    forceVerticalSpeed = settings.forceVerticalSpeed
                                 )
                             }
                         }

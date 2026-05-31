@@ -50,6 +50,19 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Experimental") {
+                SettingsRow(
+                    title = "Force vertical speed controls",
+                    subtitle = "Always stack speed −/+ buttons vertically",
+                    trailing = {
+                        Switch(
+                            checked = settings.forceVerticalSpeed,
+                            onCheckedChange = { settingsRepository.toggleForceVerticalSpeed() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("About") {
                 SettingsRow(
                     title = "Version",
