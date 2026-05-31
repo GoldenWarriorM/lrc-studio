@@ -45,7 +45,8 @@ fun EditorScreen(
     viewModel: EditorViewModel,
     onBack: () -> Unit,
     onSave: () -> Unit,
-    onImportAudioFile: () -> Unit
+    onImportAudioFile: () -> Unit,
+    compactControls: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -146,6 +147,7 @@ fun EditorScreen(
                             viewModel.audioPlayer.setSpeed(it)
                         },
                         onSpeedClick = { showSpeedDialog = true },
+                        compactControls = compactControls,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -254,6 +256,7 @@ fun EditorScreen(
                                     isEditing = state.editingLineIndex == i && !isPreviewMode,
                                     editingText = if (state.editingLineIndex == i) state.editingText else "",
                                     isPreviewMode = isPreviewMode,
+                                    compactControls = compactControls,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -524,6 +527,7 @@ private fun LyricLineCard(
     isEditing: Boolean,
     editingText: String,
     isPreviewMode: Boolean = false,
+    compactControls: Boolean = false,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -581,14 +585,54 @@ private fun LyricLineCard(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 if (!isPreviewMode) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                    ) {
-                        IconButton(
-                            onClick = onTimestampMinus100,
-                            modifier = Modifier.size(32.dp)
+                    if (compactControls) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = line.timestampFormatted,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                                    .clickable { showTimestampDialog = true }
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = onTimestampMinus100,
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Remove, contentDescription = "-100ms",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                                IconButton(
+                                    onClick = onTimestampPlus100,
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "+100ms",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        ) {
+                            IconButton(
+                                onClick = onTimestampMinus100,
+                                modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.Remove, contentDescription = "-100ms",
                                 modifier = Modifier.size(16.dp),
@@ -609,6 +653,7 @@ private fun LyricLineCard(
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
+                    }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
