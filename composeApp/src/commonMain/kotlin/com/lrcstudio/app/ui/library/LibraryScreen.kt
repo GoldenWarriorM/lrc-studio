@@ -136,7 +136,7 @@ fun LibraryScreen(
                     viewModel.deleteSong(songId)
                     showDeleteConfirm = null
                 }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text("Delete", color = MaterialTheme.colorScheme.errorContainer)
                 }
             },
             dismissButton = {
