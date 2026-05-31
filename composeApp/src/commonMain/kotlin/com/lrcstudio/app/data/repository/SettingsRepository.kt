@@ -11,8 +11,7 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class AppSettings(
     val isDarkTheme: Boolean = true,
-    val timestampFormat: String = "mm:ss.xx",
-    val forceVerticalSpeed: Boolean = false
+    val timestampFormat: String = "mm:ss.xx"
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -27,13 +26,6 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleTheme() {
         _settings.value = _settings.value.copy(
             isDarkTheme = !_settings.value.isDarkTheme
-        )
-        saveToDisk()
-    }
-
-    fun toggleForceVerticalSpeed() {
-        _settings.value = _settings.value.copy(
-            forceVerticalSpeed = !_settings.value.forceVerticalSpeed
         )
         saveToDisk()
     }
