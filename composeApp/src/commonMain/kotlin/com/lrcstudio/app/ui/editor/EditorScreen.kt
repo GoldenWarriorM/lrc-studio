@@ -3,6 +3,7 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -31,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -617,7 +620,16 @@ private fun LyricLineCard(
         enableDismissFromEndToStart = !isPreviewMode && !isEditing,
         backgroundContent = {
             val dir = dismissState.dismissDirection
+            val progress = dismissState.progress
             if (dir == SwipeToDismissBoxValue.StartToEnd) {
+                val clearTarget = (progress / 0.2f).coerceAtMost(1f)
+                val clearScale by animateFloatAsState(
+                    clearTarget, spring(dampingRatio = 0.6f, stiffness = 500f)
+                )
+                val deleteTarget = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                val deleteScale by animateFloatAsState(
+                    deleteTarget, spring(dampingRatio = 0.6f, stiffness = 500f)
+                )
                 Row(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))) {
                     Box(
                         modifier = Modifier
@@ -627,7 +639,13 @@ private fun LyricLineCard(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Row(
-                            Modifier.padding(start = 20.dp),
+                            Modifier
+                                .padding(start = 20.dp)
+                                .graphicsLayer {
+                                    scaleX = clearScale
+                                    transformOrigin = TransformOrigin(0f, 0.5f)
+                                    alpha = clearScale
+                                },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
@@ -643,7 +661,13 @@ private fun LyricLineCard(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Row(
-                            Modifier.padding(start = 20.dp),
+                            Modifier
+                                .padding(start = 20.dp)
+                                .graphicsLayer {
+                                    scaleX = deleteScale
+                                    transformOrigin = TransformOrigin(0f, 0.5f)
+                                    alpha = deleteScale
+                                },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
@@ -653,6 +677,9 @@ private fun LyricLineCard(
                     }
                 }
             } else if (dir == SwipeToDismissBoxValue.EndToStart) {
+                val timeScale by animateFloatAsState(
+                    progress, spring(dampingRatio = 0.6f, stiffness = 500f)
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -661,7 +688,13 @@ private fun LyricLineCard(
                     contentAlignment = Alignment.CenterEnd
                 ) {
                         Row(
-                            Modifier.padding(end = 20.dp),
+                            Modifier
+                                .padding(end = 20.dp)
+                                .graphicsLayer {
+                                    scaleX = timeScale
+                                    transformOrigin = TransformOrigin(1f, 0.5f)
+                                    alpha = timeScale
+                                },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Time", color = MaterialTheme.colorScheme.onPrimary)
