@@ -78,14 +78,12 @@ fun PlayerBar(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
                 IconButton(onClick = onSwitchTrack) {
                     Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                    }
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -159,9 +157,7 @@ fun PlayerBar(
                             modifier = Modifier.size(22.dp),
                         )
                     }
-
-
-                Spacer(modifier = Modifier.weight(1f))
+                }
 
                 if (compactControls) {
                     Column(
