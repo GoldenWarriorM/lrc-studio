@@ -36,3 +36,5 @@ composeApp/local.properties
 .env
 *.log
 *.hprof
+
+.opencode/plans/
