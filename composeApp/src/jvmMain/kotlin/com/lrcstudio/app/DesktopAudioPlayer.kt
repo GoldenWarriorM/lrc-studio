@@ -20,7 +20,8 @@ class DesktopAudioPlayer : AudioPlayer {
     private var line: SourceDataLine? = null
     private var thread: Thread? = null
     private var timer: Timer? = null
-    private var tempFiles = mutableListOf<File>()
+
+    private val convertedCache = mutableMapOf<String, File>()
 
     private var pcmData: ByteArray? = null
     private var activePcm: ByteArray? = null
@@ -72,9 +73,10 @@ class DesktopAudioPlayer : AudioPlayer {
     }
 
     private fun convertWithFfmpeg(input: File): File? {
+        val cached = convertedCache[input.absolutePath]
+        if (cached != null && cached.exists()) return cached
         return try {
             val dest = File.createTempFile("lrc_", ".wav")
-            tempFiles.add(dest)
             val process = ProcessBuilder(
                 "ffmpeg", "-y", "-i", input.absolutePath,
                 "-ar", "44100", "-ac", "2", "-sample_fmt", "s16",
@@ -83,10 +85,10 @@ class DesktopAudioPlayer : AudioPlayer {
             val exitCode = process.waitFor()
             if (exitCode == 0 && dest.exists() && dest.length() > 0) {
                 println("DesktopAudioPlayer: converted ${input.name} -> WAV via ffmpeg")
+                convertedCache[input.absolutePath] = dest
                 dest
             } else {
                 dest.delete()
-                tempFiles.remove(dest)
                 null
             }
         } catch (_: Exception) {
@@ -312,8 +314,6 @@ class DesktopAudioPlayer : AudioPlayer {
         activeTotalFrames = 0
         playheadFrames = 0
         _state.value = PlayerState()
-        tempFiles.forEach { it.delete() }
-        tempFiles.clear()
     }
 
     private fun startTimer() {
