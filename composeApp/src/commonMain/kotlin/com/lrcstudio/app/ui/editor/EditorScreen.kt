@@ -31,8 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -627,45 +625,43 @@ private fun LyricLineCard(
                     Box(Modifier.weight(1f).fillMaxHeight()) {
                         Box(
                             Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = clearScale
-                                    transformOrigin = TransformOrigin(0f, 0.5f)
-                                }
+                                .fillMaxHeight()
+                                .fillMaxWidth(clearScale)
+                                .align(Alignment.CenterStart)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFF9A825))
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Clear", color = Color.White)
+                            Row(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 20.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Clear", color = Color.White)
+                            }
                         }
                     }
                     Box(Modifier.weight(4f).fillMaxHeight()) {
                         Box(
                             Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = deleteScale
-                                    transformOrigin = TransformOrigin(0f, 0.5f)
-                                }
+                                .fillMaxHeight()
+                                .fillMaxWidth(deleteScale)
+                                .align(Alignment.CenterStart)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFE53935))
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Delete", color = Color.White)
+                            Row(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 20.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Delete", color = Color.White)
+                            }
                         }
                     }
                 }
@@ -674,27 +670,26 @@ private fun LyricLineCard(
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = timeScale
-                                transformOrigin = TransformOrigin(1f, 0.5f)
-                            }
+                            .fillMaxHeight()
+                            .fillMaxWidth(timeScale)
+                            .align(Alignment.CenterEnd)
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.primary)
-                    )
-                    Row(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(end = 20.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Default.TouchApp, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary)
+                        Row(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(end = 20.dp),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.Default.TouchApp, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
-                    }
+                }
                 }
         }
     ) {
