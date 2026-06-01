@@ -1,11 +1,7 @@
 package com.lrcstudio.app.ui.player
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,27 +33,6 @@ fun PlayerBar(
     modifier: Modifier = Modifier
 ) {
     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
-
-    val playInteractionSource = remember { MutableInteractionSource() }
-    val prevInteractionSource = remember { MutableInteractionSource() }
-    val nextInteractionSource = remember { MutableInteractionSource() }
-
-    val isPlayPressed by playInteractionSource.collectIsPressedAsState()
-    val isPrevPressed by prevInteractionSource.collectIsPressedAsState()
-    val isNextPressed by nextInteractionSource.collectIsPressedAsState()
-
-    val prevWidth by animateDpAsState(
-        targetValue = if (isPrevPressed) 56.dp else 44.dp,
-        animationSpec = tween(durationMillis = 100),
-    )
-    val playWidth by animateDpAsState(
-        targetValue = if (isPlayPressed) 75.dp else 66.dp,
-        animationSpec = tween(durationMillis = 100),
-    )
-    val nextWidth by animateDpAsState(
-        targetValue = if (isNextPressed) 56.dp else 44.dp,
-        animationSpec = tween(durationMillis = 100),
-    )
 
     val primary = MaterialTheme.colorScheme.primary
     val onPrimary = MaterialTheme.colorScheme.onPrimary
@@ -95,13 +70,11 @@ fun PlayerBar(
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(prevWidth)
+                            .width(44.dp)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary.copy(alpha = 0.1f))
                             .clickable(
-                                interactionSource = prevInteractionSource,
-                                indication = null,
                                 onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
                             ),
                         contentAlignment = Alignment.Center,
@@ -118,13 +91,11 @@ fun PlayerBar(
 
                     Box(
                         modifier = Modifier
-                            .width(playWidth)
+                            .width(66.dp)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary)
                             .clickable(
-                                interactionSource = playInteractionSource,
-                                indication = null,
                                 onClick = onPlayPause,
                             ),
                         contentAlignment = Alignment.Center,
@@ -143,13 +114,11 @@ fun PlayerBar(
 
                     Box(
                         modifier = Modifier
-                            .width(nextWidth)
+                            .width(44.dp)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary.copy(alpha = 0.1f))
                             .clickable(
-                                interactionSource = nextInteractionSource,
-                                indication = null,
                                 onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
                             ),
                         contentAlignment = Alignment.Center,
