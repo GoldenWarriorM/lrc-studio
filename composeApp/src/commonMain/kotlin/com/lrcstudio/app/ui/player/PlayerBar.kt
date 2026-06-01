@@ -65,7 +65,7 @@ fun PlayerBar(
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
     Card(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = surfaceVariant.copy(alpha = 0.7f)
@@ -73,7 +73,6 @@ fun PlayerBar(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
