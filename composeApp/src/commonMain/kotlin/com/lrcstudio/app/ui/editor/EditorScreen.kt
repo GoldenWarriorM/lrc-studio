@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -589,16 +590,15 @@ private fun LyricLineCard(
         }
     )
 
-    val swipeAlpha = remember {
-        Animatable(1f)
-    }
-    LaunchedEffect(dismissState.dismissDirection, dismissState.progress) {
-        val target = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
-            (1f - dismissState.progress * 0.5f).coerceAtLeast(0.5f) else 1f
-        if (dismissState.dismissDirection != null) {
-            swipeAlpha.snapTo(target)
+    val swipeAlpha = remember { Animatable(1f) }
+    LaunchedEffect(dismissState.dismissDirection) {
+        if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
+            snapshotFlow { dismissState.progress }.collect { progress ->
+                val target = (1f - progress * 0.5f).coerceAtLeast(0.5f)
+                swipeAlpha.snapTo(target)
+            }
         } else {
-            swipeAlpha.animateTo(target, spring(dampingRatio = 0.6f, stiffness = 500f))
+            swipeAlpha.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 500f))
         }
     }
 
@@ -617,35 +617,31 @@ private fun LyricLineCard(
         enableDismissFromEndToStart = !isPreviewMode && !isEditing,
         backgroundContent = {
             val dir = dismissState.dismissDirection
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color(0xFFE53935)),
-                        contentAlignment = Alignment.CenterStart
+            if (dir == SwipeToDismissBoxValue.StartToEnd) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFE53935)),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(
+                        Modifier.padding(start = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            Modifier.padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Delete", color = Color.White)
-                        }
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Delete", color = Color.White)
                     }
-                } else if (dir == SwipeToDismissBoxValue.EndToStart) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
+                }
+            } else if (dir == SwipeToDismissBoxValue.EndToStart) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
                         Row(
                             Modifier.padding(end = 20.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -657,7 +653,6 @@ private fun LyricLineCard(
                         }
                     }
                 }
-            }
         }
     ) {
         Card(
