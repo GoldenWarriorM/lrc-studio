@@ -33,6 +33,7 @@ class DesktopAudioPlayer : AudioPlayer {
     private var playing = false
     private var paused = false
     private var stopRequested = false
+    private var stretchVersion = 0
 
     override fun load(path: String) {
         release()
@@ -225,18 +226,31 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun setSpeed(speed: Float) {
         currentSpeed = speed
         val original = pcmData ?: return
-
-        val wasPlaying = playing && !paused
-        val oldActiveFrames = activeTotalFrames
+        stretchVersion++
 
         if (speed == 1.0f) {
-            activePcm = original
-            activeTotalFrames = totalFrames
+            applyStretched(original, totalFrames, playing && !paused)
         } else {
-            val stretched = timeStretch(original, speed)
-            activePcm = stretched
-            activeTotalFrames = stretched.size / 4L
+            val version = stretchVersion
+            val wasPlaying = playing && !paused
+            Thread {
+                try {
+                    val stretched = timeStretch(original, speed)
+                    synchronized(this@DesktopAudioPlayer) {
+                        if (version == stretchVersion) {
+                            applyStretched(stretched, stretched.size / 4L, wasPlaying)
+                        }
+                    }
+                } catch (e: Exception) {
+                }
+            }.apply { isDaemon = true; start() }
         }
+    }
+
+    private fun applyStretched(data: ByteArray, frames: Long, wasPlaying: Boolean) {
+        val oldActiveFrames = if (activeTotalFrames > 0) activeTotalFrames else 1
+        activePcm = data
+        activeTotalFrames = frames
         playheadFrames = (playheadFrames * activeTotalFrames / oldActiveFrames).coerceAtMost(activeTotalFrames)
 
         val posMs = ((playheadFrames * currentSpeed * 1000 / 44100).toLong()).coerceAtLeast(0L)
@@ -245,21 +259,21 @@ class DesktopAudioPlayer : AudioPlayer {
         if (wasPlaying) {
             stopLine()
             stopRequested = false
-            createAndStartLine(activePcm!!)
+            createAndStartLine(data)
         }
     }
 
     private fun timeStretch(input: ByteArray, speed: Float): ByteArray {
-        val frameBytes = 4
-        val totalInputFrames = input.size / frameBytes
+        val totalInputFrames = input.size / 4
         val totalOutputFrames = (totalInputFrames / speed).toInt()
         if (totalOutputFrames <= 0) return input
 
         val window = 2048
-        val hopIn = (window / 4 * speed).toInt().coerceAtLeast(1)
         val hopOut = window / 4
+        val searchRange = 128
+        val corrLen = 256
 
-        val output = ByteArray(totalOutputFrames * frameBytes)
+        val output = ByteArray(totalOutputFrames * 4)
         val accum = FloatArray(totalOutputFrames * 2)
         val weight = FloatArray(totalOutputFrames)
 
@@ -267,22 +281,60 @@ class DesktopAudioPlayer : AudioPlayer {
             0.5f * (1f - cos(2.0 * PI * i / (window - 1))).toFloat()
         }
 
-        var inStart = 0
-        var outStart = 0
-        while (inStart + window <= totalInputFrames && outStart + window <= totalOutputFrames) {
+        fun readFrame(inPos: Int): Pair<Float, Float> {
+            val idx = inPos * 4
+            val l = ((input[idx + 1].toInt() shl 8) or (input[idx].toInt() and 0xFF)).toShort().toFloat()
+            val r = ((input[idx + 3].toInt() shl 8) or (input[idx + 2].toInt() and 0xFF)).toShort().toFloat()
+            return l to r
+        }
+
+        fun addWindow(inStart: Int, outStart: Int) {
             for (i in 0 until window) {
+                val outPos = outStart + i
+                if (outPos >= totalOutputFrames) break
+                val inPos = inStart + i
+                if (inPos >= totalInputFrames) break
                 val w = hann[i]
-                val inIdx = (inStart + i) * frameBytes
-                val outIdx = (outStart + i) * 2
-
-                val l = ((input[inIdx + 1].toInt() shl 8) or (input[inIdx].toInt() and 0xFF)).toShort()
-                val r = ((input[inIdx + 3].toInt() shl 8) or (input[inIdx + 2].toInt() and 0xFF)).toShort()
-
-                accum[outIdx] += l * w
-                accum[outIdx + 1] += r * w
-                weight[outStart + i] += w
+                val (l, r) = readFrame(inPos)
+                accum[outPos * 2] += l * w
+                accum[outPos * 2 + 1] += r * w
+                weight[outPos] += w
             }
-            inStart += hopIn
+        }
+
+        var outStart = 0
+        var prevInStart = 0
+
+        addWindow(0, 0)
+        outStart += hopOut
+
+        while (outStart + window <= totalOutputFrames) {
+            val idealInStart = (outStart.toFloat() * speed).toInt()
+            val low = (idealInStart - searchRange).coerceAtLeast(0)
+            val high = (idealInStart + searchRange).coerceAtMost(totalInputFrames - window)
+
+            var bestInStart = idealInStart
+            var bestCorr = -1e30f
+            val refStart = prevInStart + hopOut
+
+            for (candidate in low..high) {
+                var corr = 0f
+                for (i in 0 until corrLen) {
+                    val cPos = candidate + i
+                    val rPos = refStart + i
+                    if (cPos >= totalInputFrames || rPos >= totalInputFrames) break
+                    val (cL, cR) = readFrame(cPos)
+                    val (rL, rR) = readFrame(rPos)
+                    corr += cL * rL + cR * rR
+                }
+                if (corr > bestCorr) {
+                    bestCorr = corr
+                    bestInStart = candidate
+                }
+            }
+
+            addWindow(bestInStart, outStart)
+            prevInStart = bestInStart
             outStart += hopOut
         }
 
@@ -291,15 +343,17 @@ class DesktopAudioPlayer : AudioPlayer {
             if (w > 0.001f) {
                 val l = (accum[frame * 2] / w).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 val r = (accum[frame * 2 + 1] / w).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                val idx = frame * frameBytes
+                val idx = frame * 4
                 output[idx] = (l and 0xFF).toByte()
                 output[idx + 1] = ((l shr 8) and 0xFF).toByte()
                 output[idx + 2] = (r and 0xFF).toByte()
                 output[idx + 3] = ((r shr 8) and 0xFF).toByte()
             }
         }
+
         return output
     }
+
 
     override fun release() {
         stopRequested = true
