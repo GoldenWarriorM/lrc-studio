@@ -567,7 +567,7 @@ private fun LyricLineCard(
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
     else
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
@@ -630,17 +630,16 @@ private fun LyricLineCard(
                                 .align(Alignment.CenterStart)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFF9A825))
+                        )
+                        Row(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 20.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Clear", color = Color.White)
-                            }
+                            Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Clear", color = Color.White)
                         }
                     }
                     Box(Modifier.weight(4f).fillMaxHeight()) {
@@ -651,17 +650,16 @@ private fun LyricLineCard(
                                 .align(Alignment.CenterStart)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFE53935))
+                        )
+                        Row(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 20.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Delete", color = Color.White)
-                            }
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete", color = Color.White)
                         }
                     }
                 }
@@ -675,19 +673,18 @@ private fun LyricLineCard(
                             .align(Alignment.CenterEnd)
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.primary)
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(end = 20.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(end = 20.dp),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                            Spacer(Modifier.width(8.dp))
-                            Icon(Icons.Default.TouchApp, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary)
-                        }
+                        Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Default.TouchApp, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
                 }
