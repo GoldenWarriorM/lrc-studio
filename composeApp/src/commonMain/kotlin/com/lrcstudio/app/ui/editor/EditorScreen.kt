@@ -601,8 +601,6 @@ private fun LyricLineCard(
             snapshotFlow { dismissState.progress }.collect { progress ->
                 swipeProgress = progress
             }
-        } else {
-            swipeProgress = 0f
         }
     }
 
@@ -645,32 +643,34 @@ private fun LyricLineCard(
                             tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
-            } else if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                val p = swipeProgress
-                val isLongSwipe = p >= 0.2f
-                val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
-                Box(Modifier.fillMaxSize()) {
-                    Box(
-                        Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(p)
-                            .align(Alignment.CenterStart)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(bgColor)
-                    )
-                    Row(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(start = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                            contentDescription = null, tint = Color.White
+            } else {
+                val liveP = dismissState.progress
+                if (liveP > 0f) {
+                    val isLongSwipe = swipeProgress >= 0.2f
+                    val colorFraction = ((liveP - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                    val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                    Box(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(liveP)
+                                .align(Alignment.CenterStart)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(bgColor)
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
+                        Row(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
+                                contentDescription = null, tint = Color.White
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
+                        }
                     }
                 }
             }
