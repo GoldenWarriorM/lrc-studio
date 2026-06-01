@@ -671,6 +671,13 @@ private fun LyricLineCard(
                         }
                     }
                 }
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
             }
         }
     ) {
