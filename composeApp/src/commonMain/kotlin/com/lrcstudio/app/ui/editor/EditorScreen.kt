@@ -754,7 +754,7 @@ private fun LyricLineCard(
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
-                    label = { Text("Milliseconds (e.g. 123450)") },
+                    label = { Text("MM:SS:ff") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -762,14 +762,14 @@ private fun LyricLineCard(
             confirmButton = {
                 Button(
                     onClick = {
-                        val ms = input.toLongOrNull()
+                        val ms = parseTimestampMs(input)
                         if (ms != null && ms >= 0L) {
                             onTimestampSet(ms)
                             showTimestampDialog = false
                         }
                     },
                     shape = RoundedCornerShape(12.dp),
-                    enabled = input.toLongOrNull()?.let { it >= 0L } == true
+                    enabled = parseTimestampMs(input) != null
                 ) {
                     Text("Apply")
                 }
@@ -781,6 +781,16 @@ private fun LyricLineCard(
             }
         )
     }
+}
+
+private fun parseTimestampMs(input: String): Long? {
+    val regex = Regex("""(\d+):(\d{2}):(\d{2})""")
+    val match = regex.matchEntire(input.trim()) ?: return null
+    val minutes = match.groupValues[1].toLongOrNull() ?: return null
+    val seconds = match.groupValues[2].toLongOrNull() ?: return null
+    val hundredths = match.groupValues[3].toLongOrNull() ?: return null
+    if (seconds !in 0..59 || hundredths !in 0..99) return null
+    return minutes * 60000 + seconds * 1000 + hundredths * 10
 }
 
 @Composable

@@ -12,15 +12,15 @@ data class LrcLine(
 ) {
     val timestampFormatted: String
         get() {
-            if (timestamp == 0L) return "--:--:--"
+            if (timestamp == 0L) return "-:--:--"
             val totalMs = timestamp
             val minutes = (totalMs / 60000).toInt()
             val seconds = ((totalMs % 60000) / 1000).toInt()
             val hundredths = ((totalMs % 1000) / 10).toInt()
-            val minStr = minutes.toString().padStart(2, '0')
+            val minStr = minutes.toString()
             val secStr = seconds.toString().padStart(2, '0')
             val fracStr = hundredths.toString().padStart(2, '0')
-            return "$minStr:$secStr.$fracStr"
+            return "$minStr:$secStr:$fracStr"
         }
 
     companion object {
