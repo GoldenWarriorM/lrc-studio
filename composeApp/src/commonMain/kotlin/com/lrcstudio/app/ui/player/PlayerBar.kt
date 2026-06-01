@@ -47,7 +47,7 @@ fun PlayerBar(
 
     val prevWidth by animateDpAsState(
         targetValue = when {
-            isPlayPressed -> 44.dp
+            isPlayPressed -> 52.dp
             isPrevPressed -> 80.dp
             else -> 66.dp
         },
@@ -55,7 +55,7 @@ fun PlayerBar(
     )
     val nextWidth by animateDpAsState(
         targetValue = when {
-            isPlayPressed -> 44.dp
+            isPlayPressed -> 52.dp
             isNextPressed -> 80.dp
             else -> 66.dp
         },
