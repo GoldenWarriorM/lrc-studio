@@ -606,40 +606,45 @@ private fun LyricLineCard(
         enableDismissFromStartToEnd = !isPreviewMode && !isEditing,
         enableDismissFromEndToStart = !isPreviewMode && !isEditing,
         backgroundContent = {
-            Row(Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFE53935)),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(
-                        Modifier.padding(start = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            val dir = dismissState.dismissDirection
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                if (dir == SwipeToDismissBoxValue.StartToEnd) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFFE53935)),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete", color = Color.White)
+                        Row(
+                            Modifier.padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete", color = Color.White)
+                        }
                     }
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Row(
-                        Modifier.padding(end = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                } else if (dir == SwipeToDismissBoxValue.EndToStart) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.CenterEnd
                     ) {
-                        Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Default.TouchApp, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary)
+                        Row(
+                            Modifier.padding(end = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.Default.TouchApp, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
                 }
             }
