@@ -601,8 +601,9 @@ private fun LyricLineCard(
             SwipeToDismissBoxValue.StartToEnd -> {
                 swipeProgress = 0f
                 snapshotFlow { dismissState.progress }.collect { progress ->
-                    swipeProgress = maxOf(swipeProgress, progress)
-                    bgProgress.snapTo(progress)
+                    val capped = progress.coerceIn(0f, 1f)
+                    swipeProgress = maxOf(swipeProgress, capped)
+                    bgProgress.snapTo(capped)
                 }
             }
             SwipeToDismissBoxValue.EndToStart -> {
@@ -658,16 +659,17 @@ private fun LyricLineCard(
                 }
             } else if (dir == SwipeToDismissBoxValue.StartToEnd || (dir == SwipeToDismissBoxValue.Settled && bgProgress.value > 0.001f)) {
                 val displayP = if (dir == SwipeToDismissBoxValue.StartToEnd) p else bgProgress.value
+                val cappedP = displayP.coerceIn(0f, 1f)
 
-                if (displayP > 0.001f) {
+                if (cappedP > 0.001f) {
                     val isLongSwipe = if (dir == SwipeToDismissBoxValue.StartToEnd) p >= 0.2f else swipeProgress >= 0.2f
-                    val colorFraction = ((displayP - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                    val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
                     val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
                                 .fillMaxHeight()
-                                .fillMaxWidth(displayP)
+                                .fillMaxWidth(cappedP)
                                 .align(Alignment.CenterStart)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(bgColor)
