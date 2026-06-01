@@ -47,15 +47,15 @@ fun PlayerBar(
     val isNextPressed by nextInteractionSource.collectIsPressedAsState()
 
     val prevWidth by animateDpAsState(
-        targetValue = if (isPrevPressed) 60.dp else 48.dp,
+        targetValue = if (isPrevPressed) 56.dp else 44.dp,
         animationSpec = tween(durationMillis = 100),
     )
     val playWidth by animateDpAsState(
-        targetValue = if (isPlayPressed) 72.dp else 52.dp,
+        targetValue = if (isPlayPressed) 100.dp else 88.dp,
         animationSpec = tween(durationMillis = 100),
     )
     val nextWidth by animateDpAsState(
-        targetValue = if (isNextPressed) 60.dp else 48.dp,
+        targetValue = if (isNextPressed) 56.dp else 44.dp,
         animationSpec = tween(durationMillis = 100),
     )
 
