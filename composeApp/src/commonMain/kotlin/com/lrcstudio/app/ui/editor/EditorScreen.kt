@@ -2,11 +2,15 @@ package com.lrcstudio.app.ui.editor
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -62,6 +66,12 @@ fun EditorScreen(
     var isPreviewMode by remember { mutableStateOf(false) }
     var speed by remember { mutableStateOf(1f) }
     var showSpeedDialog by remember { mutableStateOf(false) }
+    val timeInteractionSource = remember { MutableInteractionSource() }
+    val isTimePressed by timeInteractionSource.collectIsPressedAsState()
+    val timeWidth by animateDpAsState(
+        targetValue = if (isTimePressed) 160.dp else 140.dp,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+    )
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
     )
@@ -110,6 +120,9 @@ fun EditorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onImportAudioFile) {
+                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                    }
                     IconButton(onClick = { showSaveDialog = true }) {
                         Icon(Icons.Default.Save, contentDescription = "Save LRC")
                     }
@@ -125,7 +138,7 @@ fun EditorScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (playerState.audioPath.isEmpty()) {
+                if (state.song?.audioPath.isNullOrEmpty()) {
                     ImportAudioButton(
                         onClick = onImportAudioFile,
                         modifier = Modifier
@@ -137,7 +150,6 @@ fun EditorScreen(
                         playerState = playerState,
                         onPlayPause = { viewModel.playPause() },
                         onSeek = { viewModel.seekTo(it) },
-                        onSwitchTrack = onImportAudioFile,
                         currentSpeed = speed,
                         onSpeedChange = {
                             speed = it
@@ -300,26 +312,39 @@ fun EditorScreen(
             }
 
             if (canCapture) {
-                Button(
-                    onClick = { viewModel.captureCurrentLineTimestamp() },
+                Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
                         .padding(bottom = 24.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    contentPadding = PaddingValues(horizontal = 32.dp, vertical = 12.dp)
+                        .width(timeWidth)
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable(
+                            interactionSource = timeInteractionSource,
+                            indication = null,
+                            onClick = { viewModel.captureCurrentLineTimestamp() },
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.TouchApp,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Time",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.TouchApp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Time",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
             }
         }
