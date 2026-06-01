@@ -23,11 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
@@ -48,16 +43,14 @@ fun PlayerBar(
     val playInteractionSource = remember { MutableInteractionSource() }
     val isPlayPressed by playInteractionSource.collectIsPressedAsState()
 
-    val playProgress = if (playerState.duration > 0)
-        (playerState.currentPosition.toFloat() / playerState.duration).coerceIn(0f, 1f) else 0f
 
     val playButtonShape by animateDpAsState(
-        targetValue = if (playerState.state == PlaybackState.PLAYING) 20.dp else 32.dp,
+        targetValue = if (playerState.state == PlaybackState.PLAYING) 22.dp else 32.dp,
         animationSpec = tween(durationMillis = 120),
     )
 
     val playButtonScale by animateFloatAsState(
-        targetValue = if (isPlayPressed) 0.88f else 1f,
+        targetValue = if (isPlayPressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 800f),
     )
 
@@ -103,57 +96,24 @@ fun PlayerBar(
 
                     Box(
                         modifier = Modifier
-                            .size(60.dp)
-                            .drawWithContent {
-                                drawContent()
-                                val strokeWidth = 3.dp.toPx()
-                                val arcSize = size.minDimension - strokeWidth
-                                val topLeft = Offset(
-                                    (size.width - arcSize) / 2f,
-                                    (size.height - arcSize) / 2f
-                                )
-                                drawArc(
-                                    color = primary.copy(alpha = 0.2f),
-                                    startAngle = 0f,
-                                    sweepAngle = 360f,
-                                    useCenter = false,
-                                    topLeft = topLeft,
-                                    size = Size(arcSize, arcSize),
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                                )
-                                drawArc(
-                                    color = primary,
-                                    startAngle = -90f,
-                                    sweepAngle = 360f * playProgress,
-                                    useCenter = false,
-                                    topLeft = topLeft,
-                                    size = Size(arcSize, arcSize),
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                                )
-                            },
+                            .size(64.dp * playButtonScale)
+                            .clip(RoundedCornerShape(playButtonShape))
+                            .background(primary)
+                            .clickable(
+                                interactionSource = playInteractionSource,
+                                indication = null,
+                                onClick = onPlayPause,
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp * playButtonScale)
-                                .clip(RoundedCornerShape(playButtonShape))
-                                .background(primary)
-                                .clickable(
-                                    interactionSource = playInteractionSource,
-                                    indication = null,
-                                    onClick = onPlayPause,
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (playerState.state == PlaybackState.PLAYING)
-                                    Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (playerState.state == PlaybackState.PLAYING)
-                                    "Pause" else "Play",
-                                tint = onPrimary,
-                                modifier = Modifier.size(30.dp),
-                            )
-                        }
+                        Icon(
+                            imageVector = if (playerState.state == PlaybackState.PLAYING)
+                                Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (playerState.state == PlaybackState.PLAYING)
+                                "Pause" else "Play",
+                            tint = onPrimary,
+                            modifier = Modifier.size(32.dp),
+                        )
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
