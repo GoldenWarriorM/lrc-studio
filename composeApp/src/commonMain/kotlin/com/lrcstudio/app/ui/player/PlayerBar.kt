@@ -76,21 +76,27 @@ fun PlayerBar(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Box(
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onSwitchTrack,
-                    modifier = Modifier.align(Alignment.CenterStart)
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                    IconButton(onClick = onSwitchTrack) {
+                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                    }
                 }
 
-                Row(
-                    modifier = Modifier.align(Alignment.Center),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
                     Box(
                         modifier = Modifier
                             .width(prevWidth)
@@ -159,10 +165,12 @@ fun PlayerBar(
                             modifier = Modifier.size(22.dp),
                         )
                     }
-                }
+                    }
 
+                }
                 Box(
-                    modifier = Modifier.align(Alignment.CenterEnd)
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
                     if (compactControls) {
                         Column(
