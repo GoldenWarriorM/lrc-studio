@@ -16,12 +16,13 @@ Create, edit, and sync `.lrc` lyrics files with your music. Supports Android (AP
 
 - **Tap-to-sync workflow** — tap a lyric line, press the Time button (or tap the flash icon) to stamp the current audio position
 - **Playback integration** — seek to any line, auto-scroll follows playback, flash-fade animation on the current playback line
-- **Fine-tuning** — ±100ms timestamp micro-adjustments per line, batch shift all timestamps by an offset
+- **Fine-tuning** — ±100ms timestamp micro-adjustments per line, batch shift all timestamps by an offset; click the timestamp to manually type a value, click the speed to set a precise playback rate
+- **Compact controls** — optional vertical layout for speed and timestamp controls (toggle in Settings)
 - **Inline editing** — long-press any line to edit text, insert new lines above/below
 - **Preview mode** — hides all editing controls for a clean reading experience
 - **Clear timestamps** — remove individual timestamps or clear all at once
-- **Import/Export** — open existing `.lrc` files, save with metadata headers (title, artist, album, composer), copy plain LRC to clipboard
-- **Audio file support** — load local audio files, metadata (title/artist) is auto-extracted
+- **Import/Export** — open existing `.lrc` files, save with metadata headers (title, artist, album, composer), copy plain LRC to clipboard; song title is the default filename
+- **Audio file support** — load local audio files (via native file picker), metadata (title/artist) is auto-extracted
 - **Material Design 3** — dynamic theming with light/dark mode
 - **Persistent storage** — songs and settings saved as JSON files
 
@@ -81,9 +82,10 @@ APK is at `composeApp/build/outputs/apk/release/`.
 | Select line / seek audio | Tap the lyric card |
 | Clear timestamp | Tap the **X** button |
 | Delete line | Long-press the **X** button |
-| Edit text | Long-press the lyric card |
 | Insert line above/below | Edit buttons appear during inline editing |
 | Fine-tune timestamp | Tap **+100ms** or **-100ms** |
+| Manually edit timestamp | Tap the timestamp text |
+| Set playback speed | Tap the speed value |
 | Snap to current position | Tap the **Snap** (TouchApp) icon |
 
 ### Preview mode
@@ -95,6 +97,12 @@ Toggle the **Preview** button (eye icon) in the toolbar to hide all editing cont
 Tap the **Save** icon in the toolbar, fill in metadata (optional), and choose:
 - **Save** — writes to disk as an `.lrc` file with metadata headers
 - **Copy plain LRC** — copies timestamps + text to clipboard without metadata
+
+### Settings
+
+The **Settings** tab provides configuration options:
+- **Appearance** — toggle dark/light theme
+- **Layout** — enable **Compact controls** to stack speed buttons and timestamp buttons vertically
 
 ## Project Structure
 
