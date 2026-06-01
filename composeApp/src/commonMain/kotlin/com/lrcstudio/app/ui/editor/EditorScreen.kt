@@ -573,12 +573,17 @@ private fun LyricLineCard(
 
     val flashAnim = remember { Animatable(0f) }
     var showTimestampDialog by remember { mutableStateOf(false) }
+    var swipeProgress by remember { mutableStateOf(0f) }
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    onDelete()
+                    if (swipeProgress < 0.5f) {
+                        onClearTimestamp()
+                    } else {
+                        onDelete()
+                    }
                     false
                 }
                 SwipeToDismissBoxValue.EndToStart -> {
@@ -594,6 +599,7 @@ private fun LyricLineCard(
     LaunchedEffect(dismissState.dismissDirection) {
         if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
             snapshotFlow { dismissState.progress }.collect { progress ->
+                swipeProgress = progress
                 val target = (1f - progress * 0.5f).coerceAtLeast(0.5f)
                 swipeAlpha.snapTo(target)
             }
@@ -618,20 +624,37 @@ private fun LyricLineCard(
         backgroundContent = {
             val dir = dismissState.dismissDirection
             if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFE53935)),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(
-                        Modifier.padding(start = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(Color(0xFFF9A825)),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete", color = Color.White)
+                        Row(
+                            Modifier.padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Clear", color = Color.White)
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(Color(0xFFE53935)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete", color = Color.White)
+                        }
                     }
                 }
             } else if (dir == SwipeToDismissBoxValue.EndToStart) {
