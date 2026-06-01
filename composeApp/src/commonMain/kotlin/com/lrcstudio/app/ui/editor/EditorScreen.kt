@@ -138,7 +138,7 @@ fun EditorScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (playerState.audioPath.isEmpty()) {
+                if (state.song?.audioPath.isNullOrEmpty()) {
                     ImportAudioButton(
                         onClick = onImportAudioFile,
                         modifier = Modifier
