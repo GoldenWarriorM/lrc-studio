@@ -144,7 +144,6 @@ fun EditorScreen(
                             viewModel.audioPlayer.setSpeed(it)
                         },
                         onSpeedClick = { showSpeedDialog = true },
-                        onRecordTime = { viewModel.captureTimestamp() },
                         compactControls = compactControls,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )

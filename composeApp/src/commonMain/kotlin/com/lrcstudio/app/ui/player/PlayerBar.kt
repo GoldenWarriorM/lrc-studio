@@ -9,7 +9,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Pause
@@ -34,7 +33,6 @@ fun PlayerBar(
     currentSpeed: Float = 1f,
     onSpeedChange: (Float) -> Unit = {},
     onSpeedClick: () -> Unit = {},
-    onRecordTime: () -> Unit = {},
     compactControls: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -43,12 +41,10 @@ fun PlayerBar(
     val playInteractionSource = remember { MutableInteractionSource() }
     val prevInteractionSource = remember { MutableInteractionSource() }
     val nextInteractionSource = remember { MutableInteractionSource() }
-    val recordInteractionSource = remember { MutableInteractionSource() }
 
     val isPlayPressed by playInteractionSource.collectIsPressedAsState()
     val isPrevPressed by prevInteractionSource.collectIsPressedAsState()
     val isNextPressed by nextInteractionSource.collectIsPressedAsState()
-    val isRecordPressed by recordInteractionSource.collectIsPressedAsState()
 
     val prevWidth by animateDpAsState(
         targetValue = if (isPrevPressed) 56.dp else 44.dp,
@@ -60,10 +56,6 @@ fun PlayerBar(
     )
     val nextWidth by animateDpAsState(
         targetValue = if (isNextPressed) 56.dp else 44.dp,
-        animationSpec = tween(durationMillis = 100),
-    )
-    val recordWidth by animateDpAsState(
-        targetValue = if (isRecordPressed) 56.dp else 44.dp,
         animationSpec = tween(durationMillis = 100),
     )
 
@@ -311,34 +303,6 @@ fun PlayerBar(
                     style = MaterialTheme.typography.labelSmall,
                     color = onSurfaceVariant
                 )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(recordWidth)
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(primary.copy(alpha = 0.3f))
-                        .clickable(
-                            interactionSource = recordInteractionSource,
-                            indication = null,
-                            onClick = onRecordTime,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Default.AccessTime,
-                        contentDescription = "Record time",
-                        tint = primary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
             }
         }
     }
