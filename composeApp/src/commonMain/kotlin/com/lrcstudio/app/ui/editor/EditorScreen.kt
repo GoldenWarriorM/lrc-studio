@@ -110,9 +110,6 @@ fun EditorScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.togglePlaybackOptions() }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Playback options")
-                    }
                     IconButton(onClick = { showSaveDialog = true }) {
                         Icon(Icons.Default.Save, contentDescription = "Save LRC")
                     }
