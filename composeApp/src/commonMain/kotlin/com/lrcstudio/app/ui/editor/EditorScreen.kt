@@ -597,9 +597,12 @@ private fun LyricLineCard(
 
     LaunchedEffect(dismissState.dismissDirection) {
         if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
+            swipeProgress = dismissState.progress
             snapshotFlow { dismissState.progress }.collect { progress ->
                 swipeProgress = progress
             }
+        } else {
+            swipeProgress = 0f
         }
     }
 
@@ -643,7 +646,7 @@ private fun LyricLineCard(
                     }
                 }
             } else if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                val p = dismissState.progress
+                val p = swipeProgress
                 val isLongSwipe = p >= 0.2f
                 val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
                 val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
