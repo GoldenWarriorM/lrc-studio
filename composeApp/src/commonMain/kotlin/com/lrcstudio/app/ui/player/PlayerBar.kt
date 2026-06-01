@@ -49,10 +49,6 @@ fun PlayerBar(
         targetValue = if (isPrevPressed) 56.dp else 44.dp,
         animationSpec = tween(durationMillis = 100),
     )
-    val playWidth by animateDpAsState(
-        targetValue = if (isPlayPressed) 100.dp else 88.dp,
-        animationSpec = tween(durationMillis = 100),
-    )
     val nextWidth by animateDpAsState(
         targetValue = if (isNextPressed) 56.dp else 44.dp,
         animationSpec = tween(durationMillis = 100),
@@ -109,7 +105,7 @@ fun PlayerBar(
 
                     Box(
                         modifier = Modifier
-                            .width(playWidth)
+                            .weight(1f)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary)
