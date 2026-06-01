@@ -38,19 +38,15 @@ fun PlayerBar(
     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
 
     val playInteractionSource = remember { MutableInteractionSource() }
-    val prevInteractionSource = remember { MutableInteractionSource() }
-    val nextInteractionSource = remember { MutableInteractionSource() }
 
     val isPlayPressed by playInteractionSource.collectIsPressedAsState()
-    val isPrevPressed by prevInteractionSource.collectIsPressedAsState()
-    val isNextPressed by nextInteractionSource.collectIsPressedAsState()
 
     val prevWidth by animateDpAsState(
-        targetValue = if (isPrevPressed) 56.dp else 44.dp,
+        targetValue = if (isPlayPressed) 44.dp else 66.dp,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
     val nextWidth by animateDpAsState(
-        targetValue = if (isNextPressed) 56.dp else 44.dp,
+        targetValue = if (isPlayPressed) 44.dp else 66.dp,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
 
@@ -87,8 +83,6 @@ fun PlayerBar(
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary.copy(alpha = 0.1f))
                             .clickable(
-                                interactionSource = prevInteractionSource,
-                                indication = null,
                                 onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
                             ),
                         contentAlignment = Alignment.Center,
@@ -135,8 +129,6 @@ fun PlayerBar(
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary.copy(alpha = 0.1f))
                             .clickable(
-                                interactionSource = nextInteractionSource,
-                                indication = null,
                                 onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
                             ),
                         contentAlignment = Alignment.Center,
