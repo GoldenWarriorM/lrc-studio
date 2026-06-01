@@ -1,9 +1,7 @@
 package com.lrcstudio.app.ui.player
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -48,16 +46,16 @@ fun PlayerBar(
     val isPrevPressed by prevInteractionSource.collectIsPressedAsState()
     val isNextPressed by nextInteractionSource.collectIsPressedAsState()
 
-    val playWeight by animateFloatAsState(
-        targetValue = if (isPlayPressed) 0.85f else if (isPrevPressed || isNextPressed) 0.4f else 0.55f,
+    val prevWidth by animateDpAsState(
+        targetValue = if (isPrevPressed) 52.dp else 40.dp,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
-    val prevWeight by animateFloatAsState(
-        targetValue = if (isPrevPressed) 0.5f else if (isPlayPressed) 0.25f else 0.35f,
+    val playWidth by animateDpAsState(
+        targetValue = if (isPlayPressed) 60.dp else 44.dp,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
-    val nextWeight by animateFloatAsState(
-        targetValue = if (isNextPressed) 0.5f else if (isPlayPressed) 0.25f else 0.35f,
+    val nextWidth by animateDpAsState(
+        targetValue = if (isNextPressed) 52.dp else 40.dp,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
 
@@ -94,64 +92,64 @@ fun PlayerBar(
                 ) {
                     FilledIconButton(
                         onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(20.dp),
                         interactionSource = prevInteractionSource,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = primary.copy(alpha = 0.1f),
                             contentColor = primary,
                         ),
                         modifier = Modifier
-                            .height(48.dp)
-                            .weight(prevWeight),
+                            .width(prevWidth)
+                            .height(40.dp),
                     ) {
                         Icon(
                             Icons.Default.SkipPrevious,
                             contentDescription = "-5s",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(20.dp),
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     FilledIconButton(
                         onClick = onPlayPause,
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(20.dp),
                         interactionSource = playInteractionSource,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = primary,
                             contentColor = onPrimary,
                         ),
                         modifier = Modifier
-                            .height(48.dp)
-                            .weight(playWeight),
+                            .width(playWidth)
+                            .height(40.dp),
                     ) {
                         Icon(
                             imageVector = if (playerState.state == PlaybackState.PLAYING)
                                 Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playerState.state == PlaybackState.PLAYING)
                                 "Pause" else "Play",
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(24.dp),
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     FilledIconButton(
                         onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(20.dp),
                         interactionSource = nextInteractionSource,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = primary.copy(alpha = 0.1f),
                             contentColor = primary,
                         ),
                         modifier = Modifier
-                            .height(48.dp)
-                            .weight(nextWeight),
+                            .width(nextWidth)
+                            .height(40.dp),
                     ) {
                         Icon(
                             Icons.Default.SkipNext,
                             contentDescription = "+5s",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }
