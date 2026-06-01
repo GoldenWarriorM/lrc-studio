@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -619,48 +620,29 @@ private fun LyricLineCard(
             val dir = dismissState.dismissDirection
             val progress = dismissState.progress
             if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                val clearScale = (progress / 0.2f).coerceAtMost(1f)
-                val deleteScale = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(clearScale)
-                                .align(Alignment.CenterStart)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFFF9A825))
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Clear", color = Color.White)
-                        }
-                    }
-                    Box(Modifier.weight(4f).fillMaxHeight()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(deleteScale)
-                                .align(Alignment.CenterStart)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFFE53935))
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Delete", color = Color.White)
-                        }
+                val isLongSwipe = progress >= 0.2f
+                val colorFraction = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                val icon = if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear
+                val label = if (isLongSwipe) "Delete" else "Clear"
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress)
+                            .align(Alignment.CenterStart)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bgColor)
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(start = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(icon, contentDescription = null, tint = Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, color = Color.White)
                     }
                 }
             } else if (dir == SwipeToDismissBoxValue.EndToStart) {
