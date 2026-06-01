@@ -611,9 +611,9 @@ private fun LyricLineCard(
         enableDismissFromEndToStart = !isPreviewMode && !isEditing,
         backgroundContent = {
             val dir = dismissState.dismissDirection
+            val p = dismissState.progress
 
             if (dir == SwipeToDismissBoxValue.EndToStart) {
-                val p = dismissState.progress
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
@@ -636,16 +636,16 @@ private fun LyricLineCard(
                             tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
-            } else if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                val p = dismissState.progress.coerceIn(0f, 1f)
-                val isLongSwipe = p >= 0.2f
-                val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
+            } else if (p > 0.001f) {
+                val cappedP = p.coerceIn(0f, 1f)
+                val isLongSwipe = cappedP >= 0.2f
+                val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
                 val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(p)
+                            .fillMaxWidth(cappedP)
                             .align(Alignment.CenterStart)
                             .clip(RoundedCornerShape(20.dp))
                             .background(bgColor)
