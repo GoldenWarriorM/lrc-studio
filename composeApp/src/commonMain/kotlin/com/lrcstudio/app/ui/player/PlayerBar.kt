@@ -1,7 +1,13 @@
 package com.lrcstudio.app.ui.player
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +23,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
@@ -34,11 +45,32 @@ fun PlayerBar(
 ) {
     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
 
+    val playInteractionSource = remember { MutableInteractionSource() }
+    val isPlayPressed by playInteractionSource.collectIsPressedAsState()
+
+    val playProgress = if (playerState.duration > 0)
+        (playerState.currentPosition.toFloat() / playerState.duration).coerceIn(0f, 1f) else 0f
+
+    val playButtonShape by animateDpAsState(
+        targetValue = if (playerState.state == PlaybackState.PLAYING) 20.dp else 32.dp,
+        animationSpec = tween(durationMillis = 120),
+    )
+
+    val playButtonScale by animateFloatAsState(
+        targetValue = if (isPlayPressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 800f),
+    )
+
+    val primary = MaterialTheme.colorScheme.primary
+    val onPrimary = MaterialTheme.colorScheme.onPrimary
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            containerColor = surfaceVariant.copy(alpha = 0.7f)
         )
     ) {
         Column(
@@ -62,34 +94,75 @@ fun PlayerBar(
                 ) {
                     IconButton(
                         onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(36.dp),
                     ) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "-5s")
+                        Icon(Icons.Default.SkipPrevious, contentDescription = "-5s", modifier = Modifier.size(22.dp))
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    FilledIconButton(
-                        onClick = onPlayPause,
-                        modifier = Modifier.size(48.dp),
-                        shape = RoundedCornerShape(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .drawWithContent {
+                                drawContent()
+                                val strokeWidth = 3.dp.toPx()
+                                val arcSize = size.minDimension - strokeWidth
+                                val topLeft = Offset(
+                                    (size.width - arcSize) / 2f,
+                                    (size.height - arcSize) / 2f
+                                )
+                                drawArc(
+                                    color = primary.copy(alpha = 0.2f),
+                                    startAngle = 0f,
+                                    sweepAngle = 360f,
+                                    useCenter = false,
+                                    topLeft = topLeft,
+                                    size = Size(arcSize, arcSize),
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                )
+                                drawArc(
+                                    color = primary,
+                                    startAngle = -90f,
+                                    sweepAngle = 360f * playProgress,
+                                    useCenter = false,
+                                    topLeft = topLeft,
+                                    size = Size(arcSize, arcSize),
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                )
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (playerState.state == PlaybackState.PLAYING)
-                                Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (playerState.state == PlaybackState.PLAYING)
-                                "Pause" else "Play",
-                            modifier = Modifier.size(28.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp * playButtonScale)
+                                .clip(RoundedCornerShape(playButtonShape))
+                                .background(primary)
+                                .clickable(
+                                    interactionSource = playInteractionSource,
+                                    indication = null,
+                                    onClick = onPlayPause,
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (playerState.state == PlaybackState.PLAYING)
+                                    Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (playerState.state == PlaybackState.PLAYING)
+                                    "Pause" else "Play",
+                                tint = onPrimary,
+                                modifier = Modifier.size(30.dp),
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     IconButton(
                         onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(36.dp),
                     ) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "+5s")
+                        Icon(Icons.Default.SkipNext, contentDescription = "+5s", modifier = Modifier.size(22.dp))
                     }
                 }
 
@@ -99,7 +172,7 @@ fun PlayerBar(
                     Column(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                            .background(primary.copy(alpha = 0.1f))
                             .padding(vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -107,7 +180,7 @@ fun PlayerBar(
                             text = "%.2fx".format(currentSpeed),
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = primary,
                             modifier = Modifier
                                 .clickable { onSpeedClick() }
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
@@ -128,7 +201,7 @@ fun PlayerBar(
                                 Icon(
                                     Icons.Default.Remove, contentDescription = "Decrease speed",
                                     modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = primary
                                 )
                             }
                             IconButton(
@@ -142,7 +215,7 @@ fun PlayerBar(
                                 Icon(
                                     Icons.Default.Add, contentDescription = "Increase speed",
                                     modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = primary
                                 )
                             }
                         }
@@ -151,55 +224,55 @@ fun PlayerBar(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                            .background(primary.copy(alpha = 0.1f)),
                         verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = {
-                            val idx = speeds.indexOf(currentSpeed)
-                            if (idx > 0) onSpeedChange(speeds[idx - 1])
-                        },
-                        modifier = Modifier.size(32.dp),
-                        enabled = speeds.indexOf(currentSpeed) > 0
                     ) {
-                        Icon(
-                            Icons.Default.Remove, contentDescription = "Decrease speed",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                        IconButton(
+                            onClick = {
+                                val idx = speeds.indexOf(currentSpeed)
+                                if (idx > 0) onSpeedChange(speeds[idx - 1])
+                            },
+                            modifier = Modifier.size(32.dp),
+                            enabled = speeds.indexOf(currentSpeed) > 0
+                        ) {
+                            Icon(
+                                Icons.Default.Remove, contentDescription = "Decrease speed",
+                                modifier = Modifier.size(16.dp),
+                                tint = primary
+                            )
+                        }
 
-                    Box(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .wrapContentWidth()
-                            .clickable { onSpeedClick() }
-                            .padding(horizontal = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "%.2fx".format(currentSpeed),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                        Box(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .wrapContentWidth()
+                                .clickable { onSpeedClick() }
+                                .padding(horizontal = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "%.2fx".format(currentSpeed),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = primary
+                            )
+                        }
 
-                    IconButton(
-                        onClick = {
-                            val idx = speeds.indexOf(currentSpeed)
-                            if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
-                        },
-                        modifier = Modifier.size(32.dp),
-                        enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
-                    ) {
-                        Icon(
-                            Icons.Default.Add, contentDescription = "Increase speed",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        IconButton(
+                            onClick = {
+                                val idx = speeds.indexOf(currentSpeed)
+                                if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                            },
+                            modifier = Modifier.size(32.dp),
+                            enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+                        ) {
+                            Icon(
+                                Icons.Default.Add, contentDescription = "Increase speed",
+                                modifier = Modifier.size(16.dp),
+                                tint = primary
+                            )
+                        }
                     }
-                }
                 }
             }
 
@@ -212,7 +285,7 @@ fun PlayerBar(
                 Text(
                     text = formatDuration(playerState.currentPosition),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = onSurfaceVariant
                 )
 
                 Slider(
@@ -223,15 +296,15 @@ fun PlayerBar(
                         .weight(1f)
                         .padding(horizontal = 8.dp),
                     colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary
+                        thumbColor = primary,
+                        activeTrackColor = primary
                     )
                 )
 
                 Text(
                     text = formatDuration(playerState.duration),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = onSurfaceVariant
                 )
             }
         }
