@@ -123,6 +123,8 @@ fun PlayerBar(
                     }
                     }
 
+                    Spacer(modifier = Modifier.width(8.dp))
+
                 Box(
                     contentAlignment = Alignment.CenterEnd
                 ) {
