@@ -620,12 +620,11 @@ private fun LyricLineCard(
             val dir = dismissState.dismissDirection
             if (dir == SwipeToDismissBoxValue.EndToStart) {
                 val p = dismissState.progress
-                val timeScale = p
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(timeScale)
+                            .fillMaxWidth(p)
                             .align(Alignment.CenterEnd)
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.primary)
@@ -648,8 +647,6 @@ private fun LyricLineCard(
                 val isLongSwipe = p >= 0.2f
                 val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
                 val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
-                val icon = if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear
-                val label = if (isLongSwipe) "Delete" else "Clear"
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
@@ -665,18 +662,14 @@ private fun LyricLineCard(
                             .padding(start = 20.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(icon, contentDescription = null, tint = Color.White)
+                        Icon(
+                            if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
+                            contentDescription = null, tint = Color.White
+                        )
                         Spacer(Modifier.width(8.dp))
-                        Text(label, color = Color.White)
+                        Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                     }
                 }
-            } else {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
             }
         }
     ) {
