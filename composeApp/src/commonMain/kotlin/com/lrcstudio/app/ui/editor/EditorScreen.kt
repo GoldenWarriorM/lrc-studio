@@ -596,11 +596,18 @@ private fun LyricLineCard(
     )
 
     LaunchedEffect(dismissState.dismissDirection) {
-        if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
-            swipeProgress = 0f
-            snapshotFlow { dismissState.progress }.collect { progress ->
-                swipeProgress = maxOf(swipeProgress, progress)
+        when (dismissState.dismissDirection) {
+            SwipeToDismissBoxValue.StartToEnd -> {
+                swipeProgress = 0f
+                snapshotFlow { dismissState.progress }.collect { progress ->
+                    swipeProgress = maxOf(swipeProgress, progress)
+                }
             }
+            SwipeToDismissBoxValue.EndToStart -> {
+                swipeProgress = 0f
+            }
+            SwipeToDismissBoxValue.Settled -> {}
+            null -> {}
         }
     }
 
@@ -643,34 +650,60 @@ private fun LyricLineCard(
                             tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
-            } else if (dir == SwipeToDismissBoxValue.StartToEnd || dismissState.progress > 0.02f) {
-                val liveP = dismissState.progress
-                if (liveP > 0f) {
-                    val isLongSwipe = if (dir == SwipeToDismissBoxValue.StartToEnd) liveP >= 0.2f else swipeProgress >= 0.2f
-                    val colorFraction = ((liveP - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                    val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
-                    Box(Modifier.fillMaxSize()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(liveP)
-                                .align(Alignment.CenterStart)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(bgColor)
+            } else if (dir == SwipeToDismissBoxValue.StartToEnd) {
+                val p = dismissState.progress
+                val isLongSwipe = p >= 0.2f
+                val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(p)
+                            .align(Alignment.CenterStart)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bgColor)
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(start = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
+                            contentDescription = null, tint = Color.White
                         )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                                contentDescription = null, tint = Color.White
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
-                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
+                    }
+                }
+            } else if (dismissState.progress > 0.02f && swipeProgress > 0.02f) {
+                val liveP = dismissState.progress
+                val isLongSwipe = swipeProgress >= 0.2f
+                val colorFraction = ((liveP - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(liveP)
+                            .align(Alignment.CenterStart)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bgColor)
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(start = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
+                            contentDescription = null, tint = Color.White
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                     }
                 }
             }
