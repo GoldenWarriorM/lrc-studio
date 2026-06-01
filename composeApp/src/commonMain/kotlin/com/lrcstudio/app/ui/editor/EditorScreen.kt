@@ -630,22 +630,23 @@ private fun LyricLineCard(
                 val deleteScale by animateFloatAsState(
                     deleteTarget, spring(dampingRatio = 0.6f, stiffness = 500f)
                 )
-                Row(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(Color(0xFFF9A825)),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Row(
+                Row(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        Box(
                             Modifier
-                                .padding(start = 20.dp)
+                                .fillMaxSize()
                                 .graphicsLayer {
                                     scaleX = clearScale
                                     transformOrigin = TransformOrigin(0f, 0.5f)
                                     alpha = clearScale
-                                },
+                                }
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF9A825))
+                        )
+                        Row(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(start = 20.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Clear, contentDescription = null, tint = Color.White)
@@ -653,21 +654,22 @@ private fun LyricLineCard(
                             Text("Clear", color = Color.White)
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(4f)
-                            .fillMaxHeight()
-                            .background(Color(0xFFE53935)),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Row(
+                    Box(Modifier.weight(4f).fillMaxHeight()) {
+                        Box(
                             Modifier
-                                .padding(start = 20.dp)
+                                .fillMaxSize()
                                 .graphicsLayer {
                                     scaleX = deleteScale
                                     transformOrigin = TransformOrigin(0f, 0.5f)
                                     alpha = deleteScale
-                                },
+                                }
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFE53935))
+                        )
+                        Row(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(start = 20.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
@@ -680,28 +682,30 @@ private fun LyricLineCard(
                 val timeScale by animateFloatAsState(
                     progress, spring(dampingRatio = 0.6f, stiffness = 500f)
                 )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                        Row(
-                            Modifier
-                                .padding(end = 20.dp)
-                                .graphicsLayer {
-                                    scaleX = timeScale
-                                    transformOrigin = TransformOrigin(1f, 0.5f)
-                                    alpha = timeScale
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                            Spacer(Modifier.width(8.dp))
-                            Icon(Icons.Default.TouchApp, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary)
-                        }
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = timeScale
+                                transformOrigin = TransformOrigin(1f, 0.5f)
+                                alpha = timeScale
+                            }
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(end = 20.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Default.TouchApp, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary)
+                    }
                     }
                 }
         }
