@@ -564,10 +564,6 @@ private fun LyricLineCard(
     modifier: Modifier = Modifier
 ) {
     val hasTimestamp = line.timestamp > 0L
-    val containerColor = if (isCurrentLine)
-        MaterialTheme.colorScheme.primaryContainer
-    else
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
@@ -595,6 +591,13 @@ private fun LyricLineCard(
         }
     )
     dismissStateRef.value = dismissState
+
+    val isSwiping = dismissState.dismissDirection != SwipeToDismissBoxValue.Settled || dismissState.progress > 0.001f
+    val containerColor = when {
+        isCurrentLine -> MaterialTheme.colorScheme.primaryContainer
+        isSwiping -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    }
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
