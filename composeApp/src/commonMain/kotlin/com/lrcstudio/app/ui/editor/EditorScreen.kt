@@ -26,7 +26,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -573,14 +572,14 @@ private fun LyricLineCard(
 
     val flashAnim = remember { Animatable(0f) }
     var showTimestampDialog by remember { mutableStateOf(false) }
-    var swipeProgress by remember { mutableStateOf(0f) }
-    val bgProgress = remember { Animatable(0f) }
+    val dismissStateRef = remember { mutableStateOf<SwipeToDismissBoxState?>(null) }
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
+            val s = dismissStateRef.value ?: return@rememberSwipeToDismissBoxState false
             when (value) {
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    if (swipeProgress < 0.2f) {
+                    if (s.progress < 0.2f) {
                         onClearTimestamp()
                     } else {
                         onDelete()
@@ -595,27 +594,7 @@ private fun LyricLineCard(
             }
         }
     )
-
-    LaunchedEffect(dismissState.dismissDirection) {
-        when (dismissState.dismissDirection) {
-            SwipeToDismissBoxValue.StartToEnd -> {
-                swipeProgress = 0f
-                snapshotFlow { dismissState.progress }.collect { progress ->
-                    val capped = progress.coerceIn(0f, 1f)
-                    swipeProgress = maxOf(swipeProgress, capped)
-                    bgProgress.snapTo(capped)
-                }
-            }
-            SwipeToDismissBoxValue.EndToStart -> {
-                swipeProgress = 0f
-            }
-            SwipeToDismissBoxValue.Settled -> {
-                if (bgProgress.value > 0.001f) {
-                    bgProgress.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 500f))
-                }
-            }
-        }
-    }
+    dismissStateRef.value = dismissState
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
@@ -632,9 +611,9 @@ private fun LyricLineCard(
         enableDismissFromEndToStart = !isPreviewMode && !isEditing,
         backgroundContent = {
             val dir = dismissState.dismissDirection
-            val p = dismissState.progress
 
             if (dir == SwipeToDismissBoxValue.EndToStart) {
+                val p = dismissState.progress
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
@@ -657,36 +636,32 @@ private fun LyricLineCard(
                             tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
-            } else if (dir == SwipeToDismissBoxValue.StartToEnd || (dir == SwipeToDismissBoxValue.Settled && bgProgress.value > 0.001f)) {
-                val displayP = if (dir == SwipeToDismissBoxValue.StartToEnd) p else bgProgress.value
-                val cappedP = displayP.coerceIn(0f, 1f)
-
-                if (cappedP > 0.001f) {
-                    val isLongSwipe = if (dir == SwipeToDismissBoxValue.StartToEnd) p >= 0.2f else swipeProgress >= 0.2f
-                    val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                    val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
-                    Box(Modifier.fillMaxSize()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(cappedP)
-                                .align(Alignment.CenterStart)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(bgColor)
+            } else if (dir == SwipeToDismissBoxValue.StartToEnd) {
+                val p = dismissState.progress.coerceIn(0f, 1f)
+                val isLongSwipe = p >= 0.2f
+                val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(p)
+                            .align(Alignment.CenterStart)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bgColor)
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(start = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
+                            contentDescription = null, tint = Color.White
                         )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                                contentDescription = null, tint = Color.White
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
-                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                     }
                 }
             }
