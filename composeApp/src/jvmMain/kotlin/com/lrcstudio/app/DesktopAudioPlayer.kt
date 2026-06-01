@@ -9,9 +9,6 @@ import java.io.File
 import javax.sound.sampled.*
 import java.util.Timer
 import java.util.TimerTask
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.roundToInt
 
 class DesktopAudioPlayer : AudioPlayer {
     private val _state = MutableStateFlow(PlayerState())
@@ -22,6 +19,7 @@ class DesktopAudioPlayer : AudioPlayer {
     private var timer: Timer? = null
 
     private val convertedCache = mutableMapOf<String, File>()
+    private val stretchedCache = mutableMapOf<Float, ByteArray>()
 
     private var pcmData: ByteArray? = null
     private var activePcm: ByteArray? = null
@@ -33,9 +31,11 @@ class DesktopAudioPlayer : AudioPlayer {
     private var playing = false
     private var paused = false
     private var stopRequested = false
+    private var stretchVersion = 0
 
     override fun load(path: String) {
         release()
+        stretchedCache.clear()
         try {
             val file = resolveAudioFile(path)
             val ais = AudioSystem.getAudioInputStream(file)
@@ -225,18 +225,42 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun setSpeed(speed: Float) {
         currentSpeed = speed
         val original = pcmData ?: return
+        stretchVersion++
 
         val wasPlaying = playing && !paused
-        val oldActiveFrames = activeTotalFrames
+        val oldActiveFrames = if (activeTotalFrames > 0) activeTotalFrames else 1
 
         if (speed == 1.0f) {
-            activePcm = original
-            activeTotalFrames = totalFrames
-        } else {
-            val stretched = timeStretch(original, speed)
-            activePcm = stretched
-            activeTotalFrames = stretched.size / 4L
+            applyStretched(original, totalFrames, wasPlaying)
+            return
         }
+
+        val cached = stretchedCache[speed]
+        if (cached != null) {
+            applyStretched(cached, cached.size / 4L, wasPlaying)
+            return
+        }
+
+        val version = stretchVersion
+        Thread {
+            try {
+                val stretched = stretchWithFfmpeg(speed)
+                stretchedCache[speed] = stretched
+                synchronized(this@DesktopAudioPlayer) {
+                    if (version == stretchVersion) {
+                        applyStretched(stretched, stretched.size / 4L, wasPlaying)
+                    }
+                }
+            } catch (e: Exception) {
+                println("DesktopAudioPlayer: atempo failed: ${e.message}")
+            }
+        }.apply { isDaemon = true; start() }
+    }
+
+    private fun applyStretched(data: ByteArray, frames: Long, wasPlaying: Boolean) {
+        val oldActiveFrames = if (activeTotalFrames > 0) activeTotalFrames else 1
+        activePcm = data
+        activeTotalFrames = frames
         playheadFrames = (playheadFrames * activeTotalFrames / oldActiveFrames).coerceAtMost(activeTotalFrames)
 
         val posMs = ((playheadFrames * currentSpeed * 1000 / 44100).toLong()).coerceAtLeast(0L)
@@ -245,60 +269,48 @@ class DesktopAudioPlayer : AudioPlayer {
         if (wasPlaying) {
             stopLine()
             stopRequested = false
-            createAndStartLine(activePcm!!)
+            createAndStartLine(data)
         }
     }
 
-    private fun timeStretch(input: ByteArray, speed: Float): ByteArray {
-        val frameBytes = 4
-        val totalInputFrames = input.size / frameBytes
-        val totalOutputFrames = (totalInputFrames / speed).toInt()
-        if (totalOutputFrames <= 0) return input
+    private fun stretchWithFfmpeg(speed: Float): ByteArray {
+        val path = _state.value.audioPath ?: throw IllegalStateException("No audio path")
+        val wavFile = resolveAudioFile(path)
 
-        val window = 2048
-        val hopIn = (window / 4 * speed).toInt().coerceAtLeast(1)
-        val hopOut = window / 4
+        val factors = decomposeAtempo(speed)
+        val filterStr = factors.joinToString(",") { "atempo=$it" }
 
-        val output = ByteArray(totalOutputFrames * frameBytes)
-        val accum = FloatArray(totalOutputFrames * 2)
-        val weight = FloatArray(totalOutputFrames)
+        val output = File.createTempFile("lrc_atempo_", ".wav")
+        val process = ProcessBuilder(
+            "ffmpeg", "-y", "-i", wavFile.absolutePath,
+            "-af", filterStr,
+            "-ar", "44100", "-ac", "2", "-sample_fmt", "s16",
+            "-f", "wav", output.absolutePath
+        ).redirectErrorStream(false).start()
+        val exitCode = process.waitFor()
 
-        val hann = FloatArray(window) { i ->
-            0.5f * (1f - cos(2.0 * PI * i / (window - 1))).toFloat()
+        if (exitCode != 0 || !output.exists()) {
+            throw RuntimeException("ffmpeg atempo failed for speed=$speed")
         }
 
-        var inStart = 0
-        var outStart = 0
-        while (inStart + window <= totalInputFrames && outStart + window <= totalOutputFrames) {
-            for (i in 0 until window) {
-                val w = hann[i]
-                val inIdx = (inStart + i) * frameBytes
-                val outIdx = (outStart + i) * 2
+        val data = output.readBytes()
+        output.delete()
+        return data
+    }
 
-                val l = ((input[inIdx + 1].toInt() shl 8) or (input[inIdx].toInt() and 0xFF)).toShort()
-                val r = ((input[inIdx + 3].toInt() shl 8) or (input[inIdx + 2].toInt() and 0xFF)).toShort()
-
-                accum[outIdx] += l * w
-                accum[outIdx + 1] += r * w
-                weight[outStart + i] += w
-            }
-            inStart += hopIn
-            outStart += hopOut
+    private fun decomposeAtempo(speed: Float): List<Float> {
+        val factors = mutableListOf<Float>()
+        var remaining = speed
+        while (remaining < 0.5f) {
+            factors.add(0.5f)
+            remaining /= 0.5f
         }
-
-        for (frame in 0 until totalOutputFrames) {
-            val w = weight[frame]
-            if (w > 0.001f) {
-                val l = (accum[frame * 2] / w).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                val r = (accum[frame * 2 + 1] / w).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                val idx = frame * frameBytes
-                output[idx] = (l and 0xFF).toByte()
-                output[idx + 1] = ((l shr 8) and 0xFF).toByte()
-                output[idx + 2] = (r and 0xFF).toByte()
-                output[idx + 3] = ((r shr 8) and 0xFF).toByte()
-            }
+        while (remaining > 2.0f) {
+            factors.add(2.0f)
+            remaining /= 2.0f
         }
-        return output
+        factors.add(remaining)
+        return factors
     }
 
     override fun release() {
@@ -314,6 +326,7 @@ class DesktopAudioPlayer : AudioPlayer {
         activeTotalFrames = 0
         playheadFrames = 0
         _state.value = PlayerState()
+        stretchedCache.clear()
     }
 
     private fun startTimer() {
