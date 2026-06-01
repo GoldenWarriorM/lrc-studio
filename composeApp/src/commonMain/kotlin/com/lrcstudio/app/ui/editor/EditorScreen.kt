@@ -29,7 +29,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -568,7 +567,7 @@ private fun LyricLineCard(
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
     else
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        MaterialTheme.colorScheme.surfaceVariant
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
