@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -614,38 +615,38 @@ private fun LyricLineCard(
         backgroundContent = {
             val dir = dismissState.dismissDirection
             val p = dismissState.progress
-            if (dir == SwipeToDismissBoxValue.StartToEnd) {
+            if (dir != null) {
+                val isDelete = dir == SwipeToDismissBoxValue.StartToEnd
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFFE53935))
-                        .padding(start = 20.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isDelete) Color(0xFFE53935) else MaterialTheme.colorScheme.primary)
+                        .padding(start = if (isDelete) 20.dp else 0.dp)
+                        .padding(end = if (isDelete) 0.dp else 20.dp),
+                    contentAlignment = if (isDelete) Alignment.CenterStart else Alignment.CenterEnd
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.graphicsLayer { scaleX = p.coerceIn(0.2f, 1f) }
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = p.coerceIn(0.1f, 1f)
+                            transformOrigin = if (isDelete)
+                                TransformOrigin(0f, 0.5f)
+                            else
+                                TransformOrigin(1f, 0.5f)
+                            alpha = p
+                        }
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete", color = Color.White)
-                    }
-                }
-            } else if (dir == SwipeToDismissBoxValue.EndToStart) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(end = 20.dp),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.graphicsLayer { scaleX = p.coerceIn(0.2f, 1f) }
-                    ) {
-                        Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                        if (isDelete) {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete", color = Color.White)
+                        } else {
+                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.Default.TouchApp, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
                 }
             }
