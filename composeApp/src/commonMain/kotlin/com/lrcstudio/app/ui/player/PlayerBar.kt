@@ -78,10 +78,10 @@ fun PlayerBar(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Box(
-                    modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     IconButton(onClick = onSwitchTrack) {
@@ -89,14 +89,10 @@ fun PlayerBar(
                     }
                 }
 
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
                     Box(
                         modifier = Modifier
                             .width(prevWidth)
@@ -167,9 +163,7 @@ fun PlayerBar(
                     }
                     }
 
-                }
                 Box(
-                    modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     if (compactControls) {
