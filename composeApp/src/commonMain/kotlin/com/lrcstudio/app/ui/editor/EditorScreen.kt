@@ -579,7 +579,7 @@ private fun LyricLineCard(
         confirmValueChange = { value ->
             when (value) {
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    if (swipeProgress < 0.5f) {
+                    if (swipeProgress < 0.2f) {
                         onClearTimestamp()
                     } else {
                         onDelete()
@@ -595,16 +595,11 @@ private fun LyricLineCard(
         }
     )
 
-    val swipeAlpha = remember { Animatable(1f) }
     LaunchedEffect(dismissState.dismissDirection) {
         if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
             snapshotFlow { dismissState.progress }.collect { progress ->
                 swipeProgress = progress
-                val target = (1f - progress * 0.5f).coerceAtLeast(0.5f)
-                swipeAlpha.snapTo(target)
             }
-        } else {
-            swipeAlpha.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 500f))
         }
     }
 
@@ -643,7 +638,7 @@ private fun LyricLineCard(
                     }
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(4f)
                             .fillMaxHeight()
                             .background(Color(0xFFE53935)),
                         contentAlignment = Alignment.Center
@@ -683,8 +678,7 @@ private fun LyricLineCard(
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = if (isPreviewMode) null else onEditStart
-                )
-                .alpha(swipeAlpha.value),
+                ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
