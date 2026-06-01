@@ -51,7 +51,7 @@ fun PlayerBar(
         animationSpec = tween(durationMillis = 100),
     )
     val playWidth by animateDpAsState(
-        targetValue = if (isPlayPressed) 100.dp else 88.dp,
+        targetValue = if (isPlayPressed) 75.dp else 66.dp,
         animationSpec = tween(durationMillis = 100),
     )
     val nextWidth by animateDpAsState(
