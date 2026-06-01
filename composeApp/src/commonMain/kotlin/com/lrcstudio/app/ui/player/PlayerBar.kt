@@ -53,10 +53,6 @@ fun PlayerBar(
         targetValue = if (isNextPressed) 56.dp else 44.dp,
         animationSpec = spring(dampingRatio = 0.2f, stiffness = 300f),
     )
-    val nextWidth by animateDpAsState(
-        targetValue = if (isNextPressed) 56.dp else 44.dp,
-        animationSpec = tween(durationMillis = 100),
-    )
 
     val primary = MaterialTheme.colorScheme.primary
     val onPrimary = MaterialTheme.colorScheme.onPrimary
