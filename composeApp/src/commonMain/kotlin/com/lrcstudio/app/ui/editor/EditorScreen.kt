@@ -3,8 +3,6 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -576,6 +574,7 @@ private fun LyricLineCard(
     val flashAnim = remember { Animatable(0f) }
     var showTimestampDialog by remember { mutableStateOf(false) }
     var swipeProgress by remember { mutableStateOf(0f) }
+    val bgProgress = remember { Animatable(0f) }
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -603,12 +602,17 @@ private fun LyricLineCard(
                 swipeProgress = 0f
                 snapshotFlow { dismissState.progress }.collect { progress ->
                     swipeProgress = maxOf(swipeProgress, progress)
+                    bgProgress.snapTo(progress)
                 }
             }
             SwipeToDismissBoxValue.EndToStart -> {
                 swipeProgress = 0f
             }
-            SwipeToDismissBoxValue.Settled -> {}
+            SwipeToDismissBoxValue.Settled -> {
+                if (bgProgress.value > 0.001f) {
+                    bgProgress.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 500f))
+                }
+            }
         }
     }
 
@@ -652,17 +656,11 @@ private fun LyricLineCard(
                             tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
-            } else if (dir == SwipeToDismissBoxValue.StartToEnd || (dir == SwipeToDismissBoxValue.Settled && swipeProgress > 0.02f)) {
-                val isActive = dir == SwipeToDismissBoxValue.StartToEnd
-                val target = if (isActive) p else 0f
-                val animatedWidth by animateFloatAsState(
-                    targetValue = target,
-                    animationSpec = if (isActive) snap() else spring(dampingRatio = 0.6f, stiffness = 500f)
-                )
-                val displayP = if (isActive) p else animatedWidth
+            } else if (dir == SwipeToDismissBoxValue.StartToEnd || (dir == SwipeToDismissBoxValue.Settled && bgProgress.value > 0.001f)) {
+                val displayP = if (dir == SwipeToDismissBoxValue.StartToEnd) p else bgProgress.value
 
                 if (displayP > 0.001f) {
-                    val isLongSwipe = if (isActive) p >= 0.2f else swipeProgress >= 0.2f
+                    val isLongSwipe = if (dir == SwipeToDismissBoxValue.StartToEnd) p >= 0.2f else swipeProgress >= 0.2f
                     val colorFraction = ((displayP - 0.2f) / 0.8f).coerceIn(0f, 1f)
                     val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
                     Box(Modifier.fillMaxSize()) {
