@@ -592,7 +592,7 @@ private fun LyricLineCard(
     )
     dismissStateRef.value = dismissState
 
-    val isSwiping = dismissState.currentValue != SwipeToDismissBoxValue.Settled || dismissState.progress > 0.001f
+    var isSwiping by remember { mutableStateOf(false) }
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
     else if (isSwiping)
@@ -621,6 +621,7 @@ private fun LyricLineCard(
             when {
                 dir == SwipeToDismissBoxValue.EndToStart -> {
                     lastSwipeDir = SwipeToDismissBoxValue.EndToStart
+                    isSwiping = true
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
@@ -646,6 +647,7 @@ private fun LyricLineCard(
                 }
                 dir == SwipeToDismissBoxValue.StartToEnd -> {
                     lastSwipeDir = SwipeToDismissBoxValue.StartToEnd
+                    isSwiping = true
                     val cappedP = p.coerceIn(0f, 1f)
                     val isLongSwipe = cappedP >= 0.2f
                     val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
@@ -675,6 +677,7 @@ private fun LyricLineCard(
                     }
                 }
                 p > 0.001f && lastSwipeDir == SwipeToDismissBoxValue.StartToEnd -> {
+                    isSwiping = true
                     val cappedP = p.coerceIn(0f, 1f)
                     val isLongSwipe = cappedP >= 0.2f
                     val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
@@ -702,6 +705,9 @@ private fun LyricLineCard(
                             Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                         }
                     }
+                }
+                else -> {
+                    isSwiping = false
                 }
             }
         }
