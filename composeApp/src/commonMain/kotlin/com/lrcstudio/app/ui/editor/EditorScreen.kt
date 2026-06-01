@@ -589,7 +589,18 @@ private fun LyricLineCard(
         }
     )
 
-    val swipeAlpha = (1f - dismissState.progress * 0.5f).coerceAtLeast(0.5f)
+    val swipeAlpha = remember {
+        Animatable(1f)
+    }
+    LaunchedEffect(dismissState.dismissDirection, dismissState.progress) {
+        val target = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+            (1f - dismissState.progress * 0.5f).coerceAtLeast(0.5f) else 1f
+        if (dismissState.dismissDirection != null) {
+            swipeAlpha.snapTo(target)
+        } else {
+            swipeAlpha.animateTo(target, spring(dampingRatio = 0.6f, stiffness = 500f))
+        }
+    }
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
@@ -655,7 +666,7 @@ private fun LyricLineCard(
                     onClick = onClick,
                     onLongClick = if (isPreviewMode) null else onEditStart
                 )
-                .alpha(swipeAlpha),
+                .alpha(swipeAlpha.value),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
