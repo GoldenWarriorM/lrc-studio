@@ -70,7 +70,7 @@ fun EditorScreen(
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
     val timeWidth by animateDpAsState(
         targetValue = if (isTimePressed) 160.dp else 140.dp,
-        animationSpec = spring(dampingRatio = 0.2f, stiffness = 300f),
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
