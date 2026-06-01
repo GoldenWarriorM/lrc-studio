@@ -3,6 +3,7 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -28,10 +29,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -572,6 +575,29 @@ private fun LyricLineCard(
     val flashAnim = remember { Animatable(0f) }
     var showTimestampDialog by remember { mutableStateOf(false) }
 
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onDelete()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onSnapTimestamp()
+                    false
+                }
+                else -> true
+            }
+        }
+    )
+
+    val swipeProgress = dismissState.progress
+    val isSwipingRight = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+    val swipeAlpha by animateFloatAsState(
+        targetValue = if (isSwipingRight) (1f - swipeProgress * 0.5f).coerceAtLeast(0.5f) else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+    )
+
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
             flashAnim.snapTo(1f)
@@ -581,11 +607,57 @@ private fun LyricLineCard(
         }
     }
 
-    Card(
-        modifier = modifier.combinedClickable(
-            onClick = onClick,
-            onLongClick = if (isPreviewMode) null else onEditStart
-        ),
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = !isPreviewMode && !isEditing,
+        enableDismissFromEndToStart = !isPreviewMode && !isEditing,
+        backgroundContent = {
+            val dir = dismissState.dismissDirection
+            val p = dismissState.progress
+            if (dir == SwipeToDismissBoxValue.StartToEnd) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFE53935))
+                        .padding(start = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.graphicsLayer { scaleX = p.coerceIn(0.2f, 1f) }
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Delete", color = Color.White)
+                    }
+                }
+            } else if (dir == SwipeToDismissBoxValue.EndToStart) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.primary)
+                        .padding(end = 20.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.graphicsLayer { scaleX = p.coerceIn(0.2f, 1f) }
+                    ) {
+                        Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            }
+        }
+    ) {
+        Card(
+            modifier = modifier
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = if (isPreviewMode) null else onEditStart
+                )
+                .alpha(swipeAlpha),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -761,6 +833,7 @@ private fun LyricLineCard(
                         )
                 )
             }
+        }
         }
     }
 
