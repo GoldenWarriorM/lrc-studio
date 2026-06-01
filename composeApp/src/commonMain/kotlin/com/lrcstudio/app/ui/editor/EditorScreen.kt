@@ -618,7 +618,7 @@ private fun LyricLineCard(
         backgroundContent = {
             val dir = dismissState.dismissDirection
             if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                Row(Modifier.fillMaxSize()) {
+                Row(Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -640,9 +640,10 @@ private fun LyricLineCard(
                             .weight(4f)
                             .fillMaxHeight()
                             .background(Color(0xFFE53935)),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.CenterStart
                     ) {
                         Row(
+                            Modifier.padding(start = 20.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
