@@ -25,7 +25,6 @@ fun PlayerBar(
     playerState: PlayerState,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
-    onSwitchTrack: () -> Unit = {},
     currentSpeed: Float = 1f,
     onSpeedChange: (Float) -> Unit = {},
     onSpeedClick: () -> Unit = {},
@@ -56,14 +55,6 @@ fun PlayerBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    IconButton(onClick = onSwitchTrack) {
-                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                    }
-                }
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,

@@ -119,6 +119,9 @@ fun EditorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onImportAudioFile) {
+                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                    }
                     IconButton(onClick = { showSaveDialog = true }) {
                         Icon(Icons.Default.Save, contentDescription = "Save LRC")
                     }
@@ -146,7 +149,6 @@ fun EditorScreen(
                         playerState = playerState,
                         onPlayPause = { viewModel.playPause() },
                         onSeek = { viewModel.seekTo(it) },
-                        onSwitchTrack = onImportAudioFile,
                         currentSpeed = speed,
                         onSpeedChange = {
                             speed = it
