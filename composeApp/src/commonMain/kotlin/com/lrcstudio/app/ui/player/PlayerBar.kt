@@ -1,7 +1,7 @@
 package com.lrcstudio.app.ui.player
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -47,7 +47,11 @@ fun PlayerBar(
 
     val prevWidth by animateDpAsState(
         targetValue = if (isPrevPressed) 56.dp else 44.dp,
-        animationSpec = tween(durationMillis = 100),
+        animationSpec = spring(dampingRatio = 0.2f, stiffness = 300f),
+    )
+    val nextWidth by animateDpAsState(
+        targetValue = if (isNextPressed) 56.dp else 44.dp,
+        animationSpec = spring(dampingRatio = 0.2f, stiffness = 300f),
     )
     val nextWidth by animateDpAsState(
         targetValue = if (isNextPressed) 56.dp else 44.dp,

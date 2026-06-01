@@ -3,6 +3,7 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -69,7 +70,7 @@ fun EditorScreen(
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
     val timeWidth by animateDpAsState(
         targetValue = if (isTimePressed) 160.dp else 140.dp,
-        animationSpec = tween(durationMillis = 100),
+        animationSpec = spring(dampingRatio = 0.2f, stiffness = 300f),
     )
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
