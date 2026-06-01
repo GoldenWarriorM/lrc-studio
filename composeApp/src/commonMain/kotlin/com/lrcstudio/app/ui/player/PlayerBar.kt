@@ -82,7 +82,7 @@ fun PlayerBar(
 
                     Box(
                         modifier = Modifier
-                            .width(66.dp)
+                            .weight(1f)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(primary)
