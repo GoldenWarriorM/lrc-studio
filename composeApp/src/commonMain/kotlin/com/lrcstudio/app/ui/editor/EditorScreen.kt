@@ -45,7 +45,8 @@ fun EditorScreen(
     viewModel: EditorViewModel,
     onBack: () -> Unit,
     onSave: () -> Unit,
-    onImportAudioFile: () -> Unit
+    onImportAudioFile: () -> Unit,
+    compactControls: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -59,6 +60,8 @@ fun EditorScreen(
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
     var isPreviewMode by remember { mutableStateOf(false) }
+    var speed by remember { mutableStateOf(1f) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
     )
@@ -138,6 +141,13 @@ fun EditorScreen(
                         onPlayPause = { viewModel.playPause() },
                         onSeek = { viewModel.seekTo(it) },
                         onSwitchTrack = onImportAudioFile,
+                        currentSpeed = speed,
+                        onSpeedChange = {
+                            speed = it
+                            viewModel.audioPlayer.setSpeed(it)
+                        },
+                        onSpeedClick = { showSpeedDialog = true },
+                        compactControls = compactControls,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
@@ -246,7 +256,8 @@ fun EditorScreen(
                                     isEditing = state.editingLineIndex == i && !isPreviewMode,
                                     editingText = if (state.editingLineIndex == i) state.editingText else "",
                                     isPreviewMode = isPreviewMode,
-                                    onTimestampClick = { showAddDialog = true },
+                                    compactControls = compactControls,
+                                    onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
                                     onEditDone = { viewModel.finishEditing() },
@@ -412,6 +423,47 @@ fun EditorScreen(
             onDismiss = { showSaveDialog = false }
         )
     }
+
+    if (showSpeedDialog) {
+        var input by remember { mutableStateOf("%.2f".format(speed)) }
+        AlertDialog(
+            onDismissRequest = { showSpeedDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text("Playback Speed", style = MaterialTheme.typography.headlineSmall)
+            },
+            text = {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    label = { Text("Speed (0.25 – 3.0)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newSpeed = input.toFloatOrNull()
+                        if (newSpeed != null && newSpeed in 0.25f..3.0f) {
+                            speed = newSpeed
+                            viewModel.audioPlayer.setSpeed(newSpeed)
+                            showSpeedDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = input.toFloatOrNull()?.let { it in 0.25f..3.0f } == true
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSpeedDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 private const val LYRICS_ANCHOR_RATIO = 0.35f
@@ -475,7 +527,8 @@ private fun LyricLineCard(
     isEditing: Boolean,
     editingText: String,
     isPreviewMode: Boolean = false,
-    onTimestampClick: () -> Unit,
+    compactControls: Boolean = false,
+    onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
     onEditDone: () -> Unit,
@@ -495,6 +548,7 @@ private fun LyricLineCard(
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
+    var showTimestampDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
@@ -531,34 +585,83 @@ private fun LyricLineCard(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 if (!isPreviewMode) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                    ) {
-                        IconButton(
-                            onClick = onTimestampMinus100,
-                            modifier = Modifier.size(24.dp)
+                    if (compactControls) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = line.timestampFormatted,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                                    .clickable { showTimestampDialog = true }
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = onTimestampMinus100,
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Remove, contentDescription = "-100ms",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                                IconButton(
+                                    onClick = onTimestampPlus100,
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "+100ms",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        ) {
+                            IconButton(
+                                onClick = onTimestampMinus100,
+                                modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.Remove, contentDescription = "-100ms",
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
-                        Text(
-                            text = line.timestampFormatted,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .wrapContentWidth()
+                                .clickable { showTimestampDialog = true }
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = line.timestampFormatted,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(
                             onClick = onTimestampPlus100,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "+100ms",
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
+                    }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -638,6 +741,56 @@ private fun LyricLineCard(
             }
         }
     }
+
+    if (showTimestampDialog) {
+        var input by remember { mutableStateOf(line.timestampFormatted) }
+        AlertDialog(
+            onDismissRequest = { showTimestampDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text("Edit Timestamp", style = MaterialTheme.typography.headlineSmall)
+            },
+            text = {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    label = { Text("MM:SS:ff") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val ms = parseTimestampMs(input)
+                        if (ms != null && ms >= 0L) {
+                            onTimestampSet(ms)
+                            showTimestampDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = parseTimestampMs(input) != null
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimestampDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+private fun parseTimestampMs(input: String): Long? {
+    val regex = Regex("""(\d+):(\d{2}):(\d{2})""")
+    val match = regex.matchEntire(input.trim()) ?: return null
+    val minutes = match.groupValues[1].toLongOrNull() ?: return null
+    val seconds = match.groupValues[2].toLongOrNull() ?: return null
+    val hundredths = match.groupValues[3].toLongOrNull() ?: return null
+    if (seconds !in 0..59 || hundredths !in 0..99) return null
+    return minutes * 60000 + seconds * 1000 + hundredths * 10
 }
 
 @Composable

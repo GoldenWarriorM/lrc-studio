@@ -50,6 +50,19 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Layout") {
+                SettingsRow(
+                    title = "Compact controls",
+                    subtitle = "Stack speed and timestamp buttons vertically",
+                    trailing = {
+                        Switch(
+                            checked = settings.compactControls,
+                            onCheckedChange = { settingsRepository.toggleCompactControls() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("About") {
                 SettingsRow(
                     title = "Version",
