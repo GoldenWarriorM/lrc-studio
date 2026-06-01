@@ -638,13 +638,21 @@ private fun LyricLineCard(
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
-                        Text(
-                            text = line.timestampFormatted,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 4.dp).clickable { showTimestampDialog = true }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .wrapContentWidth()
+                                .clickable { showTimestampDialog = true }
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = line.timestampFormatted,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(
                             onClick = onTimestampPlus100,
                             modifier = Modifier.size(32.dp)
