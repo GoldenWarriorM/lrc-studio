@@ -589,8 +589,7 @@ private fun LyricLineCard(
         }
     )
 
-    val swipeAlpha = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
-        (1f - dismissState.progress * 0.5f).coerceAtLeast(0.5f) else 1f
+    val swipeAlpha = (1f - dismissState.progress * 0.5f).coerceAtLeast(0.5f)
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
