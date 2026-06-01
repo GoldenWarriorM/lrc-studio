@@ -618,10 +618,14 @@ private fun LyricLineCard(
         enableDismissFromEndToStart = !isPreviewMode && !isEditing,
         backgroundContent = {
             val dir = dismissState.dismissDirection
-            val progress = dismissState.progress
-            if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                val isLongSwipe = progress >= 0.2f
-                val colorFraction = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
+            val p = dismissState.progress
+            var lastDir by remember { mutableStateOf<SwipeToDismissBoxValue?>(null) }
+            if (dir != null) lastDir = dir
+            val effectiveDir = dir ?: lastDir
+
+            if (effectiveDir == SwipeToDismissBoxValue.StartToEnd && p > 0f) {
+                val isLongSwipe = p >= 0.2f
+                val colorFraction = ((p - 0.2f) / 0.8f).coerceIn(0f, 1f)
                 val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
                 val icon = if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear
                 val label = if (isLongSwipe) "Delete" else "Clear"
@@ -629,7 +633,7 @@ private fun LyricLineCard(
                     Box(
                         Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(progress)
+                            .fillMaxWidth(p)
                             .align(Alignment.CenterStart)
                             .clip(RoundedCornerShape(20.dp))
                             .background(bgColor)
@@ -645,8 +649,8 @@ private fun LyricLineCard(
                         Text(label, color = Color.White)
                     }
                 }
-            } else if (dir == SwipeToDismissBoxValue.EndToStart) {
-                val timeScale = progress
+            } else if (effectiveDir == SwipeToDismissBoxValue.EndToStart && p > 0f) {
+                val timeScale = p
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
