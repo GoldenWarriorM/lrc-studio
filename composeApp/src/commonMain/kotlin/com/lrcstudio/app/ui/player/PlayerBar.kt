@@ -82,6 +82,7 @@ fun PlayerBar(
             ) {
                 IconButton(onClick = onSwitchTrack) {
                     Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                    }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -90,69 +91,75 @@ fun PlayerBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    FilledIconButton(
-                        onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
-                        shape = RoundedCornerShape(22.dp),
-                        interactionSource = prevInteractionSource,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = primary.copy(alpha = 0.1f),
-                            contentColor = primary,
-                        ),
+                    Box(
                         modifier = Modifier
                             .width(prevWidth)
-                            .height(44.dp),
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(primary.copy(alpha = 0.1f))
+                            .clickable(
+                                interactionSource = prevInteractionSource,
+                                indication = null,
+                                onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.SkipPrevious,
                             contentDescription = "-5s",
+                            tint = primary,
                             modifier = Modifier.size(22.dp),
                         )
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    FilledIconButton(
-                        onClick = onPlayPause,
-                        shape = RoundedCornerShape(22.dp),
-                        interactionSource = playInteractionSource,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = primary,
-                            contentColor = onPrimary,
-                        ),
+                    Box(
                         modifier = Modifier
                             .width(playWidth)
-                            .height(44.dp),
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(primary)
+                            .clickable(
+                                interactionSource = playInteractionSource,
+                                indication = null,
+                                onClick = onPlayPause,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = if (playerState.state == PlaybackState.PLAYING)
                                 Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playerState.state == PlaybackState.PLAYING)
                                 "Pause" else "Play",
+                            tint = onPrimary,
                             modifier = Modifier.size(26.dp),
                         )
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    FilledIconButton(
-                        onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
-                        shape = RoundedCornerShape(22.dp),
-                        interactionSource = nextInteractionSource,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = primary.copy(alpha = 0.1f),
-                            contentColor = primary,
-                        ),
+                    Box(
                         modifier = Modifier
                             .width(nextWidth)
-                            .height(44.dp),
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(primary.copy(alpha = 0.1f))
+                            .clickable(
+                                interactionSource = nextInteractionSource,
+                                indication = null,
+                                onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.SkipNext,
                             contentDescription = "+5s",
-                            modifier = Modifier.size(20.dp),
+                            tint = primary,
+                            modifier = Modifier.size(22.dp),
                         )
                     }
-                }
+
 
                 Spacer(modifier = Modifier.weight(1f))
 
