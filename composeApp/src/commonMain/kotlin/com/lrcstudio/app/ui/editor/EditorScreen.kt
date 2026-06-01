@@ -592,12 +592,12 @@ private fun LyricLineCard(
     )
     dismissStateRef.value = dismissState
 
-    val isSwiping = dismissState.dismissDirection != SwipeToDismissBoxValue.Settled || dismissState.progress > 0.001f
-    val containerColor = when {
-        isCurrentLine -> MaterialTheme.colorScheme.primaryContainer
-        isSwiping -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    }
+    val containerColor = if (isCurrentLine)
+        MaterialTheme.colorScheme.primaryContainer
+    else if (dismissState.currentValue != SwipeToDismissBoxValue.Settled)
+        MaterialTheme.colorScheme.surfaceVariant
+    else
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
