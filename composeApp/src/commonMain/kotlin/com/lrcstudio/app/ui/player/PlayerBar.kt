@@ -41,17 +41,24 @@ fun PlayerBar(
     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
 
     val playInteractionSource = remember { MutableInteractionSource() }
+    val prevInteractionSource = remember { MutableInteractionSource() }
+    val nextInteractionSource = remember { MutableInteractionSource() }
+
     val isPlayPressed by playInteractionSource.collectIsPressedAsState()
+    val isPrevPressed by prevInteractionSource.collectIsPressedAsState()
+    val isNextPressed by nextInteractionSource.collectIsPressedAsState()
 
-
-    val playButtonShape by animateDpAsState(
-        targetValue = if (playerState.state == PlaybackState.PLAYING) 22.dp else 32.dp,
-        animationSpec = tween(durationMillis = 120),
+    val playWeight by animateFloatAsState(
+        targetValue = if (isPlayPressed) 0.85f else if (isPrevPressed || isNextPressed) 0.4f else 0.55f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
-
-    val playButtonScale by animateFloatAsState(
-        targetValue = if (isPlayPressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = 800f),
+    val prevWeight by animateFloatAsState(
+        targetValue = if (isPrevPressed) 0.5f else if (isPlayPressed) 0.25f else 0.35f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+    )
+    val nextWeight by animateFloatAsState(
+        targetValue = if (isNextPressed) 0.5f else if (isPlayPressed) 0.25f else 0.35f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
     )
 
     val primary = MaterialTheme.colorScheme.primary
@@ -83,46 +90,69 @@ fun PlayerBar(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
-                    IconButton(
+                    FilledIconButton(
                         onClick = { onSeek((playerState.currentPosition - 5000).coerceAtLeast(0)) },
-                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(22.dp),
+                        interactionSource = prevInteractionSource,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = primary.copy(alpha = 0.1f),
+                            contentColor = primary,
+                        ),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .weight(prevWeight),
                     ) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "-5s", modifier = Modifier.size(22.dp))
+                        Icon(
+                            Icons.Default.SkipPrevious,
+                            contentDescription = "-5s",
+                            modifier = Modifier.size(24.dp),
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    Box(
+                    FilledIconButton(
+                        onClick = onPlayPause,
+                        shape = RoundedCornerShape(22.dp),
+                        interactionSource = playInteractionSource,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = primary,
+                            contentColor = onPrimary,
+                        ),
                         modifier = Modifier
-                            .size(64.dp * playButtonScale)
-                            .clip(RoundedCornerShape(playButtonShape))
-                            .background(primary)
-                            .clickable(
-                                interactionSource = playInteractionSource,
-                                indication = null,
-                                onClick = onPlayPause,
-                            ),
-                        contentAlignment = Alignment.Center
+                            .height(48.dp)
+                            .weight(playWeight),
                     ) {
                         Icon(
                             imageVector = if (playerState.state == PlaybackState.PLAYING)
                                 Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playerState.state == PlaybackState.PLAYING)
                                 "Pause" else "Play",
-                            tint = onPrimary,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(28.dp),
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    IconButton(
+                    FilledIconButton(
                         onClick = { onSeek((playerState.currentPosition + 5000).coerceAtMost(playerState.duration)) },
-                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(22.dp),
+                        interactionSource = nextInteractionSource,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = primary.copy(alpha = 0.1f),
+                            contentColor = primary,
+                        ),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .weight(nextWeight),
                     ) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "+5s", modifier = Modifier.size(22.dp))
+                        Icon(
+                            Icons.Default.SkipNext,
+                            contentDescription = "+5s",
+                            modifier = Modifier.size(24.dp),
+                        )
                     }
                 }
 
