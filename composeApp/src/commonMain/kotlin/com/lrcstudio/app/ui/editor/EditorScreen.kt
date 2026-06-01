@@ -3,7 +3,6 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -622,14 +621,8 @@ private fun LyricLineCard(
             val dir = dismissState.dismissDirection
             val progress = dismissState.progress
             if (dir == SwipeToDismissBoxValue.StartToEnd) {
-                val clearTarget = (progress / 0.2f).coerceAtMost(1f)
-                val clearScale by animateFloatAsState(
-                    clearTarget, spring(dampingRatio = 0.6f, stiffness = 500f)
-                )
-                val deleteTarget = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                val deleteScale by animateFloatAsState(
-                    deleteTarget, spring(dampingRatio = 0.6f, stiffness = 500f)
-                )
+                val clearScale = (progress / 0.2f).coerceAtMost(1f)
+                val deleteScale = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
                 Row(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f).fillMaxHeight()) {
                         Box(
@@ -638,9 +631,8 @@ private fun LyricLineCard(
                                 .graphicsLayer {
                                     scaleX = clearScale
                                     transformOrigin = TransformOrigin(0f, 0.5f)
-                                    alpha = clearScale
                                 }
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFF9A825))
                         )
                         Row(
@@ -661,9 +653,8 @@ private fun LyricLineCard(
                                 .graphicsLayer {
                                     scaleX = deleteScale
                                     transformOrigin = TransformOrigin(0f, 0.5f)
-                                    alpha = deleteScale
                                 }
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(Color(0xFFE53935))
                         )
                         Row(
@@ -679,9 +670,7 @@ private fun LyricLineCard(
                     }
                 }
             } else if (dir == SwipeToDismissBoxValue.EndToStart) {
-                val timeScale by animateFloatAsState(
-                    progress, spring(dampingRatio = 0.6f, stiffness = 500f)
-                )
+                val timeScale = progress
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
@@ -689,9 +678,8 @@ private fun LyricLineCard(
                             .graphicsLayer {
                                 scaleX = timeScale
                                 transformOrigin = TransformOrigin(1f, 0.5f)
-                                alpha = timeScale
                             }
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.primary)
                     )
                     Row(
