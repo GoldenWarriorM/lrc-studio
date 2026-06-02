@@ -580,7 +580,6 @@ private fun LyricLineCard(
     val offsetAnimatable = remember { Animatable(0f) }
     var itemWidthPx by remember { mutableStateOf(0f) }
     var surfaceHeightPx by remember { mutableStateOf(0f) }
-    var dragPhase by remember { mutableStateOf(0) }
     var accumulatedDrag by remember { mutableStateOf(0f) }
 
     val currentOffsetPx = offsetAnimatable.value
@@ -688,7 +687,6 @@ private fun LyricLineCard(
                             onDragStart = {
                                 scope.launch { offsetAnimatable.stop() }
                                 accumulatedDrag = 0f
-                                dragPhase = 0
                             },
                             onHorizontalDrag = { change, dragAmount ->
                                 change.consume()
@@ -696,26 +694,14 @@ private fun LyricLineCard(
                                 val absDrag = abs(accumulatedDrag)
                                 val tensionThresholdPx = 60f * density.density
 
-                                when (dragPhase) {
-                                    0, 1 -> {
-                                        dragPhase = 1
-                                        if (absDrag < tensionThresholdPx) {
-                                            val maxTensionOffsetPx = 20f * density.density
-                                            val frac = (absDrag / tensionThresholdPx).coerceIn(0f, 1f)
-                                            val damped = maxTensionOffsetPx * frac
-                                            val signed = if (accumulatedDrag > 0f) damped else -damped
-                                            scope.launch { offsetAnimatable.snapTo(signed) }
-                                        } else {
-                                            dragPhase = 3
-                                            scope.launch {
-                                                offsetAnimatable.snapTo(accumulatedDrag)
-                                            }
-                                        }
-                                    }
-                                    3 -> {
-                                        scope.launch { offsetAnimatable.snapTo(accumulatedDrag) }
-                                    }
+                                val effectiveOffset = if (absDrag < tensionThresholdPx) {
+                                    val t = absDrag / tensionThresholdPx
+                                    tensionThresholdPx * t * t
+                                } else {
+                                    absDrag
                                 }
+                                val signed = if (accumulatedDrag > 0f) effectiveOffset else -effectiveOffset
+                                scope.launch { offsetAnimatable.snapTo(signed) }
                             },
                             onDragEnd = {
                                 if (abs(accumulatedDrag) > itemWidthPx * 0.1f) {
@@ -725,7 +711,6 @@ private fun LyricLineCard(
                                         onSnapTimestamp()
                                     }
                                 }
-                                dragPhase = 0
                                 accumulatedDrag = 0f
                                 scope.launch {
                                     offsetAnimatable.animateTo(
@@ -738,7 +723,6 @@ private fun LyricLineCard(
                                 }
                             },
                             onDragCancel = {
-                                dragPhase = 0
                                 accumulatedDrag = 0f
                                 scope.launch {
                                     offsetAnimatable.animateTo(
