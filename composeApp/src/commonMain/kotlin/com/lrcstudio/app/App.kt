@@ -191,7 +191,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     swipeDeleteThresholdDp = settings.swipeDeleteThresholdDp,
                                     swipeGesturesEnabled = settings.swipeGesturesEnabled,
                                     showSnapButton = settings.showSnapButton,
-                                    showClearDeleteButton = settings.showClearDeleteButton
+                                    showClearDeleteButton = settings.showClearDeleteButton,
+                                    swipeInstantDelete = settings.swipeInstantDelete
                                 )
                             }
                         }

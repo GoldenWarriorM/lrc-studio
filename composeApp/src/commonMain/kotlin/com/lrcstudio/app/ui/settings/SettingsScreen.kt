@@ -122,6 +122,16 @@ fun SettingsScreen(
                         )
                     }
                 )
+                SettingsRow(
+                    title = "Instant delete",
+                    subtitle = "Skip confirmation dialog when swiping to delete",
+                    trailing = {
+                        Switch(
+                            checked = settings.swipeInstantDelete,
+                            onCheckedChange = { settingsRepository.toggleSwipeInstantDelete() }
+                        )
+                    }
+                )
             }
 
             SettingsSection("About") {

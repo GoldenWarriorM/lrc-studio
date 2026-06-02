@@ -16,7 +16,8 @@ data class AppSettings(
     val swipeDeleteThresholdDp: Int = 130,
     val swipeGesturesEnabled: Boolean = true,
     val showSnapButton: Boolean = true,
-    val showClearDeleteButton: Boolean = true
+    val showClearDeleteButton: Boolean = true,
+    val swipeInstantDelete: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -66,6 +67,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleClearDeleteButton() {
         _settings.value = _settings.value.copy(
             showClearDeleteButton = !_settings.value.showClearDeleteButton
+        )
+        saveToDisk()
+    }
+
+    fun toggleSwipeInstantDelete() {
+        _settings.value = _settings.value.copy(
+            swipeInstantDelete = !_settings.value.swipeInstantDelete
         )
         saveToDisk()
     }

@@ -60,7 +60,8 @@ fun EditorScreen(
     swipeDeleteThresholdDp: Int = 130,
     swipeGesturesEnabled: Boolean = true,
     showSnapButton: Boolean = true,
-    showClearDeleteButton: Boolean = true
+    showClearDeleteButton: Boolean = true,
+    swipeInstantDelete: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -280,12 +281,14 @@ fun EditorScreen(
                                     swipeGesturesEnabled = swipeGesturesEnabled,
                                     showSnapButton = showSnapButton,
                                     showClearDeleteButton = showClearDeleteButton,
+                                    swipeInstantDelete = swipeInstantDelete,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
                                     onEditDone = { viewModel.finishEditing() },
                                     onClearTimestamp = { viewModel.clearTimestamp(i) },
                                     onDelete = { showDeleteConfirm = i },
+                                    onInstantDelete = { viewModel.deleteLine(i) },
                                     onClick = { viewModel.selectLine(i) },
                                     onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
                                     onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
@@ -568,12 +571,14 @@ private fun LyricLineCard(
     swipeGesturesEnabled: Boolean = true,
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
+    swipeInstantDelete: Boolean = false,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
     onEditDone: () -> Unit,
     onClearTimestamp: () -> Unit,
     onDelete: () -> Unit,
+    onInstantDelete: () -> Unit,
     onClick: () -> Unit,
     onSnapTimestamp: () -> Unit,
     onTimestampMinus100: () -> Unit,
@@ -721,7 +726,9 @@ private fun LyricLineCard(
                             onDragEnd = {
                                 if (abs(accumulatedDrag) > itemWidthPx * 0.1f) {
                                     if (accumulatedDrag > 0f) {
-                                        if (isLongSwipe) onDelete() else onClearTimestamp()
+                                        if (abs(accumulatedDrag) >= swipeDeleteThresholdPx) {
+                                            if (swipeInstantDelete) onInstantDelete() else onDelete()
+                                        } else onClearTimestamp()
                                     } else {
                                         onSnapTimestamp()
                                     }
