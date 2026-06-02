@@ -56,7 +56,8 @@ fun EditorScreen(
     onBack: () -> Unit,
     onSave: () -> Unit,
     onImportAudioFile: () -> Unit,
-    compactControls: Boolean = false
+    compactControls: Boolean = false,
+    swipeDeleteThresholdDp: Int = 80
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -272,6 +273,7 @@ fun EditorScreen(
                                     editingText = if (state.editingLineIndex == i) state.editingText else "",
                                     isPreviewMode = isPreviewMode,
                                     compactControls = compactControls,
+                                    swipeDeleteThresholdDp = swipeDeleteThresholdDp,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -556,6 +558,7 @@ private fun LyricLineCard(
     editingText: String,
     isPreviewMode: Boolean = false,
     compactControls: Boolean = false,
+    swipeDeleteThresholdDp: Int = 80,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -585,11 +588,12 @@ private fun LyricLineCard(
     val currentOffsetPx = offsetAnimatable.value
     val revealRightPx = currentOffsetPx.coerceAtLeast(0f)
     val revealLeftPx = (-currentOffsetPx).coerceAtLeast(0f)
-    val revealProgress = if (itemWidthPx > 0f) (abs(currentOffsetPx) / itemWidthPx).coerceIn(0f, 1f) else 0f
-    val isLongSwipe = revealProgress >= 0.2f
+    val swipeDeleteThresholdPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
+    val isLongSwipe = abs(currentOffsetPx) >= swipeDeleteThresholdPx
     val dismissThresholdPx = itemWidthPx * 0.40f
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
-    val rightColorFraction = ((revealProgress - 0.2f) / 0.8f).coerceIn(0f, 1f)
+    val rightColorFraction = if (itemWidthPx > swipeDeleteThresholdPx)
+        ((abs(currentOffsetPx) - swipeDeleteThresholdPx) / (itemWidthPx - swipeDeleteThresholdPx)).coerceIn(0f, 1f) else 0f
     val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
     val swipeGapDp = 4.dp
 
@@ -706,7 +710,7 @@ private fun LyricLineCard(
                             onDragEnd = {
                                 if (abs(accumulatedDrag) > itemWidthPx * 0.1f) {
                                     if (accumulatedDrag > 0f) {
-                                        if (revealProgress >= 0.2f) onDelete() else onClearTimestamp()
+                                        if (isLongSwipe) onDelete() else onClearTimestamp()
                                     } else {
                                         onSnapTimestamp()
                                     }

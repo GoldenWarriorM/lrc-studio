@@ -63,6 +63,34 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Swipe") {
+                var thresholdSlider by remember(settings.swipeDeleteThresholdDp) {
+                    mutableFloatStateOf(settings.swipeDeleteThresholdDp.toFloat())
+                }
+                SettingsRow(
+                    title = "Delete threshold",
+                    subtitle = "${thresholdSlider.toInt()} dp — how far to swipe for Delete instead of Clear",
+                    trailing = {
+                        Text(
+                            "${thresholdSlider.toInt()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(36.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
+                Slider(
+                    value = thresholdSlider,
+                    onValueChange = { thresholdSlider = it },
+                    onValueChangeFinished = {
+                        settingsRepository.setSwipeDeleteThresholdDp(thresholdSlider.toInt())
+                    },
+                    valueRange = 40f..200f,
+                    steps = 15,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+            }
+
             SettingsSection("About") {
                 SettingsRow(
                     title = "Version",

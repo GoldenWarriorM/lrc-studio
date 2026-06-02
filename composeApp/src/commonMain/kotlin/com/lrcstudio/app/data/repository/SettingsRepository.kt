@@ -12,7 +12,8 @@ import kotlinx.serialization.json.Json
 data class AppSettings(
     val isDarkTheme: Boolean = true,
     val timestampFormat: String = "mm:ss.xx",
-    val compactControls: Boolean = false
+    val compactControls: Boolean = false,
+    val swipeDeleteThresholdDp: Int = 80
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -34,6 +35,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleCompactControls() {
         _settings.value = _settings.value.copy(
             compactControls = !_settings.value.compactControls
+        )
+        saveToDisk()
+    }
+
+    fun setSwipeDeleteThresholdDp(value: Int) {
+        _settings.value = _settings.value.copy(
+            swipeDeleteThresholdDp = value.coerceIn(40, 200)
         )
         saveToDisk()
     }
