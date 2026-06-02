@@ -662,20 +662,6 @@ private fun LyricLineCard(
                 }
                 Box(
                     modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.5f)
-                        .drawBehind {
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(rightBgColor, Color.Transparent),
-                                    endX = size.width
-                                )
-                            )
-                        }
-                )
-                Box(
-                    modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
                         .fillMaxWidth(0.5f)
