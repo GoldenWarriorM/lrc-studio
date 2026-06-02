@@ -623,7 +623,7 @@ private fun LyricLineCard(
             }
     ) {
         if (revealRightPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = (with(density) { revealRightPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
+            val wDp = with(density) { revealRightPx.toDp() }
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
@@ -635,7 +635,7 @@ private fun LyricLineCard(
                     .background(rightBgColor)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(start = 20.dp),
+                    modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = swipeGapDp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -651,7 +651,7 @@ private fun LyricLineCard(
         }
 
         if (revealLeftPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = (with(density) { revealLeftPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
+            val wDp = with(density) { revealLeftPx.toDp() }
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
@@ -664,7 +664,7 @@ private fun LyricLineCard(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(end = 20.dp),
+                    modifier = Modifier.fillMaxSize().padding(start = swipeGapDp, end = 20.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
