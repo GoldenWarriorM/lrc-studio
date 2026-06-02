@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
@@ -614,6 +616,12 @@ private fun LyricLineCard(
     } else 0f
     val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
     val swipeGapDp = 4.dp
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(isLongSwipe) {
+        if (isLongSwipe) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
 
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
