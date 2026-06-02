@@ -592,8 +592,10 @@ private fun LyricLineCard(
     val isLongSwipe = abs(currentOffsetPx) >= swipeDeleteThresholdPx
     val dismissThresholdPx = itemWidthPx * 0.40f
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
-    val rightColorFraction = if (swipeDeleteThresholdPx > 0f)
-        (abs(currentOffsetPx) / swipeDeleteThresholdPx).coerceIn(0f, 1f) else 0f
+    val rightColorFraction = if (swipeDeleteThresholdPx > 0f) {
+        val t = (abs(currentOffsetPx) / swipeDeleteThresholdPx).coerceIn(0f, 1f)
+        t * t * t
+    } else 0f
     val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
     val swipeGapDp = 4.dp
 
