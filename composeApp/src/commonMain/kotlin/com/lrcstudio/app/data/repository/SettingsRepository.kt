@@ -13,7 +13,8 @@ data class AppSettings(
     val isDarkTheme: Boolean = true,
     val timestampFormat: String = "mm:ss.xx",
     val compactControls: Boolean = false,
-    val swipeDeleteThresholdDp: Int = 130
+    val swipeDeleteThresholdDp: Int = 130,
+    val swipeGesturesEnabled: Boolean = true
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -42,6 +43,13 @@ class SettingsRepository(private val storageDir: String) {
     fun setSwipeDeleteThresholdDp(value: Int) {
         _settings.value = _settings.value.copy(
             swipeDeleteThresholdDp = value.coerceIn(40, 200)
+        )
+        saveToDisk()
+    }
+
+    fun toggleSwipeGestures() {
+        _settings.value = _settings.value.copy(
+            swipeGesturesEnabled = !_settings.value.swipeGesturesEnabled
         )
         saveToDisk()
     }

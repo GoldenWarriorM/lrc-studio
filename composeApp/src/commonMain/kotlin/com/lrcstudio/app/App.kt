@@ -188,7 +188,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     onSave = { },
                                     onImportAudioFile = launchAudioPicker,
                                     compactControls = settings.compactControls,
-                                    swipeDeleteThresholdDp = settings.swipeDeleteThresholdDp
+                                    swipeDeleteThresholdDp = settings.swipeDeleteThresholdDp,
+                                    swipeGesturesEnabled = settings.swipeGesturesEnabled
                                 )
                             }
                         }

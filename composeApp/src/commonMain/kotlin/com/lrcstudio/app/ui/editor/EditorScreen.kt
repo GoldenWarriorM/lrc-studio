@@ -57,7 +57,8 @@ fun EditorScreen(
     onSave: () -> Unit,
     onImportAudioFile: () -> Unit,
     compactControls: Boolean = false,
-    swipeDeleteThresholdDp: Int = 130
+    swipeDeleteThresholdDp: Int = 130,
+    swipeGesturesEnabled: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -274,6 +275,7 @@ fun EditorScreen(
                                     isPreviewMode = isPreviewMode,
                                     compactControls = compactControls,
                                     swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                    swipeGesturesEnabled = swipeGesturesEnabled,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -559,6 +561,7 @@ private fun LyricLineCard(
     isPreviewMode: Boolean = false,
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
+    swipeGesturesEnabled: Boolean = true,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -579,7 +582,7 @@ private fun LyricLineCard(
 
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val swipeEnabled = !isPreviewMode && !isEditing
+    val swipeEnabled = !isPreviewMode && !isEditing && swipeGesturesEnabled
     val offsetAnimatable = remember { Animatable(0f) }
     var itemWidthPx by remember { mutableStateOf(0f) }
     var surfaceHeightPx by remember { mutableStateOf(0f) }

@@ -89,6 +89,16 @@ fun SettingsScreen(
                     steps = 15,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
+                SettingsRow(
+                    title = "Swipe gestures",
+                    subtitle = "Enable swipe-to-delete/clear/timestamp on lyric cards",
+                    trailing = {
+                        Switch(
+                            checked = settings.swipeGesturesEnabled,
+                            onCheckedChange = { settingsRepository.toggleSwipeGestures() }
+                        )
+                    }
+                )
             }
 
             SettingsSection("About") {
