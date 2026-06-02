@@ -31,6 +31,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -658,6 +660,34 @@ private fun LyricLineCard(
                         overflow = TextOverflow.Clip
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(rightBgColor, Color.Transparent),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, rightBgColor),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
             }
         }
 
@@ -685,6 +715,35 @@ private fun LyricLineCard(
                         overflow = TextOverflow.Clip
                     )
                 }
+                val primaryColor = MaterialTheme.colorScheme.primary
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(primaryColor, Color.Transparent),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, primaryColor),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
             }
         }
 
