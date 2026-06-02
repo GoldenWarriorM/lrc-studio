@@ -607,6 +607,8 @@ private fun LyricLineCard(
     val revealRightPx = currentOffsetPx.coerceAtLeast(0f)
     val revealLeftPx = (-currentOffsetPx).coerceAtLeast(0f)
     val swipeDeleteThresholdPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
+    val actionThresholdPx = itemWidthPx * 0.1f
+    val isInActionZone = abs(currentOffsetPx) >= actionThresholdPx
     val isLongSwipe = abs(currentOffsetPx) >= swipeDeleteThresholdPx
     val dismissThresholdPx = itemWidthPx * 0.40f
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
@@ -617,6 +619,16 @@ private fun LyricLineCard(
     val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
     val swipeGapDp = 4.dp
     val haptic = LocalHapticFeedback.current
+
+    // haptic when entering the action zone (Clear)
+    var wasInActionZone by remember { mutableStateOf(false) }
+    if (isInActionZone && !wasInActionZone) {
+        wasInActionZone = true
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+    } else if (!isInActionZone) {
+        wasInActionZone = false
+    }
+
     LaunchedEffect(isLongSwipe) {
         if (isLongSwipe) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
