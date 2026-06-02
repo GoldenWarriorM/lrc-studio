@@ -598,11 +598,12 @@ private fun LyricLineCard(
     val iconScaleRight = if (isLongSwipe) 1.08f else 0.95f
     val iconAlphaLeft = (revealProgress * 0.88f).coerceIn(0f, 1f)
     val iconScaleLeft = 0.95f + (revealProgress * 0.13f).coerceIn(0f, 0.13f)
+    val swipeGapDp = 4.dp
 
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
     else
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        MaterialTheme.colorScheme.surfaceVariant
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
@@ -622,7 +623,7 @@ private fun LyricLineCard(
             }
     ) {
         if (revealRightPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = with(density) { revealRightPx.toDp() }
+            val wDp = (with(density) { revealRightPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
@@ -650,7 +651,7 @@ private fun LyricLineCard(
         }
 
         if (revealLeftPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = with(density) { revealLeftPx.toDp() }
+            val wDp = (with(density) { revealLeftPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
