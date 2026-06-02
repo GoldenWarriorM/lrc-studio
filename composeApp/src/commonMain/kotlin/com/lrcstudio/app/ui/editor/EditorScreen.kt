@@ -2,6 +2,7 @@ package com.lrcstudio.app.ui.editor
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -11,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,7 +35,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -570,29 +575,29 @@ private fun LyricLineCard(
 
     val flashAnim = remember { Animatable(0f) }
     var showTimestampDialog by remember { mutableStateOf(false) }
-    val dismissStateRef = remember { mutableStateOf<SwipeToDismissBoxState?>(null) }
 
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            val s = dismissStateRef.value ?: return@rememberSwipeToDismissBoxState false
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    if (s.progress < 0.2f) {
-                        onClearTimestamp()
-                    } else {
-                        onDelete()
-                    }
-                    false
-                }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    onSnapTimestamp()
-                    false
-                }
-                else -> true
-            }
-        }
-    )
-    dismissStateRef.value = dismissState
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val swipeEnabled = !isPreviewMode && !isEditing
+    val offsetAnimatable = remember { Animatable(0f) }
+    var itemWidthPx by remember { mutableStateOf(0f) }
+    var surfaceHeightPx by remember { mutableStateOf(0f) }
+    var dragPhase by remember { mutableStateOf(0) }
+    var accumulatedDrag by remember { mutableStateOf(0f) }
+
+    val currentOffsetPx = offsetAnimatable.value
+    val revealRightPx = currentOffsetPx.coerceAtLeast(0f)
+    val revealLeftPx = (-currentOffsetPx).coerceAtLeast(0f)
+    val revealProgress = if (itemWidthPx > 0f) (abs(currentOffsetPx) / itemWidthPx).coerceIn(0f, 1f) else 0f
+    val isLongSwipe = revealProgress >= 0.2f
+    val dismissThresholdPx = itemWidthPx * 0.40f
+    val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
+    val rightColorFraction = ((revealProgress - 0.2f) / 0.8f).coerceIn(0f, 1f)
+    val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
+    val iconAlphaRight = (revealProgress * (if (isLongSwipe) 1f else 0.88f)).coerceIn(0f, 1f)
+    val iconScaleRight = if (isLongSwipe) 1.08f else 0.95f
+    val iconAlphaLeft = (revealProgress * 0.88f).coerceIn(0f, 1f)
+    val iconScaleLeft = 0.95f + (revealProgress * 0.13f).coerceIn(0f, 0.13f)
 
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
@@ -608,127 +613,166 @@ private fun LyricLineCard(
         }
     }
 
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = !isPreviewMode && !isEditing,
-        enableDismissFromEndToStart = !isPreviewMode && !isEditing,
-        backgroundContent = {
-            val dir = dismissState.dismissDirection
-            val p = dismissState.progress
-            var lastSwipeDir by remember { mutableStateOf<SwipeToDismissBoxValue?>(null) }
-
-            when {
-                dir == SwipeToDismissBoxValue.EndToStart -> {
-                    lastSwipeDir = SwipeToDismissBoxValue.EndToStart
-                    Box(Modifier.fillMaxSize()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(p)
-                                .align(Alignment.CenterEnd)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(end = 20.dp),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.TouchApp, contentDescription = null,
-                                modifier = Modifier.alpha((p * 0.88f).coerceIn(0f, 1f))
-                                    .scale(0.95f + (p * 0.13f).coerceIn(0f, 0.13f)),
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                        }
-                    }
-                }
-                dir == SwipeToDismissBoxValue.StartToEnd -> {
-                    lastSwipeDir = SwipeToDismissBoxValue.StartToEnd
-                    val cappedP = p.coerceIn(0f, 1f)
-                    val isLongSwipe = cappedP >= 0.2f
-                    val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                    val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
-                    val iconAlpha = cappedP * (if (isLongSwipe) 1f else 0.88f)
-                    val iconScale = if (isLongSwipe) 1.08f else 0.95f
-                    Box(Modifier.fillMaxSize()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(cappedP)
-                                .align(Alignment.CenterStart)
-                                .clip(CircleShape)
-                                .background(bgColor)
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                                contentDescription = null,
-                                modifier = Modifier.alpha(iconAlpha.coerceIn(0f, 1f))
-                                    .scale(iconScale),
-                                tint = Color.White
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
-                        }
-                    }
-                }
-                p > 0.001f && lastSwipeDir == SwipeToDismissBoxValue.StartToEnd -> {
-                    val cappedP = p.coerceIn(0f, 1f)
-                    val isLongSwipe = cappedP >= 0.2f
-                    val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
-                    val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
-                    val iconAlpha = cappedP * (if (isLongSwipe) 1f else 0.88f)
-                    val iconScale = if (isLongSwipe) 1.08f else 0.95f
-                    Box(Modifier.fillMaxSize()) {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(cappedP)
-                                .align(Alignment.CenterStart)
-                                .clip(CircleShape)
-                                .background(bgColor)
-                        )
-                        Row(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                                contentDescription = null,
-                                modifier = Modifier.alpha(iconAlpha.coerceIn(0f, 1f))
-                                    .scale(iconScale),
-                                tint = Color.White
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
-                        }
-                    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                val w = coords.size.width.toFloat()
+                if (w != itemWidthPx) itemWidthPx = w
+            }
+    ) {
+        if (revealRightPx > 0f && surfaceHeightPx > 0f) {
+            val wDp = with(density) { revealRightPx.toDp() }
+            val hDp = with(density) { surfaceHeightPx.toDp() }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp)
+                    .width(wDp)
+                    .height(hDp)
+                    .clip(CircleShape)
+                    .background(rightBgColor)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(start = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
+                        contentDescription = null,
+                        modifier = Modifier.alpha(iconAlphaRight).scale(iconScaleRight),
+                        tint = Color.White
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                 }
             }
         }
-    ) {
+
+        if (revealLeftPx > 0f && surfaceHeightPx > 0f) {
+            val wDp = with(density) { revealLeftPx.toDp() }
+            val hDp = with(density) { surfaceHeightPx.toDp() }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .width(wDp)
+                    .height(hDp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(end = 20.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        Icons.Default.TouchApp, contentDescription = null,
+                        modifier = Modifier.alpha(iconAlphaLeft).scale(iconScaleLeft),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
+
         Card(
-            modifier = modifier
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(
+                    x = with(density) { currentOffsetPx.toDp() }
+                )
+                .onGloballyPositioned { coords ->
+                    val h = coords.size.height.toFloat()
+                    if (h != surfaceHeightPx) surfaceHeightPx = h
+                }
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = if (isPreviewMode) null else onEditStart
+                )
+                .then(
+                    if (swipeEnabled) Modifier.pointerInput(offsetAnimatable, itemWidthPx) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                scope.launch { offsetAnimatable.stop() }
+                                accumulatedDrag = 0f
+                                dragPhase = 0
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                accumulatedDrag += dragAmount
+                                val absDrag = abs(accumulatedDrag)
+                                val tensionThresholdPx = 60f * density.density
+
+                                when (dragPhase) {
+                                    0, 1 -> {
+                                        dragPhase = 1
+                                        if (absDrag < tensionThresholdPx) {
+                                            val maxTensionOffsetPx = 20f * density.density
+                                            val frac = (absDrag / tensionThresholdPx).coerceIn(0f, 1f)
+                                            val damped = maxTensionOffsetPx * frac
+                                            val signed = if (accumulatedDrag > 0f) damped else -damped
+                                            scope.launch { offsetAnimatable.snapTo(signed) }
+                                        } else {
+                                            dragPhase = 3
+                                            scope.launch {
+                                                offsetAnimatable.animateTo(
+                                                    targetValue = accumulatedDrag,
+                                                    animationSpec = spring(
+                                                        dampingRatio = 0.8f,
+                                                        stiffness = Spring.StiffnessLow
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                    3 -> {
+                                        scope.launch { offsetAnimatable.snapTo(accumulatedDrag) }
+                                    }
+                                }
+                            },
+                            onDragEnd = {
+                                if (abs(accumulatedDrag) > itemWidthPx * 0.1f) {
+                                    if (accumulatedDrag > 0f) {
+                                        if (revealProgress >= 0.2f) onDelete() else onClearTimestamp()
+                                    } else {
+                                        onSnapTimestamp()
+                                    }
+                                }
+                                dragPhase = 0
+                                accumulatedDrag = 0f
+                                scope.launch {
+                                    offsetAnimatable.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                            },
+                            onDragCancel = {
+                                dragPhase = 0
+                                accumulatedDrag = 0f
+                                scope.launch {
+                                    offsetAnimatable.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                            }
+                        )
+                    } else Modifier
                 ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
         Box {
             Row(
                 modifier = Modifier
@@ -901,7 +945,7 @@ private fun LyricLineCard(
                 )
             }
         }
-        }
+    }
     }
 
     if (showTimestampDialog) {
