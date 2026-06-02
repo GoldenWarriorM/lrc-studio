@@ -656,7 +656,7 @@ private fun LyricLineCard(
                     Text(
                         if (isLongSwipe) "Delete" else "Clear",
                         color = Color.White,
-                        maxLines = 1,
+                        softWrap = false,
                         overflow = TextOverflow.Visible
                     )
                 }
@@ -664,7 +664,7 @@ private fun LyricLineCard(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.3f)
+                        .fillMaxWidth(0.5f)
                         .drawBehind {
                             drawRect(
                                 brush = Brush.horizontalGradient(
@@ -678,7 +678,7 @@ private fun LyricLineCard(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.3f)
+                        .fillMaxWidth(0.5f)
                         .drawBehind {
                             drawRect(
                                 brush = Brush.horizontalGradient(
@@ -711,7 +711,7 @@ private fun LyricLineCard(
                     Text(
                         "Time",
                         color = MaterialTheme.colorScheme.onPrimary,
-                        maxLines = 1,
+                        softWrap = false,
                         overflow = TextOverflow.Visible
                     )
                 }
@@ -720,7 +720,7 @@ private fun LyricLineCard(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.3f)
+                        .fillMaxWidth(0.5f)
                         .drawBehind {
                             drawRect(
                                 brush = Brush.horizontalGradient(
@@ -734,7 +734,7 @@ private fun LyricLineCard(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.3f)
+                        .fillMaxWidth(0.5f)
                         .drawBehind {
                             drawRect(
                                 brush = Brush.horizontalGradient(
