@@ -882,9 +882,7 @@ private fun LyricLineCard(
                             MaterialTheme.colorScheme.outline
                         else
                             MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.weight(1f)
                     )
 
                     if (!isPreviewMode) {
