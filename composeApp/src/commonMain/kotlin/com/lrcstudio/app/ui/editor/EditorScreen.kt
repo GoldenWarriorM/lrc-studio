@@ -28,7 +28,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -592,11 +594,8 @@ private fun LyricLineCard(
     )
     dismissStateRef.value = dismissState
 
-    var isSwiping by remember { mutableStateOf(false) }
     val containerColor = if (isCurrentLine)
         MaterialTheme.colorScheme.primaryContainer
-    else if (isSwiping)
-        MaterialTheme.colorScheme.surfaceVariant
     else
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
 
@@ -621,14 +620,13 @@ private fun LyricLineCard(
             when {
                 dir == SwipeToDismissBoxValue.EndToStart -> {
                     lastSwipeDir = SwipeToDismissBoxValue.EndToStart
-                    isSwiping = true
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(p)
                                 .align(Alignment.CenterEnd)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primary)
                         )
                         Row(
@@ -638,27 +636,32 @@ private fun LyricLineCard(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
+                            Icon(
+                                Icons.Default.TouchApp, contentDescription = null,
+                                modifier = Modifier.alpha((p * 0.88f).coerceIn(0f, 1f))
+                                    .scale(0.95f + (p * 0.13f).coerceIn(0f, 0.13f)),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                             Spacer(Modifier.width(8.dp))
-                            Icon(Icons.Default.TouchApp, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary)
+                            Text("Time", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 }
                 dir == SwipeToDismissBoxValue.StartToEnd -> {
                     lastSwipeDir = SwipeToDismissBoxValue.StartToEnd
-                    isSwiping = true
                     val cappedP = p.coerceIn(0f, 1f)
                     val isLongSwipe = cappedP >= 0.2f
                     val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
                     val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                    val iconAlpha = cappedP * (if (isLongSwipe) 1f else 0.88f)
+                    val iconScale = if (isLongSwipe) 1.08f else 0.95f
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(cappedP)
                                 .align(Alignment.CenterStart)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(CircleShape)
                                 .background(bgColor)
                         )
                         Row(
@@ -669,7 +672,10 @@ private fun LyricLineCard(
                         ) {
                             Icon(
                                 if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                                contentDescription = null, tint = Color.White
+                                contentDescription = null,
+                                modifier = Modifier.alpha(iconAlpha.coerceIn(0f, 1f))
+                                    .scale(iconScale),
+                                tint = Color.White
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
@@ -677,18 +683,19 @@ private fun LyricLineCard(
                     }
                 }
                 p > 0.001f && lastSwipeDir == SwipeToDismissBoxValue.StartToEnd -> {
-                    isSwiping = true
                     val cappedP = p.coerceIn(0f, 1f)
                     val isLongSwipe = cappedP >= 0.2f
                     val colorFraction = ((cappedP - 0.2f) / 0.8f).coerceIn(0f, 1f)
                     val bgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), colorFraction)
+                    val iconAlpha = cappedP * (if (isLongSwipe) 1f else 0.88f)
+                    val iconScale = if (isLongSwipe) 1.08f else 0.95f
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(cappedP)
                                 .align(Alignment.CenterStart)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(CircleShape)
                                 .background(bgColor)
                         )
                         Row(
@@ -699,15 +706,15 @@ private fun LyricLineCard(
                         ) {
                             Icon(
                                 if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                                contentDescription = null, tint = Color.White
+                                contentDescription = null,
+                                modifier = Modifier.alpha(iconAlpha.coerceIn(0f, 1f))
+                                    .scale(iconScale),
+                                tint = Color.White
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                         }
                     }
-                }
-                else -> {
-                    isSwiping = false
                 }
             }
         }
