@@ -623,7 +623,7 @@ private fun LyricLineCard(
             }
     ) {
         if (revealRightPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = with(density) { revealRightPx.toDp() }
+            val wDp = (with(density) { revealRightPx.toDp() } - 12.dp - swipeGapDp).coerceAtLeast(0.dp)
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
@@ -651,7 +651,7 @@ private fun LyricLineCard(
         }
 
         if (revealLeftPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = with(density) { revealLeftPx.toDp() }
+            val wDp = (with(density) { revealLeftPx.toDp() } - 12.dp - swipeGapDp).coerceAtLeast(0.dp)
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
