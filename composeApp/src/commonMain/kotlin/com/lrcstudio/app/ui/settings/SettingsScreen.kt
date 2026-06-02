@@ -101,6 +101,29 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Buttons") {
+                SettingsRow(
+                    title = "Snap button",
+                    subtitle = "Show snap-to-current-position button",
+                    trailing = {
+                        Switch(
+                            checked = settings.showSnapButton,
+                            onCheckedChange = { settingsRepository.toggleSnapButton() }
+                        )
+                    }
+                )
+                SettingsRow(
+                    title = "Clear / Delete button",
+                    subtitle = "Show clear-timestamp / delete-line button",
+                    trailing = {
+                        Switch(
+                            checked = settings.showClearDeleteButton,
+                            onCheckedChange = { settingsRepository.toggleClearDeleteButton() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("About") {
                 SettingsRow(
                     title = "Version",

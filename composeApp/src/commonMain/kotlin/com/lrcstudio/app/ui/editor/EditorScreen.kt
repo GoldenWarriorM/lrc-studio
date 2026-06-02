@@ -58,7 +58,9 @@ fun EditorScreen(
     onImportAudioFile: () -> Unit,
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
-    swipeGesturesEnabled: Boolean = true
+    swipeGesturesEnabled: Boolean = true,
+    showSnapButton: Boolean = true,
+    showClearDeleteButton: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -276,6 +278,8 @@ fun EditorScreen(
                                     compactControls = compactControls,
                                     swipeDeleteThresholdDp = swipeDeleteThresholdDp,
                                     swipeGesturesEnabled = swipeGesturesEnabled,
+                                    showSnapButton = showSnapButton,
+                                    showClearDeleteButton = showClearDeleteButton,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -562,6 +566,8 @@ private fun LyricLineCard(
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
     swipeGesturesEnabled: Boolean = true,
+    showSnapButton: Boolean = true,
+    showClearDeleteButton: Boolean = true,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -882,32 +888,36 @@ private fun LyricLineCard(
                     )
 
                     if (!isPreviewMode) {
-                        IconButton(
-                            onClick = onSnapTimestamp,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.TouchApp,
-                                contentDescription = "Snap to current",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                        if (showSnapButton) {
+                            IconButton(
+                                onClick = onSnapTimestamp,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.TouchApp,
+                                    contentDescription = "Snap to current",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .combinedClickable(
-                                    onClick = onClearTimestamp,
-                                    onLongClick = onDelete
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Clear timestamp",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
+                        if (showClearDeleteButton) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .combinedClickable(
+                                        onClick = onClearTimestamp,
+                                        onLongClick = onDelete
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Clear timestamp",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            }
                         }
                     }
                 }

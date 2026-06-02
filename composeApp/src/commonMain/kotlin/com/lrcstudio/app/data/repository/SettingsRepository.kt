@@ -14,7 +14,9 @@ data class AppSettings(
     val timestampFormat: String = "mm:ss.xx",
     val compactControls: Boolean = false,
     val swipeDeleteThresholdDp: Int = 130,
-    val swipeGesturesEnabled: Boolean = true
+    val swipeGesturesEnabled: Boolean = true,
+    val showSnapButton: Boolean = true,
+    val showClearDeleteButton: Boolean = true
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -50,6 +52,20 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleSwipeGestures() {
         _settings.value = _settings.value.copy(
             swipeGesturesEnabled = !_settings.value.swipeGesturesEnabled
+        )
+        saveToDisk()
+    }
+
+    fun toggleSnapButton() {
+        _settings.value = _settings.value.copy(
+            showSnapButton = !_settings.value.showSnapButton
+        )
+        saveToDisk()
+    }
+
+    fun toggleClearDeleteButton() {
+        _settings.value = _settings.value.copy(
+            showClearDeleteButton = !_settings.value.showClearDeleteButton
         )
         saveToDisk()
     }
