@@ -12,7 +12,11 @@ import kotlinx.serialization.json.Json
 data class AppSettings(
     val isDarkTheme: Boolean = true,
     val timestampFormat: String = "mm:ss.xx",
-    val compactControls: Boolean = false
+    val compactControls: Boolean = false,
+    val swipeDeleteThresholdDp: Int = 130,
+    val swipeGesturesEnabled: Boolean = true,
+    val showSnapButton: Boolean = true,
+    val showClearDeleteButton: Boolean = true
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -34,6 +38,34 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleCompactControls() {
         _settings.value = _settings.value.copy(
             compactControls = !_settings.value.compactControls
+        )
+        saveToDisk()
+    }
+
+    fun setSwipeDeleteThresholdDp(value: Int) {
+        _settings.value = _settings.value.copy(
+            swipeDeleteThresholdDp = value.coerceIn(40, 200)
+        )
+        saveToDisk()
+    }
+
+    fun toggleSwipeGestures() {
+        _settings.value = _settings.value.copy(
+            swipeGesturesEnabled = !_settings.value.swipeGesturesEnabled
+        )
+        saveToDisk()
+    }
+
+    fun toggleSnapButton() {
+        _settings.value = _settings.value.copy(
+            showSnapButton = !_settings.value.showSnapButton
+        )
+        saveToDisk()
+    }
+
+    fun toggleClearDeleteButton() {
+        _settings.value = _settings.value.copy(
+            showClearDeleteButton = !_settings.value.showClearDeleteButton
         )
         saveToDisk()
     }

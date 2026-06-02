@@ -2,6 +2,7 @@ package com.lrcstudio.app.ui.editor
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -11,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,9 +31,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,7 +56,11 @@ fun EditorScreen(
     onBack: () -> Unit,
     onSave: () -> Unit,
     onImportAudioFile: () -> Unit,
-    compactControls: Boolean = false
+    compactControls: Boolean = false,
+    swipeDeleteThresholdDp: Int = 130,
+    swipeGesturesEnabled: Boolean = true,
+    showSnapButton: Boolean = true,
+    showClearDeleteButton: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -266,6 +276,10 @@ fun EditorScreen(
                                     editingText = if (state.editingLineIndex == i) state.editingText else "",
                                     isPreviewMode = isPreviewMode,
                                     compactControls = compactControls,
+                                    swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                    swipeGesturesEnabled = swipeGesturesEnabled,
+                                    showSnapButton = showSnapButton,
+                                    showClearDeleteButton = showClearDeleteButton,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -550,6 +564,10 @@ private fun LyricLineCard(
     editingText: String,
     isPreviewMode: Boolean = false,
     compactControls: Boolean = false,
+    swipeDeleteThresholdDp: Int = 130,
+    swipeGesturesEnabled: Boolean = true,
+    showSnapButton: Boolean = true,
+    showClearDeleteButton: Boolean = true,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -563,14 +581,37 @@ private fun LyricLineCard(
     modifier: Modifier = Modifier
 ) {
     val hasTimestamp = line.timestamp > 0L
-    val containerColor = if (isCurrentLine)
-        MaterialTheme.colorScheme.primaryContainer
-    else
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
     var showTimestampDialog by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val swipeEnabled = !isPreviewMode && !isEditing && swipeGesturesEnabled
+    val offsetAnimatable = remember { Animatable(0f) }
+    var itemWidthPx by remember { mutableStateOf(0f) }
+    var surfaceHeightPx by remember { mutableStateOf(0f) }
+    var accumulatedDrag by remember { mutableStateOf(0f) }
+
+    val currentOffsetPx = offsetAnimatable.value
+    val revealRightPx = currentOffsetPx.coerceAtLeast(0f)
+    val revealLeftPx = (-currentOffsetPx).coerceAtLeast(0f)
+    val swipeDeleteThresholdPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
+    val isLongSwipe = abs(currentOffsetPx) >= swipeDeleteThresholdPx
+    val dismissThresholdPx = itemWidthPx * 0.40f
+    val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
+    val rightColorFraction = if (swipeDeleteThresholdPx > 0f) {
+        val t = (abs(currentOffsetPx) / swipeDeleteThresholdPx).coerceIn(0f, 1f)
+        t * t * t
+    } else 0f
+    val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
+    val swipeGapDp = 4.dp
+
+    val containerColor = if (isCurrentLine)
+        MaterialTheme.colorScheme.primaryContainer
+    else
+        MaterialTheme.colorScheme.surfaceVariant
 
     LaunchedEffect(isPlaybackLine) {
         if (isPlaybackLine) {
@@ -581,15 +622,140 @@ private fun LyricLineCard(
         }
     }
 
-    Card(
-        modifier = modifier.combinedClickable(
-            onClick = onClick,
-            onLongClick = if (isPreviewMode) null else onEditStart
-        ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                val w = coords.size.width.toFloat()
+                if (w != itemWidthPx) itemWidthPx = w
+            }
     ) {
+        if (revealRightPx > 0f && surfaceHeightPx > 0f) {
+            val wDp = (with(density) { revealRightPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
+            val hDp = with(density) { surfaceHeightPx.toDp() }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(wDp)
+                    .height(hDp)
+                    .clip(CircleShape)
+                    .background(rightBgColor)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(start = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (isLongSwipe) "Delete" else "Clear",
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        if (revealLeftPx > 0f && surfaceHeightPx > 0f) {
+            val wDp = (with(density) { revealLeftPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
+            val hDp = with(density) { surfaceHeightPx.toDp() }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(wDp)
+                    .height(hDp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(end = 20.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Time",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(
+                    x = with(density) { currentOffsetPx.toDp() }
+                )
+                .onGloballyPositioned { coords ->
+                    val h = coords.size.height.toFloat()
+                    if (h != surfaceHeightPx) surfaceHeightPx = h
+                }
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = if (isPreviewMode) null else onEditStart
+                )
+                .then(
+                    if (swipeEnabled) Modifier.pointerInput(offsetAnimatable, itemWidthPx) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                scope.launch { offsetAnimatable.stop() }
+                                accumulatedDrag = 0f
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                accumulatedDrag += dragAmount
+                                val absDrag = abs(accumulatedDrag)
+                                val tensionThresholdPx = 60f * density.density
+
+                                val effectiveOffset = if (absDrag < tensionThresholdPx) {
+                                    val t = absDrag / tensionThresholdPx
+                                    tensionThresholdPx * t * t
+                                } else {
+                                    absDrag
+                                }
+                                val signed = if (accumulatedDrag > 0f) effectiveOffset else -effectiveOffset
+                                scope.launch { offsetAnimatable.snapTo(signed) }
+                            },
+                            onDragEnd = {
+                                if (abs(accumulatedDrag) > itemWidthPx * 0.1f) {
+                                    if (accumulatedDrag > 0f) {
+                                        if (isLongSwipe) onDelete() else onClearTimestamp()
+                                    } else {
+                                        onSnapTimestamp()
+                                    }
+                                }
+                                accumulatedDrag = 0f
+                                scope.launch {
+                                    offsetAnimatable.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                            },
+                            onDragCancel = {
+                                accumulatedDrag = 0f
+                                scope.launch {
+                                    offsetAnimatable.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                            }
+                        )
+                    } else Modifier
+                ),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
         Box {
             Row(
                 modifier = Modifier
@@ -716,36 +882,42 @@ private fun LyricLineCard(
                             MaterialTheme.colorScheme.outline
                         else
                             MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     if (!isPreviewMode) {
-                        IconButton(
-                            onClick = onSnapTimestamp,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.TouchApp,
-                                contentDescription = "Snap to current",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                        if (showSnapButton) {
+                            IconButton(
+                                onClick = onSnapTimestamp,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.TouchApp,
+                                    contentDescription = "Snap to current",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .combinedClickable(
-                                    onClick = onClearTimestamp,
-                                    onLongClick = onDelete
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Clear timestamp",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
+                        if (showClearDeleteButton) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .combinedClickable(
+                                        onClick = onClearTimestamp,
+                                        onLongClick = onDelete
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Clear timestamp",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            }
                         }
                     }
                 }
@@ -762,6 +934,7 @@ private fun LyricLineCard(
                 )
             }
         }
+    }
     }
 
     if (showTimestampDialog) {
