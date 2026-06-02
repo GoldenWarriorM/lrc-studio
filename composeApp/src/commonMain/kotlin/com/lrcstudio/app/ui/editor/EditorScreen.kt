@@ -57,7 +57,7 @@ fun EditorScreen(
     onSave: () -> Unit,
     onImportAudioFile: () -> Unit,
     compactControls: Boolean = false,
-    swipeDeleteThresholdDp: Int = 80
+    swipeDeleteThresholdDp: Int = 130
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -558,7 +558,7 @@ private fun LyricLineCard(
     editingText: String,
     isPreviewMode: Boolean = false,
     compactControls: Boolean = false,
-    swipeDeleteThresholdDp: Int = 80,
+    swipeDeleteThresholdDp: Int = 130,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,

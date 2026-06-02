@@ -13,7 +13,7 @@ data class AppSettings(
     val isDarkTheme: Boolean = true,
     val timestampFormat: String = "mm:ss.xx",
     val compactControls: Boolean = false,
-    val swipeDeleteThresholdDp: Int = 80
+    val swipeDeleteThresholdDp: Int = 130
 )
 
 class SettingsRepository(private val storageDir: String) {
