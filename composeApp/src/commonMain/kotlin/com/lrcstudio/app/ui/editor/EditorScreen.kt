@@ -655,7 +655,7 @@ private fun LyricLineCard(
                         if (isLongSwipe) "Delete" else "Clear",
                         color = Color.White,
                         maxLines = 1,
-                        overflow = TextOverflow.Visible
+                        overflow = TextOverflow.Clip
                     )
                 }
             }
@@ -682,7 +682,7 @@ private fun LyricLineCard(
                         "Time",
                         color = MaterialTheme.colorScheme.onPrimary,
                         maxLines = 1,
-                        overflow = TextOverflow.Visible
+                        overflow = TextOverflow.Clip
                     )
                 }
             }
