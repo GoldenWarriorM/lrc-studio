@@ -31,6 +31,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -647,16 +649,45 @@ private fun LyricLineCard(
                     .background(rightBgColor)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(start = 20.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         if (isLongSwipe) "Delete" else "Clear",
                         color = Color.White,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Clip
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(rightBgColor, Color.Transparent),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, rightBgColor),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
             }
         }
 
@@ -673,17 +704,46 @@ private fun LyricLineCard(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(end = 20.dp),
-                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         "Time",
                         color = MaterialTheme.colorScheme.onPrimary,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Clip
                     )
                 }
+                val primaryColor = MaterialTheme.colorScheme.primary
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(primaryColor, Color.Transparent),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.3f)
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, primaryColor),
+                                    endX = size.width
+                                )
+                            )
+                        }
+                )
             }
         }
 
