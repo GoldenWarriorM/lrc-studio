@@ -708,13 +708,7 @@ private fun LyricLineCard(
                                         } else {
                                             dragPhase = 3
                                             scope.launch {
-                                                offsetAnimatable.animateTo(
-                                                    targetValue = accumulatedDrag,
-                                                    animationSpec = spring(
-                                                        dampingRatio = 0.8f,
-                                                        stiffness = Spring.StiffnessLow
-                                                    )
-                                                )
+                                                offsetAnimatable.snapTo(accumulatedDrag)
                                             }
                                         }
                                     }
