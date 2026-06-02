@@ -623,19 +623,18 @@ private fun LyricLineCard(
             }
     ) {
         if (revealRightPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = (with(density) { revealRightPx.toDp() } - 12.dp - swipeGapDp).coerceAtLeast(0.dp)
+            val wDp = (with(density) { revealRightPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 12.dp)
                     .width(wDp)
                     .height(hDp)
                     .clip(CircleShape)
                     .background(rightBgColor)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = swipeGapDp),
+                    modifier = Modifier.fillMaxSize().padding(start = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -651,12 +650,11 @@ private fun LyricLineCard(
         }
 
         if (revealLeftPx > 0f && surfaceHeightPx > 0f) {
-            val wDp = (with(density) { revealLeftPx.toDp() } - 12.dp - swipeGapDp).coerceAtLeast(0.dp)
+            val wDp = (with(density) { revealLeftPx.toDp() } - swipeGapDp).coerceAtLeast(0.dp)
             val hDp = with(density) { surfaceHeightPx.toDp() }
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 12.dp)
                     .width(wDp)
                     .height(hDp)
                     .clip(CircleShape)
@@ -664,7 +662,7 @@ private fun LyricLineCard(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize().padding(start = swipeGapDp, end = 20.dp),
+                    modifier = Modifier.fillMaxSize().padding(end = 20.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
