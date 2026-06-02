@@ -30,9 +30,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -594,10 +592,6 @@ private fun LyricLineCard(
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
     val rightColorFraction = ((revealProgress - 0.2f) / 0.8f).coerceIn(0f, 1f)
     val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
-    val iconAlphaRight = (revealProgress * (if (isLongSwipe) 1f else 0.88f)).coerceIn(0f, 1f)
-    val iconScaleRight = if (isLongSwipe) 1.08f else 0.95f
-    val iconAlphaLeft = (revealProgress * 0.88f).coerceIn(0f, 1f)
-    val iconScaleLeft = 0.95f + (revealProgress * 0.13f).coerceIn(0f, 0.13f)
     val swipeGapDp = 4.dp
 
     val containerColor = if (isCurrentLine)
@@ -637,14 +631,12 @@ private fun LyricLineCard(
                     modifier = Modifier.fillMaxSize().padding(start = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        if (isLongSwipe) Icons.Default.Delete else Icons.Default.Clear,
-                        contentDescription = null,
-                        modifier = Modifier.alpha(iconAlphaRight).scale(iconScaleRight),
-                        tint = Color.White
+                    Text(
+                        if (isLongSwipe) "Delete" else "Clear",
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (isLongSwipe) "Delete" else "Clear", color = Color.White)
                 }
             }
         }
@@ -666,12 +658,11 @@ private fun LyricLineCard(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Time", color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.width(8.dp))
-                    Icon(
-                        Icons.Default.TouchApp, contentDescription = null,
-                        modifier = Modifier.alpha(iconAlphaLeft).scale(iconScaleLeft),
-                        tint = MaterialTheme.colorScheme.onPrimary
+                    Text(
+                        "Time",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -898,7 +889,9 @@ private fun LyricLineCard(
                             MaterialTheme.colorScheme.outline
                         else
                             MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     if (!isPreviewMode) {
