@@ -657,7 +657,7 @@ private fun LyricLineCard(
                         if (isLongSwipe) "Delete" else "Clear",
                         color = Color.White,
                         maxLines = 1,
-                        overflow = TextOverflow.Clip
+                        overflow = TextOverflow.Visible
                     )
                 }
                 Box(
@@ -712,7 +712,7 @@ private fun LyricLineCard(
                         "Time",
                         color = MaterialTheme.colorScheme.onPrimary,
                         maxLines = 1,
-                        overflow = TextOverflow.Clip
+                        overflow = TextOverflow.Visible
                     )
                 }
                 val primaryColor = MaterialTheme.colorScheme.primary
