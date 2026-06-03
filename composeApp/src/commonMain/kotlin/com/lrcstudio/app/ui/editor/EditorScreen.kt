@@ -444,6 +444,7 @@ fun EditorScreen(
                                     )
                                     .clip(CircleShape)
                                     .background(undoBgColor)
+                                    .border(2.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape)
                             )
                             Icon(
                                 Icons.AutoMirrored.Filled.Undo,
@@ -473,6 +474,7 @@ fun EditorScreen(
                                     )
                                     .clip(CircleShape)
                                     .background(redoBgColor)
+                                    .border(2.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape)
                             )
                             Icon(
                                 Icons.AutoMirrored.Filled.Redo,
