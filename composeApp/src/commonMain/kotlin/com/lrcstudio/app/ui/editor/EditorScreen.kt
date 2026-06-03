@@ -89,9 +89,10 @@ fun EditorScreen(
     var showSpeedDialog by remember { mutableStateOf(false) }
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
-    val timeWidth by animateDpAsState(
-        targetValue = if (isTimePressed) 160.dp else 140.dp,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+    val timeScale by animateFloatAsState(
+        targetValue = if (isTimePressed) 1f else 140f / 160f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "timeScale"
     )
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
@@ -372,21 +373,19 @@ fun EditorScreen(
                 else
                     MaterialTheme.colorScheme.outline
 
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
                         .padding(bottom = 24.dp)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(timeWidth)
+                            .align(Alignment.Center)
+                            .width(160.dp)
                             .height(56.dp)
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(MaterialTheme.colorScheme.primary)
                             .clickable(
                                 interactionSource = timeInteractionSource,
                                 indication = null,
@@ -394,6 +393,13 @@ fun EditorScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(scaleX = timeScale)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 32.dp)
@@ -413,9 +419,8 @@ fun EditorScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
-
                     Row(
+                        modifier = Modifier.align(Alignment.CenterEnd),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
