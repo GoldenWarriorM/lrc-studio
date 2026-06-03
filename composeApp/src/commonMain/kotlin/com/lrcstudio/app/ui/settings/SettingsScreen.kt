@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
 import com.lrcstudio.app.data.repository.SettingsRepository
+import com.lrcstudio.app.util.fabBottomPadding
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +41,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
-                .padding(bottom = 120.dp),
+                .padding(bottom = fabBottomPadding()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SettingsSection("Appearance") {

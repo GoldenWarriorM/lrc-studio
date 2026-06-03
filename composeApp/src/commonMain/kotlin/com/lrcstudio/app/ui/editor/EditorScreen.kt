@@ -332,9 +332,7 @@ fun EditorScreen(
                         text = state.newLyricText,
                         onTextChange = { viewModel.updateNewLyricText(it) },
                         onCapture = { viewModel.captureTimestamp() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = lyricsListBottomPadding())
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

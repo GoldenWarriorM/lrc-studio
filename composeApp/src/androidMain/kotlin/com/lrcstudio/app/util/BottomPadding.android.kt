@@ -4,3 +4,5 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 actual fun lyricsListBottomPadding(): Dp = 120.dp
+
+actual fun fabBottomPadding(): Dp = 120.dp

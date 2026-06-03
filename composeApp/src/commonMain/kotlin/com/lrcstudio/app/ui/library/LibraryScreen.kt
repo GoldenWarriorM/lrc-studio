@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.model.Song
+import com.lrcstudio.app.util.fabBottomPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,28 +50,30 @@ fun LibraryScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showNewSongSheet = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("New Song") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = RoundedCornerShape(16.dp)
-            )
+            Box(modifier = Modifier.padding(bottom = fabBottomPadding())) {
+                ExtendedFloatingActionButton(
+                    onClick = { showNewSongSheet = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text("New Song") },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
         }
     ) { padding ->
         if (state.songs.isEmpty()) {
             EmptyLibrary(modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(bottom = 80.dp))
+                .padding(bottom = fabBottomPadding()))
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 120.dp),
+                    .padding(bottom = fabBottomPadding()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
