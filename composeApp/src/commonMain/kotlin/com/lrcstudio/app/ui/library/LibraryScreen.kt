@@ -36,6 +36,7 @@ fun LibraryScreen(
     var showSearch by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        viewModel.onSearchQueryChange("")
         viewModel.refresh()
     }
 
