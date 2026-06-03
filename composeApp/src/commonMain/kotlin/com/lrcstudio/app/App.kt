@@ -30,6 +30,7 @@ import com.lrcstudio.app.ui.picker.rememberAudioFilePickerLauncher
 import com.lrcstudio.app.ui.picker.rememberLrcFilePickerLauncher
 import com.lrcstudio.app.ui.player.AudioPlayer
 import com.lrcstudio.app.ui.settings.SettingsScreen
+import com.lrcstudio.app.ui.settings.DeveloperSettingsScreen
 import com.lrcstudio.app.util.rememberStorageDir
 
 private enum class NavDirection { Forward, Back, Tab }
@@ -49,6 +50,7 @@ fun App(audioPlayer: AudioPlayer) {
 
     val currentScreen: Screen = when (screenName) {
         "editor" -> Screen.Editor(editorSongId.orEmpty())
+        "developer" -> Screen.DeveloperSettings
         "settings" -> Screen.Settings
         else -> Screen.Library
     }
@@ -78,20 +80,29 @@ fun App(audioPlayer: AudioPlayer) {
     LRCStudioTheme(darkTheme = settings.isDarkTheme) {
 
         SystemBackHandler(
-            enabled = currentScreen is Screen.Editor,
+            enabled = currentScreen is Screen.Editor || currentScreen is Screen.DeveloperSettings,
             onBack = {
-                editorViewModel?.release()
-                editorViewModel = null
-                editorSongId = null
-                navDirection = NavDirection.Back
-                screenName = "library"
+                when (currentScreen) {
+                    is Screen.Editor -> {
+                        editorViewModel?.release()
+                        editorViewModel = null
+                        editorSongId = null
+                        navDirection = NavDirection.Back
+                        screenName = "library"
+                    }
+                    is Screen.DeveloperSettings -> {
+                        navDirection = NavDirection.Back
+                        screenName = "settings"
+                    }
+                    else -> {}
+                }
             }
         )
 
         Scaffold(
             contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
             bottomBar = {
-                if (currentScreen !is Screen.Editor) {
+                if (currentScreen !is Screen.Editor && currentScreen !is Screen.DeveloperSettings) {
                     NavigationBar {
                         NavigationBarItem(
                             selected = currentScreen is Screen.Library,
@@ -192,14 +203,29 @@ fun App(audioPlayer: AudioPlayer) {
                                     swipeGesturesEnabled = settings.swipeGesturesEnabled,
                                     showSnapButton = settings.showSnapButton,
                                     showClearDeleteButton = settings.showClearDeleteButton,
-                                    swipeInstantDelete = settings.swipeInstantDelete
+                                    swipeInstantDelete = settings.swipeInstantDelete,
+                                    showDebugBorders = settings.showDebugBorders
                                 )
                             }
                         }
 
                         is Screen.Settings -> {
                             SettingsScreen(
-                                settingsRepository = settingsRepository
+                                settingsRepository = settingsRepository,
+                                onNavigateToDeveloper = {
+                                    navDirection = NavDirection.Forward
+                                    screenName = "developer"
+                                }
+                            )
+                        }
+
+                        is Screen.DeveloperSettings -> {
+                            DeveloperSettingsScreen(
+                                settingsRepository = settingsRepository,
+                                onBack = {
+                                    navDirection = NavDirection.Back
+                                    screenName = "settings"
+                                }
                             )
                         }
                     }

@@ -8,6 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -65,7 +66,8 @@ fun EditorScreen(
     swipeGesturesEnabled: Boolean = true,
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
-    swipeInstantDelete: Boolean = false
+    swipeInstantDelete: Boolean = false,
+    showDebugBorders: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -286,6 +288,7 @@ fun EditorScreen(
                                     showSnapButton = showSnapButton,
                                     showClearDeleteButton = showClearDeleteButton,
                                     swipeInstantDelete = swipeInstantDelete,
+                                    showDebugBorders = showDebugBorders,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -576,6 +579,7 @@ private fun LyricLineCard(
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
     swipeInstantDelete: Boolean = false,
+    showDebugBorders: Boolean = false,
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -684,7 +688,7 @@ private fun LyricLineCard(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.5f)
+                        .width(24.dp)
                         .drawBehind {
                             drawRect(
                                 brush = Brush.horizontalGradient(
@@ -693,6 +697,7 @@ private fun LyricLineCard(
                                 )
                             )
                         }
+                        .then(if (showDebugBorders) Modifier.border(1.dp, Color.White) else Modifier)
                 )
             }
         }
@@ -724,23 +729,9 @@ private fun LyricLineCard(
                 val primaryColor = MaterialTheme.colorScheme.primary
                 Box(
                     modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.5f)
-                        .drawBehind {
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(primaryColor, Color.Transparent),
-                                    endX = size.width
-                                )
-                            )
-                        }
-                )
-                Box(
-                    modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.5f)
+                        .width(24.dp)
                         .drawBehind {
                             drawRect(
                                 brush = Brush.horizontalGradient(
@@ -749,6 +740,7 @@ private fun LyricLineCard(
                                 )
                             )
                         }
+                        .then(if (showDebugBorders) Modifier.border(1.dp, Color.White) else Modifier)
                 )
             }
         }

@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,16 +12,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
 import com.lrcstudio.app.data.repository.SettingsRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository,
+    onNavigateToDeveloper: () -> Unit = {}
 ) {
     val settings by settingsRepository.settings.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -135,14 +140,66 @@ fun SettingsScreen(
             }
 
             SettingsSection("About") {
-                SettingsRow(
-                    title = "Version",
-                    subtitle = "1.0.0"
-                )
+                var versionTapCount by remember { mutableIntStateOf(0) }
+                val scope = rememberCoroutineScope()
+                LaunchedEffect(versionTapCount) {
+                    if (versionTapCount >= 7) {
+                        val wasUnlocked = settings.devSettingsUnlocked
+                        settingsRepository.toggleDevSettingsUnlocked()
+                        versionTapCount = 0
+                        scope.launch {
+                            val msg = if (wasUnlocked) "Developer settings hidden" else "Developer settings activated"
+                            snackbarHostState.showSnackbar(msg)
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                        .clickable { versionTapCount++ },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Version",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "1.0.0",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 SettingsRow(
                     title = "LRC Studio",
                     subtitle = "Create and edit LRC lyrics easily"
                 )
+                if (settings.devSettingsUnlocked) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToDeveloper() }
+                            .padding(horizontal = 12.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Developer settings",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "›",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }
