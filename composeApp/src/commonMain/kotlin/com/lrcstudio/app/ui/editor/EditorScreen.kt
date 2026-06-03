@@ -356,22 +356,16 @@ fun EditorScreen(
                     animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
                     label = "redoScale"
                 )
-                val undoBgColor = if (state.canUndo)
-                    MaterialTheme.colorScheme.secondaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceVariant
+                val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                 val undoIconColor = if (state.canUndo)
-                    MaterialTheme.colorScheme.onSecondaryContainer
+                    MaterialTheme.colorScheme.onSurface
                 else
-                    MaterialTheme.colorScheme.outline
-                val redoBgColor = if (state.canRedo)
-                    MaterialTheme.colorScheme.secondaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceVariant
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                 val redoIconColor = if (state.canRedo)
-                    MaterialTheme.colorScheme.onSecondaryContainer
+                    MaterialTheme.colorScheme.onSurface
                 else
-                    MaterialTheme.colorScheme.outline
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 
                 Box(
                     modifier = Modifier
@@ -444,7 +438,6 @@ fun EditorScreen(
                                     )
                                     .clip(CircleShape)
                                     .background(undoBgColor)
-                                    .border(2.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape)
                             )
                             Icon(
                                 Icons.AutoMirrored.Filled.Undo,
@@ -474,7 +467,6 @@ fun EditorScreen(
                                     )
                                     .clip(CircleShape)
                                     .background(redoBgColor)
-                                    .border(2.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape)
                             )
                             Icon(
                                 Icons.AutoMirrored.Filled.Redo,
