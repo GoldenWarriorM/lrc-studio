@@ -40,7 +40,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
-                .padding(bottom = 80.dp),
+                .padding(bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SettingsSection("Appearance") {
