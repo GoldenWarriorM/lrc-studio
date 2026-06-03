@@ -612,7 +612,7 @@ private fun LyricLineCard(
     val revealLeftPx = (-currentOffsetPx).coerceAtLeast(0f)
     val swipeDeleteThresholdPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
     val actionThresholdPx = itemWidthPx * 0.1f
-    val isInActionZone = abs(currentOffsetPx) >= actionThresholdPx
+    val isInActionZone = itemWidthPx > 0f && abs(currentOffsetPx) >= actionThresholdPx
     val isLongSwipe = abs(currentOffsetPx) >= swipeDeleteThresholdPx
     val dismissThresholdPx = itemWidthPx * 0.40f
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
