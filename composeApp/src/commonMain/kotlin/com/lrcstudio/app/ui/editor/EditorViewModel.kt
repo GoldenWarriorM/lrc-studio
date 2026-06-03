@@ -23,7 +23,9 @@ data class EditorState(
     val newLyricText: String = "",
     val editingLineIndex: Int = -1,
     val editingText: String = "",
-    val showPlaybackOptions: Boolean = false
+    val showPlaybackOptions: Boolean = false,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false
 )
 
 class EditorViewModel(
@@ -36,12 +38,50 @@ class EditorViewModel(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var positionUpdateJob: Job? = null
 
+    private val undoStack = mutableListOf<List<LrcLine>>()
+    private val redoStack = mutableListOf<List<LrcLine>>()
+
+    private fun pushUndo() {
+        undoStack.add(_state.value.lyrics)
+        if (undoStack.size > MAX_UNDO) undoStack.removeFirst()
+        redoStack.clear()
+        _state.value = _state.value.copy(canUndo = true, canRedo = false)
+    }
+
+    fun undo() {
+        val current = _state.value.lyrics
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.add(current)
+        _state.value = _state.value.copy(lyrics = previous)
+        saveLyrics(previous)
+        _state.value = _state.value.copy(
+            canUndo = undoStack.isNotEmpty(),
+            canRedo = true
+        )
+    }
+
+    fun redo() {
+        val current = _state.value.lyrics
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.add(current)
+        _state.value = _state.value.copy(lyrics = next)
+        saveLyrics(next)
+        _state.value = _state.value.copy(
+            canUndo = true,
+            canRedo = redoStack.isNotEmpty()
+        )
+    }
+
     fun loadSong(songId: String) {
         val song = songRepository.getById(songId) ?: return
+        undoStack.clear()
+        redoStack.clear()
         _state.value = _state.value.copy(
             song = song,
             lyrics = song.lyrics,
-            selectedLineIndex = 0
+            selectedLineIndex = 0,
+            canUndo = false,
+            canRedo = false
         )
         if (song.audioPath.isNotEmpty()) {
             audioPlayer.load(song.audioPath)
@@ -115,7 +155,7 @@ class EditorViewModel(
         if (!_state.value.isRecording) return
         val text = _state.value.newLyricText
         if (text.isBlank()) return
-
+        pushUndo()
         val position = audioPlayer.state.value.currentPosition
         val newLyrics = syncUseCase.addTimestamp(
             _state.value.lyrics, position, text
@@ -128,6 +168,7 @@ class EditorViewModel(
 
     fun addLineAtPosition(text: String) {
         if (text.isBlank()) return
+        pushUndo()
         val position = audioPlayer.state.value.currentPosition
         val newLyrics = syncUseCase.addTimestamp(
             _state.value.lyrics, position, text
@@ -157,6 +198,7 @@ class EditorViewModel(
         val idx = _state.value.editingLineIndex
         val text = _state.value.editingText
         if (idx >= 0 && text.isNotBlank()) {
+            pushUndo()
             val newLyrics = syncUseCase.updateText(_state.value.lyrics, idx, text)
             _state.value = _state.value.copy(lyrics = newLyrics)
             saveLyrics(newLyrics)
@@ -165,6 +207,7 @@ class EditorViewModel(
     }
 
     fun deleteLine(lineIndex: Int) {
+        pushUndo()
         val newLyrics = syncUseCase.removeLine(_state.value.lyrics, lineIndex)
         _state.value = _state.value.copy(lyrics = newLyrics)
         saveLyrics(newLyrics)
@@ -177,12 +220,14 @@ class EditorViewModel(
     }
 
     fun shiftAllTimestamps(offsetMs: Long) {
+        pushUndo()
         val newLyrics = syncUseCase.shiftAllTimestamps(_state.value.lyrics, offsetMs)
         _state.value = _state.value.copy(lyrics = newLyrics)
         saveLyrics(newLyrics)
     }
 
     fun clearAllTimestamps() {
+        pushUndo()
         val newLyrics = syncUseCase.clearAllTimestamps(_state.value.lyrics)
         _state.value = _state.value.copy(lyrics = newLyrics)
         saveLyrics(newLyrics)
@@ -197,6 +242,7 @@ class EditorViewModel(
     fun snapToCurrentPosition(lineIndex: Int) {
         val lyrics = _state.value.lyrics
         if (lineIndex !in lyrics.indices) return
+        pushUndo()
         val pos = audioPlayer.state.value.currentPosition
         updateTimestamp(lineIndex, pos)
         audioPlayer.seekTo(pos)
@@ -205,6 +251,7 @@ class EditorViewModel(
     fun shiftSingleTimestamp(lineIndex: Int, offsetMs: Long) {
         val lyrics = _state.value.lyrics
         if (lineIndex !in lyrics.indices) return
+        pushUndo()
         val old = lyrics[lineIndex].timestamp
         val newTs = (old + offsetMs).coerceAtLeast(0)
         updateTimestamp(lineIndex, newTs)
@@ -212,6 +259,7 @@ class EditorViewModel(
     }
 
     fun insertLineBefore(index: Int, text: String = "") {
+        pushUndo()
         val newLyrics = syncUseCase.insertLine(_state.value.lyrics, index, text)
         _state.value = _state.value.copy(
             lyrics = newLyrics,
@@ -222,6 +270,7 @@ class EditorViewModel(
     }
 
     fun insertLineAfter(index: Int, text: String = "") {
+        pushUndo()
         val insertAt = (index + 1).coerceAtMost(_state.value.lyrics.size)
         val newLyrics = syncUseCase.insertLine(_state.value.lyrics, insertAt, text)
         _state.value = _state.value.copy(
@@ -235,16 +284,19 @@ class EditorViewModel(
     fun setTimestamp(lineIndex: Int, timestampMs: Long) {
         val lyrics = _state.value.lyrics
         if (lineIndex !in lyrics.indices) return
+        pushUndo()
         updateTimestamp(lineIndex, timestampMs)
     }
 
     fun clearTimestamp(lineIndex: Int) {
         val lyrics = _state.value.lyrics
         if (lineIndex !in lyrics.indices) return
+        pushUndo()
         updateTimestamp(lineIndex, 0L)
     }
 
     fun captureCurrentLineTimestamp() {
+        pushUndo()
         val state = _state.value
         val pos = audioPlayer.state.value.currentPosition
         val lyrics = state.lyrics
@@ -287,6 +339,10 @@ class EditorViewModel(
                 )
             }
         }
+    }
+
+    companion object {
+        private const val MAX_UNDO = 100
     }
 
     private fun saveLyrics(lyrics: List<LrcLine>) {

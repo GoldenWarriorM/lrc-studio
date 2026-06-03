@@ -26,6 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -139,6 +141,18 @@ fun EditorScreen(
                 actions = {
                     IconButton(onClick = onImportAudioFile) {
                         Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                    }
+                    IconButton(
+                        onClick = { viewModel.undo() },
+                        enabled = state.canUndo
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                    }
+                    IconButton(
+                        onClick = { viewModel.redo() },
+                        enabled = state.canRedo
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
                     }
                     IconButton(onClick = { showSaveDialog = true }) {
                         Icon(Icons.Default.Save, contentDescription = "Save LRC")
