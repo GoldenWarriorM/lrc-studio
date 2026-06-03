@@ -51,7 +51,6 @@ import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
-import com.lrcstudio.app.util.lyricsListBottomPadding
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -268,8 +267,7 @@ fun EditorScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = lyricsListBottomPadding()),
+                        .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
