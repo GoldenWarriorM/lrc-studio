@@ -75,7 +75,7 @@ fun LibraryScreen(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = fabBottomPadding()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 16.dp)
+                contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
             ) {
                 items(state.songs, key = { it.id }) { song ->
                     SongCard(
