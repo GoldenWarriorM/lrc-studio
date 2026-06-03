@@ -19,7 +19,8 @@ data class AppSettings(
     val showClearDeleteButton: Boolean = true,
     val swipeInstantDelete: Boolean = false,
     val devSettingsUnlocked: Boolean = false,
-    val showDebugBorders: Boolean = false
+    val showDebugBorders: Boolean = false,
+    val slowAnimations: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -90,6 +91,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleShowDebugBorders() {
         _settings.value = _settings.value.copy(
             showDebugBorders = !_settings.value.showDebugBorders
+        )
+        saveToDisk()
+    }
+
+    fun toggleSlowAnimations() {
+        _settings.value = _settings.value.copy(
+            slowAnimations = !_settings.value.slowAnimations
         )
         saveToDisk()
     }

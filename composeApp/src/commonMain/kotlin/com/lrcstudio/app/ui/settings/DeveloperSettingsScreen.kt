@@ -55,6 +55,19 @@ fun DeveloperSettingsScreen(
                     }
                 )
             }
+
+            SettingsSection("Animation") {
+                SettingsRow(
+                    title = "Slow animations",
+                    subtitle = "Slow down all screen transitions by 3x",
+                    trailing = {
+                        Switch(
+                            checked = settings.slowAnimations,
+                            onCheckedChange = { settingsRepository.toggleSlowAnimations() }
+                        )
+                    }
+                )
+            }
         }
     }
 }

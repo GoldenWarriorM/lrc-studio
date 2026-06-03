@@ -1,11 +1,14 @@
 package com.lrcstudio.app
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -14,8 +17,10 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.lrcstudio.app.data.repository.SettingsRepository
 import com.lrcstudio.app.data.repository.SongRepository
 import com.lrcstudio.app.domain.usecase.SyncUseCase
@@ -33,7 +38,7 @@ import com.lrcstudio.app.ui.settings.SettingsScreen
 import com.lrcstudio.app.ui.settings.DeveloperSettingsScreen
 import com.lrcstudio.app.util.rememberStorageDir
 
-private enum class NavDirection { Forward, Back, Tab }
+private enum class NavDirection { Forward, Back, Tab, Immediate }
 
 @Composable
 fun App(audioPlayer: AudioPlayer) {
@@ -77,6 +82,12 @@ fun App(audioPlayer: AudioPlayer) {
         editorViewModel?.importAudio(path)
     }
 
+    LaunchedEffect(currentScreen) {
+        val duration = if (settings.slowAnimations) 600L else 200L
+        delay(duration)
+        navDirection = NavDirection.Tab
+    }
+
     LRCStudioTheme(darkTheme = settings.isDarkTheme) {
 
         SystemBackHandler(
@@ -84,10 +95,8 @@ fun App(audioPlayer: AudioPlayer) {
             onBack = {
                 when (currentScreen) {
                     is Screen.Editor -> {
-                        editorViewModel?.release()
-                        editorViewModel = null
                         editorSongId = null
-                        navDirection = NavDirection.Back
+                        navDirection = if (navDirection == NavDirection.Forward) NavDirection.Immediate else NavDirection.Back
                         screenName = "library"
                     }
                     is Screen.DeveloperSettings -> {
@@ -101,64 +110,42 @@ fun App(audioPlayer: AudioPlayer) {
 
         Scaffold(
             contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-            bottomBar = {
-                if (currentScreen !is Screen.Editor && currentScreen !is Screen.DeveloperSettings) {
-                    NavigationBar {
-                        NavigationBarItem(
-                            selected = currentScreen is Screen.Library,
-                            onClick = {
-                                if (currentScreen !is Screen.Library) {
-                                    navDirection = NavDirection.Tab
-                                    screenName = "library"
-                                    editorSongId = null
-                                }
-                            },
-                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                            label = { Text("Library") }
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen is Screen.Settings,
-                            onClick = {
-                                if (currentScreen !is Screen.Settings) {
-                                    navDirection = NavDirection.Tab
-                                    screenName = "settings"
-                                    editorSongId = null
-                                }
-                            },
-                            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text("Settings") }
-                        )
-                    }
-                }
-            }
+            bottomBar = {}
         ) { padding ->
-            Box(modifier = Modifier.padding(padding)) {
+            val showBottomBar = currentScreen !is Screen.Editor && currentScreen !is Screen.DeveloperSettings
+            val animDuration = if (settings.slowAnimations) 600 else 200
+
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
+                        val duration = if (settings.slowAnimations) 600 else 200
                         when (navDirection) {
                             NavDirection.Tab -> {
-                                fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                                fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
                             }
                             NavDirection.Forward -> {
                                 (slideInHorizontally(
-                                    animationSpec = tween(200),
+                                    animationSpec = tween(duration),
                                     initialOffsetX = { it / 8 }
-                                ) + fadeIn(tween(200))) togetherWith
+                                ) + fadeIn(tween(duration))) togetherWith
                                     (slideOutHorizontally(
-                                        animationSpec = tween(200),
+                                        animationSpec = tween(duration),
                                         targetOffsetX = { -it / 8 }
-                                    ) + fadeOut(tween(200)))
+                                    ) + fadeOut(tween(duration)))
                             }
                             NavDirection.Back -> {
                                 (slideInHorizontally(
-                                    animationSpec = tween(200),
+                                    animationSpec = tween(duration),
                                     initialOffsetX = { -it / 8 }
-                                ) + fadeIn(tween(200))) togetherWith
+                                ) + fadeIn(tween(duration))) togetherWith
                                     (slideOutHorizontally(
-                                        animationSpec = tween(200),
+                                        animationSpec = tween(duration),
                                         targetOffsetX = { it / 8 }
-                                    ) + fadeOut(tween(200)))
+                                    ) + fadeOut(tween(duration)))
+                            }
+                            NavDirection.Immediate -> {
+                                fadeIn(tween(0)) togetherWith fadeOut(tween(0))
                             }
                         }
                     },
@@ -187,13 +174,17 @@ fun App(audioPlayer: AudioPlayer) {
                         is Screen.Editor -> {
                             val vm = editorViewModel
                             if (vm != null) {
+                                DisposableEffect(Unit) {
+                                    onDispose {
+                                        vm.release()
+                                        editorViewModel = null
+                                    }
+                                }
                                 EditorScreen(
                                     viewModel = vm,
                                     onBack = {
-                                        vm.release()
-                                        editorViewModel = null
                                         editorSongId = null
-                                        navDirection = NavDirection.Back
+                                        navDirection = if (navDirection == NavDirection.Forward) NavDirection.Immediate else NavDirection.Back
                                         screenName = "library"
                                     },
                                     onSave = { },
@@ -228,6 +219,40 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             )
                         }
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(animationSpec = tween(animDuration), initialOffsetY = { it }) + fadeIn(tween(animDuration)),
+                    exit = slideOutVertically(animationSpec = tween(animDuration), targetOffsetY = { it }) + fadeOut(tween(animDuration)),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    NavigationBar {
+                        NavigationBarItem(
+                            selected = currentScreen is Screen.Library,
+                            onClick = {
+                                if (currentScreen !is Screen.Library) {
+                                    navDirection = NavDirection.Tab
+                                    screenName = "library"
+                                    editorSongId = null
+                                }
+                            },
+                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
+                            label = { Text("Library") }
+                        )
+                        NavigationBarItem(
+                            selected = currentScreen is Screen.Settings,
+                            onClick = {
+                                if (currentScreen !is Screen.Settings) {
+                                    navDirection = NavDirection.Tab
+                                    screenName = "settings"
+                                    editorSongId = null
+                                }
+                            },
+                            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                            label = { Text("Settings") }
+                        )
                     }
                 }
             }

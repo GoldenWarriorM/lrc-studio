@@ -62,13 +62,15 @@ fun LibraryScreen(
         if (state.songs.isEmpty()) {
             EmptyLibrary(modifier = Modifier
                 .fillMaxSize()
-                .padding(padding))
+                .padding(padding)
+                .padding(bottom = 80.dp))
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
