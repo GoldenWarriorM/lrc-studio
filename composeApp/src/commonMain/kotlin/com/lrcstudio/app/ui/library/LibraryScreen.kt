@@ -14,7 +14,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,6 +37,8 @@ fun LibraryScreen(
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
 
     var showSearch by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(Unit) {
         viewModel.onSearchQueryChange("")
@@ -65,7 +70,8 @@ fun LibraryScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(end = 8.dp)
-                                .alpha(searchAlpha),
+                                .alpha(searchAlpha)
+                                .focusRequester(searchFocusRequester),
                             placeholder = { Text("Search songs...") },
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodyLarge,
@@ -81,7 +87,12 @@ fun LibraryScreen(
                 actions = {
                     IconButton(onClick = {
                         showSearch = !showSearch
-                        if (!showSearch) viewModel.onSearchQueryChange("")
+                        if (!showSearch) {
+                            viewModel.onSearchQueryChange("")
+                        } else {
+                            searchFocusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
                     }) {
                         Icon(
                             imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
