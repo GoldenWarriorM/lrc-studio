@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.library
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,6 +33,8 @@ fun LibraryScreen(
     var showPasteDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
 
+    var showSearch by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.refresh()
     }
@@ -39,10 +44,49 @@ fun LibraryScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "LRC Studio",
-                        style = MaterialTheme.typography.headlineMedium
+                    val searchAlpha by animateFloatAsState(
+                        if (showSearch) 1f else 0f,
+                        label = "searchAlpha"
                     )
+                    val titleAlpha by animateFloatAsState(
+                        if (showSearch) 0f else 1f,
+                        label = "titleAlpha"
+                    )
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        Text(
+                            text = "LRC Studio",
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.alpha(titleAlpha)
+                        )
+                        TextField(
+                            value = state.searchQuery,
+                            onValueChange = viewModel::onSearchQueryChange,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 8.dp)
+                                .alpha(searchAlpha),
+                            placeholder = { Text("Search songs...") },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyLarge,
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            )
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        showSearch = !showSearch
+                        if (!showSearch) viewModel.onSearchQueryChange("")
+                    }) {
+                        Icon(
+                            imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (showSearch) "Close search" else "Search"
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -62,27 +106,44 @@ fun LibraryScreen(
             }
         }
     ) { padding ->
-        if (state.songs.isEmpty()) {
-            EmptyLibrary(modifier = Modifier
+        Column(
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(bottom = fabBottomPadding()))
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = fabBottomPadding()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
-            ) {
-                items(state.songs, key = { it.id }) { song ->
-                    SongCard(
-                        song = song,
-                        onClick = { onSongClick(song) },
-                        onDelete = { showDeleteConfirm = song.id }
+        ) {
+            when {
+                state.songs.isEmpty() -> {
+                    EmptyLibrary(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = fabBottomPadding())
                     )
+                }
+                state.filteredSongs.isEmpty() -> {
+                    EmptySearchResult(
+                        query = state.searchQuery,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = fabBottomPadding())
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = fabBottomPadding()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
+                    ) {
+                        items(state.filteredSongs, key = { it.id }) { song ->
+                            SongCard(
+                                song = song,
+                                onClick = { onSongClick(song) },
+                                onDelete = { showDeleteConfirm = song.id }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -316,6 +377,35 @@ private fun EmptyLibrary(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Tap + to add lyrics\nand create your first song",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.outline,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun EmptySearchResult(query: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.SearchOff,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.outlineVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No songs found",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "No results for \"$query\"",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.outline,
             textAlign = TextAlign.Center
