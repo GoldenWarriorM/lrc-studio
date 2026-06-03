@@ -17,7 +17,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,7 +37,12 @@ fun LibraryScreen(
 
     var showSearch by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(showSearch) {
+        if (showSearch) {
+            searchFocusRequester.requestFocus()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.onSearchQueryChange("")
@@ -50,10 +54,6 @@ fun LibraryScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val searchAlpha by animateFloatAsState(
-                        if (showSearch) 1f else 0f,
-                        label = "searchAlpha"
-                    )
                     val titleAlpha by animateFloatAsState(
                         if (showSearch) 0f else 1f,
                         label = "titleAlpha"
@@ -64,35 +64,31 @@ fun LibraryScreen(
                             style = MaterialTheme.typography.headlineMedium,
                             modifier = Modifier.alpha(titleAlpha)
                         )
-                        TextField(
-                            value = state.searchQuery,
-                            onValueChange = viewModel::onSearchQueryChange,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(end = 8.dp)
-                                .alpha(searchAlpha)
-                                .focusRequester(searchFocusRequester),
-                            placeholder = { Text("Search songs...") },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyLarge,
-                            colors = TextFieldDefaults.colors(
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent
+                        if (showSearch) {
+                            TextField(
+                                value = state.searchQuery,
+                                onValueChange = viewModel::onSearchQueryChange,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = 8.dp)
+                                    .focusRequester(searchFocusRequester),
+                                placeholder = { Text("Search songs...") },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyLarge,
+                                colors = TextFieldDefaults.colors(
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent
+                                )
                             )
-                        )
+                        }
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         showSearch = !showSearch
-                        if (!showSearch) {
-                            viewModel.onSearchQueryChange("")
-                        } else {
-                            searchFocusRequester.requestFocus()
-                            keyboardController?.show()
-                        }
+                        if (!showSearch) viewModel.onSearchQueryChange("")
                     }) {
                         Icon(
                             imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
