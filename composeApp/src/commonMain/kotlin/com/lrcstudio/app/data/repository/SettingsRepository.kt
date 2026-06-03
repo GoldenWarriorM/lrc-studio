@@ -20,7 +20,8 @@ data class AppSettings(
     val swipeInstantDelete: Boolean = false,
     val devSettingsUnlocked: Boolean = false,
     val showDebugBorders: Boolean = false,
-    val slowAnimations: Boolean = false
+    val slowAnimations: Boolean = false,
+    val showUndoRedo: Boolean = true
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -98,6 +99,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleSlowAnimations() {
         _settings.value = _settings.value.copy(
             slowAnimations = !_settings.value.slowAnimations
+        )
+        saveToDisk()
+    }
+
+    fun toggleUndoRedo() {
+        _settings.value = _settings.value.copy(
+            showUndoRedo = !_settings.value.showUndoRedo
         )
         saveToDisk()
     }

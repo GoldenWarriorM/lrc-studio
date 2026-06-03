@@ -108,6 +108,19 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Editor") {
+                SettingsRow(
+                    title = "Undo / Redo buttons",
+                    subtitle = "Show floating undo and redo buttons in the editor",
+                    trailing = {
+                        Switch(
+                            checked = settings.showUndoRedo,
+                            onCheckedChange = { settingsRepository.toggleUndoRedo() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("Buttons") {
                 SettingsRow(
                     title = "Snap button",

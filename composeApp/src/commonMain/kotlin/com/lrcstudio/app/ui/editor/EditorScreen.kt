@@ -71,7 +71,8 @@ fun EditorScreen(
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
     swipeInstantDelete: Boolean = false,
-    showDebugBorders: Boolean = false
+    showDebugBorders: Boolean = false,
+    showUndoRedo: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -413,11 +414,12 @@ fun EditorScreen(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier.align(Alignment.CenterEnd),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    if (showUndoRedo) {
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
@@ -474,6 +476,7 @@ fun EditorScreen(
                                 tint = redoIconColor,
                                 modifier = Modifier.size(24.dp)
                             )
+                        }
                         }
                     }
                 }

@@ -195,7 +195,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     showSnapButton = settings.showSnapButton,
                                     showClearDeleteButton = settings.showClearDeleteButton,
                                     swipeInstantDelete = settings.swipeInstantDelete,
-                                    showDebugBorders = settings.showDebugBorders
+                                    showDebugBorders = settings.showDebugBorders,
+                                    showUndoRedo = settings.showUndoRedo
                                 )
                             }
                         }
