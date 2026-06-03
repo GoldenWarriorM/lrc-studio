@@ -9,8 +9,16 @@ import kotlinx.coroutines.flow.StateFlow
 
 data class LibraryState(
     val songs: List<Song> = emptyList(),
-    val isLoading: Boolean = false
-)
+    val isLoading: Boolean = false,
+    val searchQuery: String = ""
+) {
+    val filteredSongs: List<Song>
+        get() = if (searchQuery.isBlank()) songs
+        else songs.filter {
+            it.title.contains(searchQuery, ignoreCase = true) ||
+                it.artist.contains(searchQuery, ignoreCase = true)
+        }
+}
 
 class LibraryViewModel(
     private val songRepository: SongRepository
@@ -23,9 +31,15 @@ class LibraryViewModel(
     }
 
     fun refresh() {
+        val current = _state.value
         _state.value = LibraryState(
-            songs = songRepository.getAll()
+            songs = songRepository.getAll(),
+            searchQuery = current.searchQuery
         )
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _state.value = _state.value.copy(searchQuery = query)
     }
 
     fun createSongFromPastedText(text: String): Song {
