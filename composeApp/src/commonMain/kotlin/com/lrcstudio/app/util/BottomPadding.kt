@@ -1,6 +1,7 @@
 package com.lrcstudio.app.util
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 
+@Composable
 expect fun fabBottomPadding(): Dp
