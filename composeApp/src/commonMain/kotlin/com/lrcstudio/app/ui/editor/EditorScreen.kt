@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -26,6 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -67,7 +71,8 @@ fun EditorScreen(
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
     swipeInstantDelete: Boolean = false,
-    showDebugBorders: Boolean = false
+    showDebugBorders: Boolean = false,
+    showUndoRedo: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -85,9 +90,10 @@ fun EditorScreen(
     var showSpeedDialog by remember { mutableStateOf(false) }
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
-    val timeWidth by animateDpAsState(
-        targetValue = if (isTimePressed) 160.dp else 140.dp,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+    val timeScale by animateFloatAsState(
+        targetValue = if (isTimePressed) 1f else 140f / 160f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "timeScale"
     )
     val saveLrcFile = rememberLrcFileSaveLauncher(
         defaultName = "${state.song?.title ?: "lyrics"}.lrc"
@@ -337,38 +343,141 @@ fun EditorScreen(
             }
 
             if (canCapture) {
+                val undoInteractionSource = remember { MutableInteractionSource() }
+                val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
+                val undoScale by animateFloatAsState(
+                    targetValue = if (isUndoPressed) 52f / 48f else 1f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                    label = "undoScale"
+                )
+                val redoInteractionSource = remember { MutableInteractionSource() }
+                val isRedoPressed by redoInteractionSource.collectIsPressedAsState()
+                val redoScale by animateFloatAsState(
+                    targetValue = if (isRedoPressed) 52f / 48f else 1f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                    label = "redoScale"
+                )
+                val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                val undoIconColor = if (state.canUndo)
+                    MaterialTheme.colorScheme.onSurface
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                val redoIconColor = if (state.canRedo)
+                    MaterialTheme.colorScheme.onSurface
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+
                 Box(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
                         .padding(bottom = 24.dp)
-                        .width(timeWidth)
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(MaterialTheme.colorScheme.primary)
-                        .clickable(
-                            interactionSource = timeInteractionSource,
-                            indication = null,
-                            onClick = { viewModel.captureCurrentLineTimestamp() },
-                        ),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 32.dp)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .width(160.dp)
+                            .height(56.dp)
+                            .clickable(
+                                interactionSource = timeInteractionSource,
+                                indication = null,
+                                onClick = { viewModel.captureCurrentLineTimestamp() },
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.TouchApp,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(24.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(scaleX = timeScale)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(MaterialTheme.colorScheme.primary)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Time",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.TouchApp,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Time",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+
+                    if (showUndoRedo) {
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = undoInteractionSource,
+                                    indication = null,
+                                    enabled = state.canUndo,
+                                    onClick = { viewModel.undo() },
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(
+                                        scaleX = undoScale,
+                                        scaleY = undoScale
+                                    )
+                                    .clip(CircleShape)
+                                    .background(undoBgColor)
+                            )
+                            Icon(
+                                Icons.AutoMirrored.Filled.Undo,
+                                contentDescription = "Undo",
+                                tint = undoIconColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = redoInteractionSource,
+                                    indication = null,
+                                    enabled = state.canRedo,
+                                    onClick = { viewModel.redo() },
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(
+                                        scaleX = redoScale,
+                                        scaleY = redoScale
+                                    )
+                                    .clip(CircleShape)
+                                    .background(redoBgColor)
+                            )
+                            Icon(
+                                Icons.AutoMirrored.Filled.Redo,
+                                contentDescription = "Redo",
+                                tint = redoIconColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        }
                     }
                 }
             }

@@ -57,19 +57,6 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSection("Layout") {
-                SettingsRow(
-                    title = "Compact controls",
-                    subtitle = "Stack speed and timestamp buttons vertically",
-                    trailing = {
-                        Switch(
-                            checked = settings.compactControls,
-                            onCheckedChange = { settingsRepository.toggleCompactControls() }
-                        )
-                    }
-                )
-            }
-
             SettingsSection("Swipe") {
                 var thresholdSlider by remember(settings.swipeDeleteThresholdDp) {
                     mutableFloatStateOf(settings.swipeDeleteThresholdDp.toFloat())
@@ -120,6 +107,16 @@ fun SettingsScreen(
                     }
                 )
                 SettingsRow(
+                    title = "Compact controls",
+                    subtitle = "Stack speed and timestamp buttons vertically",
+                    trailing = {
+                        Switch(
+                            checked = settings.compactControls,
+                            onCheckedChange = { settingsRepository.toggleCompactControls() }
+                        )
+                    }
+                )
+                SettingsRow(
                     title = "Clear / Delete button",
                     subtitle = "Show clear-timestamp / delete-line button",
                     trailing = {
@@ -136,6 +133,16 @@ fun SettingsScreen(
                         Switch(
                             checked = settings.swipeInstantDelete,
                             onCheckedChange = { settingsRepository.toggleSwipeInstantDelete() }
+                        )
+                    }
+                )
+                SettingsRow(
+                    title = "Undo / Redo buttons",
+                    subtitle = "Show floating undo and redo buttons in the editor",
+                    trailing = {
+                        Switch(
+                            checked = settings.showUndoRedo,
+                            onCheckedChange = { settingsRepository.toggleUndoRedo() }
                         )
                     }
                 )
