@@ -72,7 +72,8 @@ fun EditorScreen(
     showClearDeleteButton: Boolean = true,
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
-    showUndoRedo: Boolean = true
+    showUndoRedo: Boolean = true,
+    showVibrationToast: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -126,9 +127,14 @@ fun EditorScreen(
     }
 
     val canCapture = state.lyrics.isNotEmpty() && !isPreviewMode
+    val snackbarHostState = remember { SnackbarHostState() }
+    val onVibrationToast: (String) -> Unit = { msg ->
+        scope.launch { snackbarHostState.showSnackbar(msg) }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -296,6 +302,8 @@ fun EditorScreen(
                                     showClearDeleteButton = showClearDeleteButton,
                                     swipeInstantDelete = swipeInstantDelete,
                                     showDebugBorders = showDebugBorders,
+                                    showVibrationToast = showVibrationToast,
+                                    onVibrationToast = onVibrationToast,
                                     onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                     onEditStart = { viewModel.startEditing(i) },
                                     onEditChange = { viewModel.updateEditingText(it) },
@@ -705,6 +713,8 @@ private fun LyricLineCard(
     showClearDeleteButton: Boolean = true,
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
+    showVibrationToast: Boolean = false,
+    onVibrationToast: (String) -> Unit = {},
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
     onEditChange: (String) -> Unit,
@@ -738,7 +748,7 @@ private fun LyricLineCard(
     val swipeDeleteThresholdPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
     val actionThresholdPx = itemWidthPx * 0.1f
     val isInActionZone = itemWidthPx > 0f && abs(currentOffsetPx) >= actionThresholdPx
-    val isLongSwipe = abs(currentOffsetPx) >= swipeDeleteThresholdPx
+    val isLongSwipe = currentOffsetPx > 0f && abs(currentOffsetPx) >= swipeDeleteThresholdPx
     val dismissThresholdPx = itemWidthPx * 0.40f
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
     val rightColorFraction = if (swipeDeleteThresholdPx > 0f) {
@@ -754,6 +764,9 @@ private fun LyricLineCard(
     if (isInActionZone && !wasInActionZone) {
         wasInActionZone = true
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        if (showVibrationToast) {
+            scope.launch { onVibrationToast("Swipe: action zone") }
+        }
     } else if (!isInActionZone) {
         wasInActionZone = false
     }
@@ -761,6 +774,9 @@ private fun LyricLineCard(
     LaunchedEffect(isLongSwipe) {
         if (isLongSwipe) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (showVibrationToast) {
+                onVibrationToast("Swipe: delete zone")
+            }
         }
     }
 

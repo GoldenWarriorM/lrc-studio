@@ -54,6 +54,16 @@ fun DeveloperSettingsScreen(
                         )
                     }
                 )
+                SettingsRow(
+                    title = "Vibration toast",
+                    subtitle = "Show a snackbar when haptic feedback triggers",
+                    trailing = {
+                        Switch(
+                            checked = settings.showVibrationToast,
+                            onCheckedChange = { settingsRepository.toggleVibrationToast() }
+                        )
+                    }
+                )
             }
 
             SettingsSection("Animation") {

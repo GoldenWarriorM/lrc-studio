@@ -21,7 +21,8 @@ data class AppSettings(
     val devSettingsUnlocked: Boolean = false,
     val showDebugBorders: Boolean = false,
     val slowAnimations: Boolean = false,
-    val showUndoRedo: Boolean = true
+    val showUndoRedo: Boolean = true,
+    val showVibrationToast: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -106,6 +107,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleUndoRedo() {
         _settings.value = _settings.value.copy(
             showUndoRedo = !_settings.value.showUndoRedo
+        )
+        saveToDisk()
+    }
+
+    fun toggleVibrationToast() {
+        _settings.value = _settings.value.copy(
+            showVibrationToast = !_settings.value.showVibrationToast
         )
         saveToDisk()
     }
