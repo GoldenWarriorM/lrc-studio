@@ -14,7 +14,7 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
@@ -128,7 +128,7 @@ fun PlayerBar(
                         Icon(
                             imageVector = when (playerState.state) {
                                 PlaybackState.PLAYING -> Icons.Default.Pause
-                                PlaybackState.FINISHED -> Icons.Default.Refresh
+                                PlaybackState.FINISHED -> Icons.Default.Replay
                                 else -> Icons.Default.PlayArrow
                             },
                             contentDescription = when (playerState.state) {
