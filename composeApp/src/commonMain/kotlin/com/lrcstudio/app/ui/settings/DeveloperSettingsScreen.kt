@@ -1,6 +1,5 @@
 package com.lrcstudio.app.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.SettingsRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,6 +77,47 @@ fun DeveloperSettingsScreen(
                         )
                     }
                 )
+            }
+
+            var showResetDialog by remember { mutableStateOf(false) }
+            if (showResetDialog) {
+                AlertDialog(
+                    onDismissRequest = { showResetDialog = false },
+                    shape = RoundedCornerShape(24.dp),
+                    title = {
+                        Text("Reset settings", style = MaterialTheme.typography.headlineSmall)
+                    },
+                    text = { Text("This will reset all settings to their default values.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                settingsRepository.resetToDefaults()
+                                showResetDialog = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Reset")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showResetDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+            SettingsSection("Reset") {
+                Button(
+                    onClick = { showResetDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Reset all settings to defaults")
+                }
             }
         }
     }

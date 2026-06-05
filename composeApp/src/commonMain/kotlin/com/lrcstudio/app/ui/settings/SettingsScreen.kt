@@ -104,7 +104,7 @@ fun SettingsScreen(
                     onValueChangeFinished = {
                         settingsRepository.setSwipeDeleteThresholdDp(deleteSlider.toInt())
                     },
-                    valueRange = 50f..150f,
+                    valueRange = 20f..120f,
                     steps = 9,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
