@@ -58,15 +58,15 @@ fun SettingsScreen(
             }
 
             SettingsSection("Swipe") {
-                var thresholdSlider by remember(settings.swipeDeleteThresholdDp) {
-                    mutableFloatStateOf(settings.swipeDeleteThresholdDp.toFloat())
+                var activationSlider by remember(settings.swipeActivationThresholdDp) {
+                    mutableFloatStateOf(settings.swipeActivationThresholdDp.toFloat())
                 }
                 SettingsRow(
-                    title = "Delete threshold",
-                    subtitle = "${thresholdSlider.toInt()} dp — how far to swipe for Delete instead of Clear",
+                    title = "Activation threshold",
+                    subtitle = "${activationSlider.toInt()} dp — how far to swipe before Clear/Time triggers",
                     trailing = {
                         Text(
-                            "${thresholdSlider.toInt()}",
+                            "${activationSlider.toInt()}",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.width(36.dp),
                             color = MaterialTheme.colorScheme.primary
@@ -74,13 +74,38 @@ fun SettingsScreen(
                     }
                 )
                 Slider(
-                    value = thresholdSlider,
-                    onValueChange = { thresholdSlider = it },
+                    value = activationSlider,
+                    onValueChange = { activationSlider = it },
                     onValueChangeFinished = {
-                        settingsRepository.setSwipeDeleteThresholdDp(thresholdSlider.toInt())
+                        settingsRepository.setSwipeActivationThresholdDp(activationSlider.toInt())
                     },
-                    valueRange = 40f..200f,
-                    steps = 15,
+                    valueRange = 50f..150f,
+                    steps = 9,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+                var deleteSlider by remember(settings.swipeDeleteThresholdDp) {
+                    mutableFloatStateOf(settings.swipeDeleteThresholdDp.toFloat())
+                }
+                SettingsRow(
+                    title = "Delete offset",
+                    subtitle = "${deleteSlider.toInt()} dp extra beyond activation for Delete",
+                    trailing = {
+                        Text(
+                            "${deleteSlider.toInt()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(36.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
+                Slider(
+                    value = deleteSlider,
+                    onValueChange = { deleteSlider = it },
+                    onValueChangeFinished = {
+                        settingsRepository.setSwipeDeleteThresholdDp(deleteSlider.toInt())
+                    },
+                    valueRange = 50f..150f,
+                    steps = 9,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
                 SettingsRow(
