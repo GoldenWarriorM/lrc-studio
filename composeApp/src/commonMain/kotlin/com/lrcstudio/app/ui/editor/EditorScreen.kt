@@ -342,6 +342,21 @@ fun EditorScreen(
                 }
             }
 
+            val bottomGradientColor = MaterialTheme.colorScheme.surface
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .align(Alignment.BottomCenter)
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, bottomGradientColor)
+                            )
+                        )
+                    }
+            )
+
             if (canCapture) {
                 val undoInteractionSource = remember { MutableInteractionSource() }
                 val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
