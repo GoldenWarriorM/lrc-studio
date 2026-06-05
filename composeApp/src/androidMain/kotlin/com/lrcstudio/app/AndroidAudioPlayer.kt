@@ -26,7 +26,7 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
                 _state.value = _state.value.copy(
                     state = when {
                         isPlaying -> PlaybackState.PLAYING
-                        exoPlayer.playbackState == Player.STATE_ENDED -> PlaybackState.IDLE
+                        exoPlayer.playbackState == Player.STATE_ENDED -> PlaybackState.FINISHED
                         else -> PlaybackState.PAUSED
                     }
                 )
@@ -37,10 +37,7 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
                 _state.value = _state.value.copy(
                     state = when (playbackState) {
                         Player.STATE_READY -> if (exoPlayer.isPlaying) PlaybackState.PLAYING else PlaybackState.PAUSED
-                        Player.STATE_ENDED -> {
-                            exoPlayer.seekTo(0)
-                            PlaybackState.IDLE
-                        }
+                        Player.STATE_ENDED -> PlaybackState.FINISHED
                         else -> _state.value.state
                     },
                     duration = exoPlayer.duration.coerceAtLeast(0)

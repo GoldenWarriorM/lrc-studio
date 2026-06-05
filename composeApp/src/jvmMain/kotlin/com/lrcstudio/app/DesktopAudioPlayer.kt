@@ -141,7 +141,7 @@ class DesktopAudioPlayer : AudioPlayer {
                 val actualRead = readInterleaved(data, playheadFrames, buf, framesToRead)
                 if (actualRead <= 0) {
                     playing = false
-                    _state.value = _state.value.copy(state = PlaybackState.IDLE)
+                    _state.value = _state.value.copy(state = PlaybackState.FINISHED)
                     break
                 }
 

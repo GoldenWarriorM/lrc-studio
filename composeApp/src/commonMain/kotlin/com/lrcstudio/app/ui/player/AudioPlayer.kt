@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.flow.StateFlow
 
 enum class PlaybackState {
-    IDLE, PLAYING, PAUSED
+    IDLE, PLAYING, PAUSED, FINISHED
 }
 
 @Immutable

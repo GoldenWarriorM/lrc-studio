@@ -140,6 +140,10 @@ class EditorViewModel(
         val playerState = audioPlayer.state.value
         when (playerState.state) {
             PlaybackState.PLAYING -> audioPlayer.pause()
+            PlaybackState.FINISHED -> {
+                audioPlayer.seekTo(0)
+                audioPlayer.play()
+            }
             PlaybackState.PAUSED, PlaybackState.IDLE -> audioPlayer.play()
         }
     }
