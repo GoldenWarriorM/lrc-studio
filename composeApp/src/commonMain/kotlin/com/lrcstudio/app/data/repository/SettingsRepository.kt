@@ -13,7 +13,8 @@ data class AppSettings(
     val isDarkTheme: Boolean = true,
     val timestampFormat: String = "mm:ss.xx",
     val compactControls: Boolean = false,
-    val swipeDeleteThresholdDp: Int = 130,
+    val swipeDeleteThresholdDp: Int = 60,
+    val swipeActivationThresholdDp: Int = 90,
     val swipeGesturesEnabled: Boolean = true,
     val showSnapButton: Boolean = true,
     val showClearDeleteButton: Boolean = true,
@@ -50,7 +51,14 @@ class SettingsRepository(private val storageDir: String) {
 
     fun setSwipeDeleteThresholdDp(value: Int) {
         _settings.value = _settings.value.copy(
-            swipeDeleteThresholdDp = value.coerceIn(40, 200)
+            swipeDeleteThresholdDp = value.coerceIn(20, 120)
+        )
+        saveToDisk()
+    }
+
+    fun setSwipeActivationThresholdDp(value: Int) {
+        _settings.value = _settings.value.copy(
+            swipeActivationThresholdDp = value.coerceIn(50, 150)
         )
         saveToDisk()
     }
@@ -115,6 +123,11 @@ class SettingsRepository(private val storageDir: String) {
         _settings.value = _settings.value.copy(
             showVibrationToast = !_settings.value.showVibrationToast
         )
+        saveToDisk()
+    }
+
+    fun resetToDefaults() {
+        _settings.value = AppSettings()
         saveToDisk()
     }
 

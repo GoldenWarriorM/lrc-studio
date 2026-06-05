@@ -67,6 +67,7 @@ fun EditorScreen(
     onImportAudioFile: () -> Unit,
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
+    swipeActivationThresholdDp: Int = 20,
     swipeGesturesEnabled: Boolean = true,
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
@@ -297,6 +298,7 @@ fun EditorScreen(
                                     isPreviewMode = isPreviewMode,
                                     compactControls = compactControls,
                                     swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                    swipeActivationThresholdDp = swipeActivationThresholdDp,
                                     swipeGesturesEnabled = swipeGesturesEnabled,
                                     showSnapButton = showSnapButton,
                                     showClearDeleteButton = showClearDeleteButton,
@@ -708,6 +710,7 @@ private fun LyricLineCard(
     isPreviewMode: Boolean = false,
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
+    swipeActivationThresholdDp: Int = 20,
     swipeGesturesEnabled: Boolean = true,
     showSnapButton: Boolean = true,
     showClearDeleteButton: Boolean = true,
@@ -745,19 +748,30 @@ private fun LyricLineCard(
     val currentOffsetPx = offsetAnimatable.value
     val revealRightPx = currentOffsetPx.coerceAtLeast(0f)
     val revealLeftPx = (-currentOffsetPx).coerceAtLeast(0f)
-    val swipeDeleteThresholdPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
-    val actionThresholdPx = itemWidthPx * 0.1f
+    val actionThresholdPx = with(density) { swipeActivationThresholdDp.dp.toPx() }
+    val deleteOffsetPx = with(density) { swipeDeleteThresholdDp.dp.toPx() }
+    val totalDeleteThresholdPx = actionThresholdPx + deleteOffsetPx
     val isInActionZone = itemWidthPx > 0f && abs(currentOffsetPx) >= actionThresholdPx
-    val isLongSwipe = currentOffsetPx > 0f && abs(currentOffsetPx) >= swipeDeleteThresholdPx
+    val isLongSwipe = currentOffsetPx > 0f && abs(currentOffsetPx) >= totalDeleteThresholdPx
     val dismissThresholdPx = itemWidthPx * 0.40f
     val isInDismissZone = abs(accumulatedDrag) > dismissThresholdPx
-    val rightColorFraction = if (swipeDeleteThresholdPx > 0f) {
-        val t = (abs(currentOffsetPx) / swipeDeleteThresholdPx).coerceIn(0f, 1f)
+    val rightColorFraction = if (totalDeleteThresholdPx > actionThresholdPx) {
+        val t = ((abs(currentOffsetPx) - actionThresholdPx) / (totalDeleteThresholdPx - actionThresholdPx)).coerceIn(0f, 1f)
         t * t * t
     } else 0f
     val rightBgColor = lerp(Color(0xFFF9A825), Color(0xFFE53935), rightColorFraction)
     val swipeGapDp = 4.dp
     val haptic = LocalHapticFeedback.current
+    val textScale = remember { Animatable(1f) }
+    fun scopeLaunchBounce(target: Float = 1.2f) {
+        scope.launch {
+            textScale.snapTo(target)
+            textScale.animateTo(1f, spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium / 9f
+            ))
+        }
+    }
 
     // haptic when entering the action zone (Clear)
     var wasInActionZone by remember { mutableStateOf(false) }
@@ -767,12 +781,18 @@ private fun LyricLineCard(
         if (showVibrationToast) {
             scope.launch { onVibrationToast("Swipe: action zone") }
         }
+        scopeLaunchBounce()
     } else if (!isInActionZone) {
         wasInActionZone = false
     }
 
     LaunchedEffect(isLongSwipe) {
         if (isLongSwipe) {
+            textScale.snapTo(1.3f)
+            textScale.animateTo(1f, spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium / 9f
+            ))
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             if (showVibrationToast) {
                 onVibrationToast("Swipe: delete zone")
@@ -822,7 +842,8 @@ private fun LyricLineCard(
                         if (isLongSwipe) "Delete" else "Clear",
                         color = Color.White,
                         softWrap = false,
-                        overflow = TextOverflow.Visible
+                        overflow = TextOverflow.Visible,
+                        modifier = Modifier.graphicsLayer(scaleX = textScale.value, scaleY = textScale.value)
                     )
                 }
                 Box(
@@ -864,7 +885,8 @@ private fun LyricLineCard(
                         "Time",
                         color = MaterialTheme.colorScheme.onPrimary,
                         softWrap = false,
-                        overflow = TextOverflow.Visible
+                        overflow = TextOverflow.Visible,
+                        modifier = Modifier.graphicsLayer(scaleX = textScale.value, scaleY = textScale.value)
                     )
                 }
                 val primaryColor = MaterialTheme.colorScheme.primary
@@ -923,9 +945,9 @@ private fun LyricLineCard(
                                 scope.launch { offsetAnimatable.snapTo(signed) }
                             },
                             onDragEnd = {
-                                if (abs(accumulatedDrag) > itemWidthPx * 0.1f) {
+                                if (abs(accumulatedDrag) > actionThresholdPx) {
                                     if (accumulatedDrag > 0f) {
-                                        if (abs(accumulatedDrag) >= swipeDeleteThresholdPx) {
+                                        if (abs(accumulatedDrag) >= totalDeleteThresholdPx) {
                                             if (swipeInstantDelete) onInstantDelete() else onDelete()
                                         } else onClearTimestamp()
                                     } else {
