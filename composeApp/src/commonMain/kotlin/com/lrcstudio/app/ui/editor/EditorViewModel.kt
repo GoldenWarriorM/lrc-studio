@@ -84,7 +84,10 @@ class EditorViewModel(
             canRedo = false
         )
         if (song.audioPath.isNotEmpty()) {
-            audioPlayer.load(song.audioPath)
+            val playerState = audioPlayer.state.value
+            if (playerState.audioPath != song.audioPath || playerState.state == PlaybackState.IDLE) {
+                audioPlayer.load(song.audioPath)
+            }
         }
         startPositionUpdates()
     }
@@ -331,6 +334,7 @@ class EditorViewModel(
     fun release() {
         positionUpdateJob?.cancel()
         scope.cancel()
+        audioPlayer.pause()
         val s = _state.value
         s.song?.let { song ->
             kotlinx.coroutines.runBlocking(Dispatchers.IO) {

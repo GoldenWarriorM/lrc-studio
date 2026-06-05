@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 class MainActivity : ComponentActivity() {
     private lateinit var audioPlayer: AndroidAudioPlayer
@@ -13,6 +15,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         audioPlayer = AndroidAudioPlayer(this)
+
+        lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                audioPlayer.pause()
+            }
+        })
 
         setContent {
             App(audioPlayer = audioPlayer)
