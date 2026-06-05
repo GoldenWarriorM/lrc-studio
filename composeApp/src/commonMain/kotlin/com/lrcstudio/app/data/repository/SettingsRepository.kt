@@ -13,7 +13,7 @@ data class AppSettings(
     val isDarkTheme: Boolean = true,
     val timestampFormat: String = "mm:ss.xx",
     val compactControls: Boolean = false,
-    val swipeDeleteThresholdDp: Int = 40,
+    val swipeDeleteThresholdDp: Int = 60,
     val swipeActivationThresholdDp: Int = 90,
     val swipeGesturesEnabled: Boolean = true,
     val showSnapButton: Boolean = true,
