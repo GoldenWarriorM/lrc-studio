@@ -43,6 +43,7 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:${libs.versions.coroutines.get()}")
+                implementation("net.java.dev.jna:jna:5.14.0")
             }
         }
     }
