@@ -23,7 +23,8 @@ data class AppSettings(
     val showDebugBorders: Boolean = false,
     val slowAnimations: Boolean = false,
     val showUndoRedo: Boolean = true,
-    val showVibrationToast: Boolean = false
+    val showVibrationToast: Boolean = false,
+    val accentColorName: String = "Purple"
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -122,6 +123,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleVibrationToast() {
         _settings.value = _settings.value.copy(
             showVibrationToast = !_settings.value.showVibrationToast
+        )
+        saveToDisk()
+    }
+
+    fun setAccentColor(name: String) {
+        _settings.value = _settings.value.copy(
+            accentColorName = name
         )
         saveToDisk()
     }

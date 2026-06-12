@@ -25,6 +25,7 @@ import com.lrcstudio.app.data.repository.SettingsRepository
 import com.lrcstudio.app.data.repository.SongRepository
 import com.lrcstudio.app.domain.usecase.SyncUseCase
 import com.lrcstudio.app.navigation.Screen
+import com.lrcstudio.app.theme.AccentPreset
 import com.lrcstudio.app.theme.LRCStudioTheme
 import com.lrcstudio.app.ui.editor.EditorScreen
 import com.lrcstudio.app.ui.editor.EditorViewModel
@@ -88,7 +89,10 @@ fun App(audioPlayer: AudioPlayer) {
         navDirection = NavDirection.Tab
     }
 
-    LRCStudioTheme(darkTheme = settings.isDarkTheme) {
+    LRCStudioTheme(
+        darkTheme = settings.isDarkTheme,
+        accent = AccentPreset.fromName(settings.accentColorName)
+    ) {
 
         SystemBackHandler(
             enabled = currentScreen is Screen.Editor || currentScreen is Screen.DeveloperSettings,
@@ -231,7 +235,16 @@ fun App(audioPlayer: AudioPlayer) {
                     exit = slideOutVertically(animationSpec = tween(animDuration), targetOffsetY = { it }) + fadeOut(tween(animDuration)),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ) {
+                        val navColors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         NavigationBarItem(
                             selected = currentScreen is Screen.Library,
                             onClick = {
@@ -242,7 +255,8 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             },
                             icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                            label = { Text("Library") }
+                            label = { Text("Library") },
+                            colors = navColors
                         )
                         NavigationBarItem(
                             selected = currentScreen is Screen.Settings,
@@ -254,7 +268,8 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             },
                             icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text("Settings") }
+                            label = { Text("Settings") },
+                            colors = navColors
                         )
                     }
                 }

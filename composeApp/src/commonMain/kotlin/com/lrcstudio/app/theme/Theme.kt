@@ -1,12 +1,16 @@
 package com.lrcstudio.app.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 
-private val LightColorScheme = lightColorScheme(
+private val baseLightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
     onPrimary = md_theme_light_onPrimary,
     primaryContainer = md_theme_light_primaryContainer,
@@ -30,7 +34,7 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = md_theme_light_outlineVariant,
 )
 
-private val DarkColorScheme = darkColorScheme(
+private val baseDarkColorScheme = darkColorScheme(
     primary = md_theme_dark_primary,
     onPrimary = md_theme_dark_onPrimary,
     primaryContainer = md_theme_dark_primaryContainer,
@@ -57,12 +61,83 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun LRCStudioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: AccentPreset = AccentPreset.Purple,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val targetScheme = if (darkTheme) {
+        baseDarkColorScheme.copy(
+            primary = accent.darkPrimary,
+            onPrimary = accent.darkOnPrimary,
+            primaryContainer = accent.darkPrimaryContainer,
+            onPrimaryContainer = accent.darkOnPrimaryContainer,
+            background = accent.darkBackground,
+            onBackground = accent.darkOnBackground,
+            surface = accent.darkBackground,
+            onSurface = accent.darkOnBackground,
+            surfaceVariant = accent.darkSurfaceVariant,
+            onSurfaceVariant = accent.darkOnSurfaceVariant,
+            tertiaryContainer = accent.darkTertiaryContainer,
+            onTertiaryContainer = accent.darkOnTertiaryContainer,
+            outline = accent.darkOutline,
+            outlineVariant = accent.darkOutlineVariant,
+            surfaceTint = accent.darkPrimary,
+        )
+    } else {
+        baseLightColorScheme.copy(
+            primary = accent.lightPrimary,
+            onPrimary = accent.lightOnPrimary,
+            primaryContainer = accent.lightPrimaryContainer,
+            onPrimaryContainer = accent.lightOnPrimaryContainer,
+            background = accent.lightBackground,
+            onBackground = accent.lightOnBackground,
+            surface = accent.lightBackground,
+            onSurface = accent.lightOnBackground,
+            surfaceVariant = accent.lightSurfaceVariant,
+            onSurfaceVariant = accent.lightOnSurfaceVariant,
+            tertiaryContainer = accent.lightTertiaryContainer,
+            onTertiaryContainer = accent.lightOnTertiaryContainer,
+            outline = accent.lightOutline,
+            outlineVariant = accent.lightOutlineVariant,
+            surfaceTint = accent.lightPrimary,
+        )
+    }
+
+    val normalSpec = tween<Color>(durationMillis = 400)
+    val snapSpec = tween<Color>(durationMillis = 0)
+    val bg by animateColorAsState(targetScheme.background, normalSpec, label = "bg")
+    val onBg by animateColorAsState(targetScheme.onBackground, snapSpec, label = "onBg")
+    val primary by animateColorAsState(targetScheme.primary, snapSpec, label = "primary")
+    val onPrimary by animateColorAsState(targetScheme.onPrimary, snapSpec, label = "onPrimary")
+    val primaryContainer by animateColorAsState(targetScheme.primaryContainer, normalSpec, label = "primaryContainer")
+    val onPrimaryContainer by animateColorAsState(targetScheme.onPrimaryContainer, snapSpec, label = "onPrimaryContainer")
+    val surface by animateColorAsState(targetScheme.surface, normalSpec, label = "surface")
+    val onSurface by animateColorAsState(targetScheme.onSurface, snapSpec, label = "onSurface")
+    val surfaceVariant by animateColorAsState(targetScheme.surfaceVariant, normalSpec, label = "surfaceVariant")
+    val onSurfaceVariant by animateColorAsState(targetScheme.onSurfaceVariant, snapSpec, label = "onSurfaceVariant")
+    val surfaceTint by animateColorAsState(targetScheme.surfaceTint, normalSpec, label = "surfaceTint")
+    val tertiaryContainer by animateColorAsState(targetScheme.tertiaryContainer, normalSpec, label = "tertiaryContainer")
+    val onTertiaryContainer by animateColorAsState(targetScheme.onTertiaryContainer, snapSpec, label = "onTertiaryContainer")
+    val outline by animateColorAsState(targetScheme.outline, snapSpec, label = "outline")
+    val outlineVariant by animateColorAsState(targetScheme.outlineVariant, snapSpec, label = "outlineVariant")
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = targetScheme.copy(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = onPrimaryContainer,
+            background = bg,
+            onBackground = onBg,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = surfaceVariant,
+            onSurfaceVariant = onSurfaceVariant,
+            tertiaryContainer = tertiaryContainer,
+            onTertiaryContainer = onTertiaryContainer,
+            outline = outline,
+            outlineVariant = outlineVariant,
+            surfaceTint = surfaceTint,
+        ),
         typography = AppTypography,
         content = content
     )
