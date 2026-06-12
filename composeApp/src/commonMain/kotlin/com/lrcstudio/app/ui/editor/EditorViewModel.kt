@@ -86,7 +86,9 @@ class EditorViewModel(
         if (song.audioPath.isNotEmpty()) {
             val playerState = audioPlayer.state.value
             if (playerState.audioPath != song.audioPath || playerState.state == PlaybackState.IDLE) {
-                audioPlayer.load(song.audioPath)
+                scope.launch(Dispatchers.IO) {
+                    audioPlayer.load(song.audioPath)
+                }
             }
         }
         startPositionUpdates()
@@ -320,19 +322,19 @@ class EditorViewModel(
 
     fun importAudio(audioPath: String) {
         val song = _state.value.song ?: return
-        val meta = extractAudioMetadata(audioPath)
-        val updated = song.copy(
-            audioPath = audioPath,
-            title = if (meta.title.isNotBlank()) meta.title else song.title,
-            artist = if (meta.artist.isNotBlank()) meta.artist else song.artist,
-            album = if (meta.album.isNotBlank()) meta.album else song.album,
-            composer = if (meta.composer.isNotBlank()) meta.composer else song.composer
-        )
         scope.launch(Dispatchers.IO) {
+            val meta = extractAudioMetadata(audioPath)
+            val updated = song.copy(
+                audioPath = audioPath,
+                title = if (meta.title.isNotBlank()) meta.title else song.title,
+                artist = if (meta.artist.isNotBlank()) meta.artist else song.artist,
+                album = if (meta.album.isNotBlank()) meta.album else song.album,
+                composer = if (meta.composer.isNotBlank()) meta.composer else song.composer
+            )
             songRepository.update(updated)
+            _state.value = _state.value.copy(song = updated)
+            audioPlayer.load(audioPath)
         }
-        _state.value = _state.value.copy(song = updated)
-        audioPlayer.load(audioPath)
     }
 
     fun release() {
