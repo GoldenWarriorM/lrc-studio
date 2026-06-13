@@ -103,25 +103,13 @@ fun ColorPickerDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(currentColor)
-                            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    )
-
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Preview", style = MaterialTheme.typography.labelMedium)
-                        FlowRow(
+                    Text("Preview", style = MaterialTheme.typography.labelMedium)
+                    FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -132,7 +120,6 @@ fun ColorPickerDialog(
                             SchemeSwatch("Surface", scheme.surface)
                             SchemeSwatch("S.Var", scheme.surfaceVariant)
                         }
-                    }
                 }
 
                 HueSlider(
@@ -159,6 +146,14 @@ fun ColorPickerDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(currentColor)
+                            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+                    )
+
                     OutlinedTextField(
                         value = hexInput,
                             onValueChange = { input ->
