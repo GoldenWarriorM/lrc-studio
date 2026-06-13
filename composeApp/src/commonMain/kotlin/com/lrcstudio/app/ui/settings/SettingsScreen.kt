@@ -98,7 +98,12 @@ fun SettingsScreen(
                     },
                     valueRange = 50f..150f,
                     steps = 9,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                    )
                 )
                 var deleteSlider by remember(settings.swipeDeleteThresholdDp) {
                     mutableFloatStateOf(settings.swipeDeleteThresholdDp.toFloat())
@@ -123,7 +128,12 @@ fun SettingsScreen(
                     },
                     valueRange = 20f..120f,
                     steps = 9,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                    )
                 )
                 SettingsRow(
                     title = "Swipe gestures",
