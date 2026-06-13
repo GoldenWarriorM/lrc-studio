@@ -86,7 +86,7 @@ class EditorViewModel(
         if (song.audioPath.isNotEmpty()) {
             val playerState = audioPlayer.state.value
             if (playerState.audioPath != song.audioPath || playerState.state == PlaybackState.IDLE) {
-                scope.launch(Dispatchers.IO) {
+                scope.launch(Dispatchers.Main) {
                     audioPlayer.load(song.audioPath)
                 }
             }
@@ -332,8 +332,10 @@ class EditorViewModel(
                 composer = if (meta.composer.isNotBlank()) meta.composer else song.composer
             )
             songRepository.update(updated)
-            _state.value = _state.value.copy(song = updated)
-            audioPlayer.load(audioPath)
+            withContext(Dispatchers.Main) {
+                _state.value = _state.value.copy(song = updated)
+                audioPlayer.load(audioPath)
+            }
         }
     }
 
