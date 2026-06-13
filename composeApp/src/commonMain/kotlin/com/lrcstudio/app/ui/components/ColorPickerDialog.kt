@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -69,6 +71,7 @@ private fun Color.Companion.fromHsv(h: Float, s: Float, v: Float): Color {
     return Color(rgb[0], rgb[1], rgb[2])
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ColorPickerDialog(
     initialColor: Color,
@@ -117,7 +120,10 @@ fun ColorPickerDialog(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("Preview", style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             SchemeSwatch("Primary", scheme.primary)
                             SchemeSwatch("Secondary", scheme.secondary)
                             SchemeSwatch("Tertiary", scheme.tertiary)
