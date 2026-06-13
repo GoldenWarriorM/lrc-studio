@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 val LocalSnapSurface = staticCompositionLocalOf { Color.Unspecified }
 
@@ -69,40 +70,56 @@ fun LRCStudioTheme(
     content: @Composable () -> Unit
 ) {
     val targetScheme = if (darkTheme) {
+        val bg = accent.darkBackground
+        val sv = accent.darkSurfaceVariant
         baseDarkColorScheme.copy(
             primary = accent.darkPrimary,
             onPrimary = accent.darkOnPrimary,
             primaryContainer = accent.darkPrimaryContainer,
             onPrimaryContainer = accent.darkOnPrimaryContainer,
-            background = accent.darkBackground,
+            background = bg,
             onBackground = accent.darkOnBackground,
-            surface = accent.darkBackground,
+            surface = bg,
             onSurface = accent.darkOnBackground,
-            surfaceVariant = accent.darkSurfaceVariant,
+            surfaceVariant = sv,
             onSurfaceVariant = accent.darkOnSurfaceVariant,
             tertiaryContainer = accent.darkTertiaryContainer,
             onTertiaryContainer = accent.darkOnTertiaryContainer,
             outline = accent.darkOutline,
             outlineVariant = accent.darkOutlineVariant,
             surfaceTint = accent.darkPrimary,
+            surfaceContainerLow = lerp(bg, sv, 0.17f),
+            surfaceContainer = lerp(bg, sv, 0.25f),
+            surfaceContainerHigh = lerp(bg, sv, 0.46f),
+            surfaceContainerHighest = lerp(bg, sv, 0.67f),
+            surfaceBright = lerp(bg, sv, 0.75f),
+            surfaceDim = bg,
         )
     } else {
+        val bg = accent.lightBackground
+        val sv = accent.lightSurfaceVariant
         baseLightColorScheme.copy(
             primary = accent.lightPrimary,
             onPrimary = accent.lightOnPrimary,
             primaryContainer = accent.lightPrimaryContainer,
             onPrimaryContainer = accent.lightOnPrimaryContainer,
-            background = accent.lightBackground,
+            background = bg,
             onBackground = accent.lightOnBackground,
-            surface = accent.lightBackground,
+            surface = bg,
             onSurface = accent.lightOnBackground,
-            surfaceVariant = accent.lightSurfaceVariant,
+            surfaceVariant = sv,
             onSurfaceVariant = accent.lightOnSurfaceVariant,
             tertiaryContainer = accent.lightTertiaryContainer,
             onTertiaryContainer = accent.lightOnTertiaryContainer,
             outline = accent.lightOutline,
             outlineVariant = accent.lightOutlineVariant,
             surfaceTint = accent.lightPrimary,
+            surfaceContainerLow = lerp(bg, sv, 0.25f),
+            surfaceContainer = lerp(bg, sv, 0.5f),
+            surfaceContainerHigh = lerp(bg, sv, 0.75f),
+            surfaceContainerHighest = sv,
+            surfaceBright = bg,
+            surfaceDim = lerp(bg, sv, 0.85f),
         )
     }
 

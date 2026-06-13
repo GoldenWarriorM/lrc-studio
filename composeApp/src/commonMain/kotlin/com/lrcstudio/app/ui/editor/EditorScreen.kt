@@ -208,7 +208,11 @@ fun EditorScreen(
                         if (!isPreviewMode) {
                             FilledTonalIconButton(
                                 onClick = { showAddDialog = true },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add manually")
                             }
@@ -236,7 +240,11 @@ fun EditorScreen(
 
                         FilledTonalIconButton(
                             onClick = { autoScrollEnabled = !autoScrollEnabled },
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         ) {
                             Icon(
                                 if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
@@ -251,7 +259,11 @@ fun EditorScreen(
                         if (!isPreviewMode) {
                             FilledTonalIconButton(
                                 onClick = { showShiftDialog = true },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             ) {
                                 Icon(Icons.Default.Timer, contentDescription = "Batch shift")
                             }
