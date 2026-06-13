@@ -300,7 +300,8 @@ fun PlayerBar(
                         .padding(horizontal = 8.dp),
                     colors = SliderDefaults.colors(
                         thumbColor = primary,
-                        activeTrackColor = primary
+                        activeTrackColor = primary,
+                        inactiveTrackColor = surfaceVariant
                     )
                 )
 

@@ -1,15 +1,11 @@
 package com.lrcstudio.app
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -25,7 +21,9 @@ import com.lrcstudio.app.data.repository.SettingsRepository
 import com.lrcstudio.app.data.repository.SongRepository
 import com.lrcstudio.app.domain.usecase.SyncUseCase
 import com.lrcstudio.app.navigation.Screen
+import com.lrcstudio.app.theme.AccentPreset
 import com.lrcstudio.app.theme.LRCStudioTheme
+import com.lrcstudio.app.ui.components.parseHexColor
 import com.lrcstudio.app.ui.editor.EditorScreen
 import com.lrcstudio.app.ui.editor.EditorViewModel
 import com.lrcstudio.app.ui.SystemBackHandler
@@ -88,7 +86,11 @@ fun App(audioPlayer: AudioPlayer) {
         navDirection = NavDirection.Tab
     }
 
-    LRCStudioTheme(darkTheme = settings.isDarkTheme) {
+    LRCStudioTheme(
+        darkTheme = settings.isDarkTheme,
+        accent = AccentPreset.fromName(settings.accentColorName),
+        customAccent = settings.customAccentColor?.let { parseHexColor(it) }
+    ) {
 
         SystemBackHandler(
             enabled = currentScreen is Screen.Editor || currentScreen is Screen.DeveloperSettings,
@@ -116,43 +118,9 @@ fun App(audioPlayer: AudioPlayer) {
             val animDuration = if (settings.slowAnimations) 600 else 200
 
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                AnimatedContent(
-                    targetState = currentScreen,
-                    transitionSpec = {
-                        val duration = if (settings.slowAnimations) 600 else 200
-                        when (navDirection) {
-                            NavDirection.Tab -> {
-                                fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
-                            }
-                            NavDirection.Forward -> {
-                                (slideInHorizontally(
-                                    animationSpec = tween(duration),
-                                    initialOffsetX = { it / 8 }
-                                ) + fadeIn(tween(duration))) togetherWith
-                                    (slideOutHorizontally(
-                                        animationSpec = tween(duration),
-                                        targetOffsetX = { -it / 8 }
-                                    ) + fadeOut(tween(duration)))
-                            }
-                            NavDirection.Back -> {
-                                (slideInHorizontally(
-                                    animationSpec = tween(duration),
-                                    initialOffsetX = { -it / 8 }
-                                ) + fadeIn(tween(duration))) togetherWith
-                                    (slideOutHorizontally(
-                                        animationSpec = tween(duration),
-                                        targetOffsetX = { it / 8 }
-                                    ) + fadeOut(tween(duration)))
-                            }
-                            NavDirection.Immediate -> {
-                                fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                            }
-                        }
-                    },
-                    label = "screenTransition"
-                ) { screen ->
-                    when (screen) {
-                        is Screen.Library -> {
+                val screen = currentScreen
+                when (screen) {
+                    is Screen.Library -> {
                             LibraryScreen(
                                 viewModel = libraryViewModel,
                                 onSongClick = { song ->
@@ -222,7 +190,6 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             )
                         }
-                    }
                 }
 
                 AnimatedVisibility(
@@ -231,7 +198,16 @@ fun App(audioPlayer: AudioPlayer) {
                     exit = slideOutVertically(animationSpec = tween(animDuration), targetOffsetY = { it }) + fadeOut(tween(animDuration)),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ) {
+                        val navColors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         NavigationBarItem(
                             selected = currentScreen is Screen.Library,
                             onClick = {
@@ -242,7 +218,8 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             },
                             icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                            label = { Text("Library") }
+                            label = { Text("Library") },
+                            colors = navColors
                         )
                         NavigationBarItem(
                             selected = currentScreen is Screen.Settings,
@@ -254,7 +231,8 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             },
                             icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text("Settings") }
+                            label = { Text("Settings") },
+                            colors = navColors
                         )
                     }
                 }

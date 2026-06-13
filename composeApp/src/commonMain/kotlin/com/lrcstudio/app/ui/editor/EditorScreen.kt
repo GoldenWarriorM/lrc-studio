@@ -208,7 +208,11 @@ fun EditorScreen(
                         if (!isPreviewMode) {
                             FilledTonalIconButton(
                                 onClick = { showAddDialog = true },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Add manually")
                             }
@@ -221,7 +225,11 @@ fun EditorScreen(
                                 containerColor = if (isPreviewMode)
                                     MaterialTheme.colorScheme.error
                                 else
-                                    MaterialTheme.colorScheme.primaryContainer
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = if (isPreviewMode)
+                                    MaterialTheme.colorScheme.onError
+                                else
+                                    MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         ) {
                             Icon(
@@ -236,13 +244,17 @@ fun EditorScreen(
 
                         FilledTonalIconButton(
                             onClick = { autoScrollEnabled = !autoScrollEnabled },
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                contentColor = MaterialTheme.colorScheme.primary
+                            )
                         ) {
                             Icon(
                                 if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
                                 contentDescription = "Auto-scroll",
                                 tint = if (autoScrollEnabled)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                    MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.outline
                             )
@@ -251,7 +263,11 @@ fun EditorScreen(
                         if (!isPreviewMode) {
                             FilledTonalIconButton(
                                 onClick = { showShiftDialog = true },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(Icons.Default.Timer, contentDescription = "Batch shift")
                             }
@@ -1006,7 +1022,7 @@ private fun LyricLineCard(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                                 .padding(vertical = 4.dp)
                         ) {
                             Text(
@@ -1044,7 +1060,7 @@ private fun LyricLineCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                         ) {
                             IconButton(
                                 onClick = onTimestampMinus100,

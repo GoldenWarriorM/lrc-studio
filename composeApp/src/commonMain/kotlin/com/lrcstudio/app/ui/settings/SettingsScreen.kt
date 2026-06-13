@@ -1,17 +1,31 @@
 package com.lrcstudio.app.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
 import com.lrcstudio.app.data.repository.SettingsRepository
+import com.lrcstudio.app.theme.AccentPreset
+import com.lrcstudio.app.theme.LocalSnapSurface
+import com.lrcstudio.app.ui.components.ColorPickerDialog
+import com.lrcstudio.app.ui.components.parseHexColor
+import com.lrcstudio.app.ui.components.toHex
 import com.lrcstudio.app.util.fabBottomPadding
 import kotlinx.coroutines.launch
 
@@ -23,12 +37,17 @@ fun SettingsScreen(
 ) {
     val settings by settingsRepository.settings.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val topBarSurface = LocalSnapSurface.current
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = topBarSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
                 title = {
                     Text("Settings", style = MaterialTheme.typography.titleLarge)
                 }
@@ -49,11 +68,20 @@ fun SettingsScreen(
                     title = "Dark theme",
                     subtitle = "Use dark color scheme",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.isDarkTheme,
-                            onCheckedChange = { settingsRepository.toggleTheme() }
+                            onCheckedChange = { settingsRepository.setDarkTheme(it) }
                         )
                     }
+                )
+                AccentColorPicker(
+                    selected = AccentPreset.fromName(settings.accentColorName),
+                    customAccentColor = settings.customAccentColor,
+                    onSelect = {
+                        settingsRepository.setCustomAccentColor(null)
+                        settingsRepository.setAccentColor(it.label)
+                    },
+                    onCustomSelect = { settingsRepository.setCustomAccentColor(it) }
                 )
             }
 
@@ -81,7 +109,12 @@ fun SettingsScreen(
                     },
                     valueRange = 50f..150f,
                     steps = 9,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                    )
                 )
                 var deleteSlider by remember(settings.swipeDeleteThresholdDp) {
                     mutableFloatStateOf(settings.swipeDeleteThresholdDp.toFloat())
@@ -106,13 +139,18 @@ fun SettingsScreen(
                     },
                     valueRange = 20f..120f,
                     steps = 9,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                    )
                 )
                 SettingsRow(
                     title = "Swipe gestures",
                     subtitle = "Enable swipe-to-delete/clear/timestamp on lyric cards",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.swipeGesturesEnabled,
                             onCheckedChange = { settingsRepository.toggleSwipeGestures() }
                         )
@@ -125,7 +163,7 @@ fun SettingsScreen(
                     title = "Snap button",
                     subtitle = "Show snap-to-current-position button",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.showSnapButton,
                             onCheckedChange = { settingsRepository.toggleSnapButton() }
                         )
@@ -135,7 +173,7 @@ fun SettingsScreen(
                     title = "Compact controls",
                     subtitle = "Stack speed and timestamp buttons vertically",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.compactControls,
                             onCheckedChange = { settingsRepository.toggleCompactControls() }
                         )
@@ -145,7 +183,7 @@ fun SettingsScreen(
                     title = "Clear / Delete button",
                     subtitle = "Show clear-timestamp / delete-line button",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.showClearDeleteButton,
                             onCheckedChange = { settingsRepository.toggleClearDeleteButton() }
                         )
@@ -155,7 +193,7 @@ fun SettingsScreen(
                     title = "Instant delete",
                     subtitle = "Skip confirmation dialog when swiping to delete",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.swipeInstantDelete,
                             onCheckedChange = { settingsRepository.toggleSwipeInstantDelete() }
                         )
@@ -165,7 +203,7 @@ fun SettingsScreen(
                     title = "Undo / Redo buttons",
                     subtitle = "Show floating undo and redo buttons in the editor",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.showUndoRedo,
                             onCheckedChange = { settingsRepository.toggleUndoRedo() }
                         )
@@ -289,5 +327,166 @@ private fun SettingsRow(
             )
         }
         trailing()
+    }
+}
+
+@Composable
+private fun AccentColorPicker(
+    selected: AccentPreset,
+    customAccentColor: String?,
+    onSelect: (AccentPreset) -> Unit,
+    onCustomSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showColorPicker by remember { mutableStateOf(false) }
+    val customColor = remember(customAccentColor) {
+        customAccentColor?.let { parseHexColor(it) }
+    }
+    val isCustom = customAccentColor != null
+
+    Column(modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Text(
+            text = "Accent color",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AccentColorOption(AccentPreset.Purple, selected == AccentPreset.Purple && !isCustom, onClick = { onSelect(AccentPreset.Purple) })
+            AccentColorOption(AccentPreset.Blue, selected == AccentPreset.Blue && !isCustom, onClick = { onSelect(AccentPreset.Blue) })
+            AccentColorOption(AccentPreset.Green, selected == AccentPreset.Green && !isCustom, onClick = { onSelect(AccentPreset.Green) })
+            AccentColorOption(AccentPreset.Orange, selected == AccentPreset.Orange && !isCustom, onClick = { onSelect(AccentPreset.Orange) })
+            AccentColorOption(AccentPreset.Pink, selected == AccentPreset.Pink && !isCustom, onClick = { onSelect(AccentPreset.Pink) })
+            AccentColorOption(AccentPreset.Teal, selected == AccentPreset.Teal && !isCustom, onClick = { onSelect(AccentPreset.Teal) })
+            CustomColorOption(
+                color = customColor,
+                isSelected = isCustom,
+                onClick = { showColorPicker = true }
+            )
+        }
+    }
+
+    if (showColorPicker) {
+        ColorPickerDialog(
+            initialColor = customColor ?: AccentPreset.Purple.lightPrimary,
+            onColorSelected = { color ->
+                onCustomSelect(color.toHex())
+                showColorPicker = false
+            },
+            onDismiss = { showColorPicker = false }
+        )
+    }
+}
+
+@Composable
+private fun CustomColorOption(
+    color: Color?,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .let { mod ->
+                    if (color != null) mod.background(color)
+                    else mod.background(Color.Gray.copy(alpha = 0.3f))
+                }
+                .let { mod ->
+                    if (isSelected) mod.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    else mod.border(1.dp, (color ?: Color.Gray).copy(alpha = 0.3f), CircleShape)
+                }
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            } else if (color == null) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Custom color",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Custom",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun AccentSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = MaterialTheme.colorScheme.primary,
+            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    )
+}
+
+@Composable
+private fun AccentColorOption(
+    preset: AccentPreset,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(preset.lightPrimary)
+                .then(
+                    if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    else Modifier.border(1.dp, preset.lightPrimary.copy(alpha = 0.3f), CircleShape)
+                )
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = preset.lightOnPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = preset.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

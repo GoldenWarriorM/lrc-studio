@@ -48,7 +48,7 @@ fun DeveloperSettingsScreen(
                     title = "Debug borders",
                     subtitle = "Show borders around gradient overlay areas",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.showDebugBorders,
                             onCheckedChange = { settingsRepository.toggleShowDebugBorders() }
                         )
@@ -58,7 +58,7 @@ fun DeveloperSettingsScreen(
                     title = "Vibration toast",
                     subtitle = "Show a snackbar when haptic feedback triggers",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.showVibrationToast,
                             onCheckedChange = { settingsRepository.toggleVibrationToast() }
                         )
@@ -71,7 +71,7 @@ fun DeveloperSettingsScreen(
                     title = "Slow animations",
                     subtitle = "Slow down all screen transitions by 3x",
                     trailing = {
-                        Switch(
+                        AccentSwitch(
                             checked = settings.slowAnimations,
                             onCheckedChange = { settingsRepository.toggleSlowAnimations() }
                         )
