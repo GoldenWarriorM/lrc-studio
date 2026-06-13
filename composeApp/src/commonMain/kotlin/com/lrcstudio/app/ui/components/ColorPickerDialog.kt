@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -237,6 +238,9 @@ private fun HueSlider(
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
         label = "hueThumb"
     )
+    val density = LocalDensity.current
+    val outerBase = with(density) { 10.dp.toPx() }
+    val innerBase = with(density) { 8.dp.toPx() }
 
     Box(
         modifier = modifier
@@ -276,8 +280,8 @@ private fun HueSlider(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val ix = (hue / 360f) * size.width
             val cy = size.height / 2f - size.height * dragProgress
-            val outerR = 10f + 10f * dragProgress
-            val innerR = 8f + 8f * dragProgress
+            val outerR = outerBase + outerBase * dragProgress
+            val innerR = innerBase + innerBase * dragProgress
             drawCircle(color = Color.Black.copy(alpha = 0.4f), radius = outerR, center = Offset(ix, cy))
             drawCircle(color = Color.fromHsv(hue, 1f, 1f), radius = innerR, center = Offset(ix, cy))
         }
@@ -298,6 +302,9 @@ private fun SaturationPicker(
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
         label = "satThumb"
     )
+    val density = LocalDensity.current
+    val outerBase = with(density) { 10.dp.toPx() }
+    val innerBase = with(density) { 8.dp.toPx() }
 
     Box(
         modifier = modifier
@@ -333,8 +340,8 @@ private fun SaturationPicker(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val ix = saturation * size.width
             val cy = size.height / 2f - size.height * dragProgress
-            val outerR = 10f + 10f * dragProgress
-            val innerR = 8f + 8f * dragProgress
+            val outerR = outerBase + outerBase * dragProgress
+            val innerR = innerBase + innerBase * dragProgress
             drawCircle(color = Color.Black.copy(alpha = 0.4f), radius = outerR, center = Offset(ix, cy))
             drawCircle(color = Color.fromHsv(hue, saturation, 1f), radius = innerR, center = Offset(ix, cy))
         }
