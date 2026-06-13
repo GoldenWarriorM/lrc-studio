@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.model.Song
+import com.lrcstudio.app.theme.LocalSnapSurface
 import com.lrcstudio.app.util.fabBottomPadding
 
 @OptIn(ExperimentalMaterial3Api::class)

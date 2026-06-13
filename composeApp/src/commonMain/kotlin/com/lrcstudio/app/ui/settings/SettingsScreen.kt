@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
 import com.lrcstudio.app.data.repository.SettingsRepository
 import com.lrcstudio.app.theme.AccentPreset
+import com.lrcstudio.app.theme.LocalSnapSurface
 import com.lrcstudio.app.util.fabBottomPadding
 import kotlinx.coroutines.launch
 
@@ -30,12 +31,17 @@ fun SettingsScreen(
 ) {
     val settings by settingsRepository.settings.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val topBarSurface = LocalSnapSurface.current
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = topBarSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
                 title = {
                     Text("Settings", style = MaterialTheme.typography.titleLarge)
                 }
@@ -58,7 +64,7 @@ fun SettingsScreen(
                     trailing = {
                         AccentSwitch(
                             checked = settings.isDarkTheme,
-                            onCheckedChange = { settingsRepository.toggleTheme() }
+                            onCheckedChange = { settingsRepository.setDarkTheme(it) }
                         )
                     }
                 )
@@ -327,6 +333,7 @@ private fun AccentColorPicker(
             AccentColorOption(AccentPreset.Orange, selected == AccentPreset.Orange, onClick = { onSelect(AccentPreset.Orange) })
             AccentColorOption(AccentPreset.Pink, selected == AccentPreset.Pink, onClick = { onSelect(AccentPreset.Pink) })
             AccentColorOption(AccentPreset.Teal, selected == AccentPreset.Teal, onClick = { onSelect(AccentPreset.Teal) })
+            AccentColorOption(AccentPreset.TestWhite, selected == AccentPreset.TestWhite, onClick = { onSelect(AccentPreset.TestWhite) })
         }
     }
 }

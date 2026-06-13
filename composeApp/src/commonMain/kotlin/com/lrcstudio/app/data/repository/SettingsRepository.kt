@@ -36,9 +36,9 @@ class SettingsRepository(private val storageDir: String) {
         loadFromDisk()
     }
 
-    fun toggleTheme() {
+    fun setDarkTheme(enabled: Boolean) {
         _settings.value = _settings.value.copy(
-            isDarkTheme = !_settings.value.isDarkTheme
+            isDarkTheme = enabled
         )
         saveToDisk()
     }

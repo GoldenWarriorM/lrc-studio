@@ -7,8 +7,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+
+val LocalSnapSurface = staticCompositionLocalOf { Color.Unspecified }
 
 private val baseLightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
@@ -111,6 +115,7 @@ fun LRCStudioTheme(
     val primaryContainer by animateColorAsState(targetScheme.primaryContainer, normalSpec, label = "primaryContainer")
     val onPrimaryContainer by animateColorAsState(targetScheme.onPrimaryContainer, snapSpec, label = "onPrimaryContainer")
     val surface by animateColorAsState(targetScheme.surface, normalSpec, label = "surface")
+    val snapSurface by animateColorAsState(targetScheme.surface, snapSpec, label = "snapSurface")
     val onSurface by animateColorAsState(targetScheme.onSurface, snapSpec, label = "onSurface")
     val surfaceVariant by animateColorAsState(targetScheme.surfaceVariant, normalSpec, label = "surfaceVariant")
     val onSurfaceVariant by animateColorAsState(targetScheme.onSurfaceVariant, snapSpec, label = "onSurfaceVariant")
@@ -120,25 +125,27 @@ fun LRCStudioTheme(
     val outline by animateColorAsState(targetScheme.outline, snapSpec, label = "outline")
     val outlineVariant by animateColorAsState(targetScheme.outlineVariant, snapSpec, label = "outlineVariant")
 
-    MaterialTheme(
-        colorScheme = targetScheme.copy(
-            primary = primary,
-            onPrimary = onPrimary,
-            primaryContainer = primaryContainer,
-            onPrimaryContainer = onPrimaryContainer,
-            background = bg,
-            onBackground = onBg,
-            surface = surface,
-            onSurface = onSurface,
-            surfaceVariant = surfaceVariant,
-            onSurfaceVariant = onSurfaceVariant,
-            tertiaryContainer = tertiaryContainer,
-            onTertiaryContainer = onTertiaryContainer,
-            outline = outline,
-            outlineVariant = outlineVariant,
-            surfaceTint = surfaceTint,
-        ),
-        typography = AppTypography,
-        content = content
-    )
+    CompositionLocalProvider(LocalSnapSurface provides snapSurface) {
+        MaterialTheme(
+            colorScheme = targetScheme.copy(
+                primary = primary,
+                onPrimary = onPrimary,
+                primaryContainer = primaryContainer,
+                onPrimaryContainer = onPrimaryContainer,
+                background = bg,
+                onBackground = onBg,
+                surface = surface,
+                onSurface = onSurface,
+                surfaceVariant = surfaceVariant,
+                onSurfaceVariant = onSurfaceVariant,
+                tertiaryContainer = tertiaryContainer,
+                onTertiaryContainer = onTertiaryContainer,
+                outline = outline,
+                outlineVariant = outlineVariant,
+                surfaceTint = surfaceTint,
+            ),
+            typography = AppTypography,
+            content = content
+        )
+    }
 }

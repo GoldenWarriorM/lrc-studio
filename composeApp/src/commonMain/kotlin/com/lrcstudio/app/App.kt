@@ -1,15 +1,11 @@
 package com.lrcstudio.app
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -120,43 +116,9 @@ fun App(audioPlayer: AudioPlayer) {
             val animDuration = if (settings.slowAnimations) 600 else 200
 
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                AnimatedContent(
-                    targetState = currentScreen,
-                    transitionSpec = {
-                        val duration = if (settings.slowAnimations) 600 else 200
-                        when (navDirection) {
-                            NavDirection.Tab -> {
-                                fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
-                            }
-                            NavDirection.Forward -> {
-                                (slideInHorizontally(
-                                    animationSpec = tween(duration),
-                                    initialOffsetX = { it / 8 }
-                                ) + fadeIn(tween(duration))) togetherWith
-                                    (slideOutHorizontally(
-                                        animationSpec = tween(duration),
-                                        targetOffsetX = { -it / 8 }
-                                    ) + fadeOut(tween(duration)))
-                            }
-                            NavDirection.Back -> {
-                                (slideInHorizontally(
-                                    animationSpec = tween(duration),
-                                    initialOffsetX = { -it / 8 }
-                                ) + fadeIn(tween(duration))) togetherWith
-                                    (slideOutHorizontally(
-                                        animationSpec = tween(duration),
-                                        targetOffsetX = { it / 8 }
-                                    ) + fadeOut(tween(duration)))
-                            }
-                            NavDirection.Immediate -> {
-                                fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                            }
-                        }
-                    },
-                    label = "screenTransition"
-                ) { screen ->
-                    when (screen) {
-                        is Screen.Library -> {
+                val screen = currentScreen
+                when (screen) {
+                    is Screen.Library -> {
                             LibraryScreen(
                                 viewModel = libraryViewModel,
                                 onSongClick = { song ->
@@ -226,7 +188,6 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                             )
                         }
-                    }
                 }
 
                 AnimatedVisibility(
