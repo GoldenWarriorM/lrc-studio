@@ -3,6 +3,7 @@ package com.lrcstudio.app.theme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -63,13 +64,53 @@ private val baseDarkColorScheme = darkColorScheme(
     outlineVariant = md_theme_dark_outlineVariant,
 )
 
+private fun customAccentScheme(seed: Color, isDark: Boolean): ColorScheme {
+    val base = if (isDark) baseDarkColorScheme else baseLightColorScheme
+    val s = generateAccentScheme(seed, isDark)
+    val bg = s.background
+    val sv = s.surfaceVariant
+
+    return base.copy(
+        primary = s.primary,
+        onPrimary = s.onPrimary,
+        primaryContainer = s.primaryContainer,
+        onPrimaryContainer = s.onPrimaryContainer,
+        secondary = s.secondary,
+        onSecondary = s.onSecondary,
+        secondaryContainer = s.secondaryContainer,
+        onSecondaryContainer = s.onSecondaryContainer,
+        tertiary = s.tertiary,
+        onTertiary = s.onTertiary,
+        tertiaryContainer = s.tertiaryContainer,
+        onTertiaryContainer = s.onTertiaryContainer,
+        background = bg,
+        onBackground = s.onBackground,
+        surface = bg,
+        onSurface = s.onSurface,
+        surfaceVariant = sv,
+        onSurfaceVariant = s.onSurfaceVariant,
+        outline = s.outline,
+        outlineVariant = s.outlineVariant,
+        surfaceTint = s.primary,
+        surfaceContainerLow = lerp(bg, sv, if (isDark) 0.17f else 0.25f),
+        surfaceContainer = lerp(bg, sv, if (isDark) 0.25f else 0.5f),
+        surfaceContainerHigh = lerp(bg, sv, if (isDark) 0.46f else 0.75f),
+        surfaceContainerHighest = if (isDark) lerp(bg, sv, 0.67f) else sv,
+        surfaceBright = if (isDark) lerp(bg, sv, 0.75f) else bg,
+        surfaceDim = if (isDark) bg else lerp(bg, sv, 0.85f),
+    )
+}
+
 @Composable
 fun LRCStudioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     accent: AccentPreset = AccentPreset.Purple,
+    customAccent: Color? = null,
     content: @Composable () -> Unit
 ) {
-    val targetScheme = if (darkTheme) {
+    val targetScheme = if (customAccent != null) {
+        customAccentScheme(customAccent, darkTheme)
+    } else if (darkTheme) {
         val bg = accent.darkBackground
         val sv = accent.darkSurfaceVariant
         baseDarkColorScheme.copy(

@@ -23,6 +23,7 @@ import com.lrcstudio.app.domain.usecase.SyncUseCase
 import com.lrcstudio.app.navigation.Screen
 import com.lrcstudio.app.theme.AccentPreset
 import com.lrcstudio.app.theme.LRCStudioTheme
+import com.lrcstudio.app.ui.components.parseHexColor
 import com.lrcstudio.app.ui.editor.EditorScreen
 import com.lrcstudio.app.ui.editor.EditorViewModel
 import com.lrcstudio.app.ui.SystemBackHandler
@@ -87,7 +88,8 @@ fun App(audioPlayer: AudioPlayer) {
 
     LRCStudioTheme(
         darkTheme = settings.isDarkTheme,
-        accent = AccentPreset.fromName(settings.accentColorName)
+        accent = AccentPreset.fromName(settings.accentColorName),
+        customAccent = settings.customAccentColor?.let { parseHexColor(it) }
     ) {
 
         SystemBackHandler(

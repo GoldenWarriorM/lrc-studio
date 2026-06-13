@@ -10,16 +10,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
 import com.lrcstudio.app.data.repository.SettingsRepository
 import com.lrcstudio.app.theme.AccentPreset
 import com.lrcstudio.app.theme.LocalSnapSurface
+import com.lrcstudio.app.ui.components.ColorPickerDialog
+import com.lrcstudio.app.ui.components.parseHexColor
+import com.lrcstudio.app.ui.components.toHex
 import com.lrcstudio.app.util.fabBottomPadding
 import kotlinx.coroutines.launch
 
@@ -70,7 +76,12 @@ fun SettingsScreen(
                 )
                 AccentColorPicker(
                     selected = AccentPreset.fromName(settings.accentColorName),
-                    onSelect = { settingsRepository.setAccentColor(it.label) }
+                    customAccentColor = settings.customAccentColor,
+                    onSelect = {
+                        settingsRepository.setCustomAccentColor(null)
+                        settingsRepository.setAccentColor(it.label)
+                    },
+                    onCustomSelect = { settingsRepository.setCustomAccentColor(it) }
                 )
             }
 
@@ -322,9 +333,17 @@ private fun SettingsRow(
 @Composable
 private fun AccentColorPicker(
     selected: AccentPreset,
+    customAccentColor: String?,
     onSelect: (AccentPreset) -> Unit,
+    onCustomSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showColorPicker by remember { mutableStateOf(false) }
+    val customColor = remember(customAccentColor) {
+        customAccentColor?.let { parseHexColor(it) }
+    }
+    val isCustom = customAccentColor != null
+
     Column(modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
         Text(
             text = "Accent color",
@@ -337,13 +356,80 @@ private fun AccentColorPicker(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AccentColorOption(AccentPreset.Purple, selected == AccentPreset.Purple, onClick = { onSelect(AccentPreset.Purple) })
-            AccentColorOption(AccentPreset.Blue, selected == AccentPreset.Blue, onClick = { onSelect(AccentPreset.Blue) })
-            AccentColorOption(AccentPreset.Green, selected == AccentPreset.Green, onClick = { onSelect(AccentPreset.Green) })
-            AccentColorOption(AccentPreset.Orange, selected == AccentPreset.Orange, onClick = { onSelect(AccentPreset.Orange) })
-            AccentColorOption(AccentPreset.Pink, selected == AccentPreset.Pink, onClick = { onSelect(AccentPreset.Pink) })
-            AccentColorOption(AccentPreset.Teal, selected == AccentPreset.Teal, onClick = { onSelect(AccentPreset.Teal) })
+            AccentColorOption(AccentPreset.Purple, selected == AccentPreset.Purple && !isCustom, onClick = { onSelect(AccentPreset.Purple) })
+            AccentColorOption(AccentPreset.Blue, selected == AccentPreset.Blue && !isCustom, onClick = { onSelect(AccentPreset.Blue) })
+            AccentColorOption(AccentPreset.Green, selected == AccentPreset.Green && !isCustom, onClick = { onSelect(AccentPreset.Green) })
+            AccentColorOption(AccentPreset.Orange, selected == AccentPreset.Orange && !isCustom, onClick = { onSelect(AccentPreset.Orange) })
+            AccentColorOption(AccentPreset.Pink, selected == AccentPreset.Pink && !isCustom, onClick = { onSelect(AccentPreset.Pink) })
+            AccentColorOption(AccentPreset.Teal, selected == AccentPreset.Teal && !isCustom, onClick = { onSelect(AccentPreset.Teal) })
+            CustomColorOption(
+                color = customColor,
+                isSelected = isCustom,
+                onClick = { showColorPicker = true }
+            )
         }
+    }
+
+    if (showColorPicker) {
+        ColorPickerDialog(
+            initialColor = customColor ?: AccentPreset.Purple.lightPrimary,
+            onColorSelected = { color ->
+                onCustomSelect(color.toHex())
+                showColorPicker = false
+            },
+            onDismiss = { showColorPicker = false }
+        )
+    }
+}
+
+@Composable
+private fun CustomColorOption(
+    color: Color?,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .let { mod ->
+                    if (color != null) mod.background(color)
+                    else mod.background(Color.Gray.copy(alpha = 0.3f))
+                }
+                .let { mod ->
+                    if (isSelected) mod.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    else mod.border(1.dp, (color ?: Color.Gray).copy(alpha = 0.3f), CircleShape)
+                }
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            } else if (color == null) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Custom color",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Custom",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

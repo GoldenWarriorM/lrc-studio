@@ -24,7 +24,8 @@ data class AppSettings(
     val slowAnimations: Boolean = false,
     val showUndoRedo: Boolean = true,
     val showVibrationToast: Boolean = false,
-    val accentColorName: String = "Purple"
+    val accentColorName: String = "Purple",
+    val customAccentColor: String? = null
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -130,6 +131,14 @@ class SettingsRepository(private val storageDir: String) {
     fun setAccentColor(name: String) {
         _settings.value = _settings.value.copy(
             accentColorName = name
+        )
+        saveToDisk()
+    }
+
+    fun setCustomAccentColor(hex: String?) {
+        _settings.value = _settings.value.copy(
+            customAccentColor = hex,
+            accentColorName = if (hex != null) "Custom" else "Purple"
         )
         saveToDisk()
     }
