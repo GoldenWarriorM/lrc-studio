@@ -333,7 +333,6 @@ private fun AccentColorPicker(
             AccentColorOption(AccentPreset.Orange, selected == AccentPreset.Orange, onClick = { onSelect(AccentPreset.Orange) })
             AccentColorOption(AccentPreset.Pink, selected == AccentPreset.Pink, onClick = { onSelect(AccentPreset.Pink) })
             AccentColorOption(AccentPreset.Teal, selected == AccentPreset.Teal, onClick = { onSelect(AccentPreset.Teal) })
-            AccentColorOption(AccentPreset.TestWhite, selected == AccentPreset.TestWhite, onClick = { onSelect(AccentPreset.TestWhite) })
         }
     }
 }
