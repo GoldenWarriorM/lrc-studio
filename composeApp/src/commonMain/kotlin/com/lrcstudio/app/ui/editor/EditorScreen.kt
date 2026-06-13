@@ -225,11 +225,11 @@ fun EditorScreen(
                                 containerColor = if (isPreviewMode)
                                     MaterialTheme.colorScheme.error
                                 else
-                                    MaterialTheme.colorScheme.primaryContainer,
+                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
                                 contentColor = if (isPreviewMode)
                                     MaterialTheme.colorScheme.onError
                                 else
-                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                    MaterialTheme.colorScheme.secondary
                             )
                         ) {
                             Icon(
@@ -238,7 +238,7 @@ fun EditorScreen(
                                 tint = if (isPreviewMode)
                                     MaterialTheme.colorScheme.onError
                                 else
-                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                    MaterialTheme.colorScheme.secondary
                             )
                         }
 
