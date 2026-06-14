@@ -27,24 +27,44 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
                 try {
                     val treeUri = Uri.parse(directory)
                     val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-                    val insertUri = DocumentsContract.buildDocumentUri(
-                        treeUri.authority, "$treeDocId/children"
+                    val fileDocId = "$treeDocId/$defaultName"
+                    val fileUri = DocumentsContract.buildDocumentUri(
+                        treeUri.authority, fileDocId
                     )
-                    val values = ContentValues().apply {
-                        put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
-                        put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
+                    var out = context.contentResolver.openOutputStream(fileUri)
+                    if (out == null) {
+                        out = try {
+                            val created = DocumentsContract.createDocument(
+                                context.contentResolver, treeUri,
+                                "text/plain", defaultName
+                            )
+                            if (created != null)
+                                context.contentResolver.openOutputStream(created)
+                            else null
+                        } catch (_: IllegalArgumentException) {
+                            val values = ContentValues().apply {
+                                put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
+                                put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
+                            }
+                            val insertUri = DocumentsContract.buildDocumentUri(
+                                treeUri.authority, "$treeDocId/children"
+                            )
+                            val created = context.contentResolver.insert(insertUri, values)
+                            if (created != null)
+                                context.contentResolver.openOutputStream(created)
+                            else null
+                        }
                     }
-                    val created = context.contentResolver.insert(insertUri, values)
-                    if (created != null) {
-                        context.contentResolver.openOutputStream(created)?.use { output ->
+                    if (out != null) {
+                        out.use { output ->
                             output.write(content.toByteArray(Charsets.UTF_8))
                         }
                         onSuccess()
                     } else {
-                        onError("Failed to create file")
+                        onError("Failed to write file")
                     }
                 } catch (e: Exception) {
-                    onError(e.message ?: "Failed to save")
+                    onError("Save error: ${e.message}")
                 }
             }
         }
