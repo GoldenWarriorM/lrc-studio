@@ -30,8 +30,17 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
                         put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
                         put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
                     }
-                    val childrenUri = Uri.withAppendedPath(treeUri, "children")
-                    val created = context.contentResolver.insert(childrenUri, values)
+                    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+                    val docUri = treeUri.buildUpon().appendEncodedPath("document")
+                        .appendEncodedPath(treeDocId).build()
+                    val childrenUri = docUri.buildUpon().appendEncodedPath("children").build()
+                    var created = try {
+                        context.contentResolver.insert(childrenUri, values)
+                    } catch (_: SecurityException) {
+                        context.contentResolver.insert(
+                            treeUri.buildUpon().appendEncodedPath("children").build(), values
+                        )
+                    }
                     if (created != null) {
                         context.contentResolver.openOutputStream(created)?.use { output ->
                             output.write(content.toByteArray(Charsets.UTF_8))
