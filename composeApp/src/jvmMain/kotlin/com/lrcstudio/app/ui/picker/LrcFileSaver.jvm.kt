@@ -10,7 +10,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-actual fun rememberLrcFileSaveLauncher(defaultName: String): (content: String) -> Unit {
+actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?): (content: String) -> Unit {
+    if (directory != null) {
+        return remember(defaultName, directory) {
+            { content: String ->
+                java.io.File(directory, defaultName).writeText(content, Charsets.UTF_8)
+            }
+        }
+    }
     val scope = rememberCoroutineScope()
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     return remember(defaultName) {

@@ -1,6 +1,7 @@
 package com.lrcstudio.app.ui.picker
 
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -15,8 +16,26 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 @Composable
-actual fun rememberLrcFileSaveLauncher(defaultName: String): (content: String) -> Unit {
+actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?): (content: String) -> Unit {
     val context = LocalContext.current
+    if (directory != null) {
+        return remember(defaultName, directory) {
+            { content: String ->
+                try {
+                    val treeUri = Uri.parse(directory)
+                    val docUri = DocumentsContract.createDocument(
+                        context.contentResolver, treeUri,
+                        "text/plain", defaultName
+                    )
+                    if (docUri != null) {
+                        context.contentResolver.openOutputStream(docUri)?.use { output ->
+                            output.write(content.toByteArray(Charsets.UTF_8))
+                        }
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+    }
     val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
     var pendingContent by remember { mutableStateOf<String?>(null) }
 

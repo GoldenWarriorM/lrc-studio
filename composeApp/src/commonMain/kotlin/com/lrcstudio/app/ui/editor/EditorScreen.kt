@@ -74,7 +74,8 @@ fun EditorScreen(
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
     showUndoRedo: Boolean = true,
-    showVibrationToast: Boolean = false
+    showVibrationToast: Boolean = false,
+    lrcSaveDirectory: String? = null
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -98,7 +99,8 @@ fun EditorScreen(
         label = "timeScale"
     )
     val saveLrcFile = rememberLrcFileSaveLauncher(
-        defaultName = "${state.song?.title ?: "lyrics"}.lrc"
+        defaultName = "${state.song?.title ?: "lyrics"}.lrc",
+        directory = lrcSaveDirectory
     )
 
     val displayItems = remember(state.lyrics, state.editingLineIndex) {

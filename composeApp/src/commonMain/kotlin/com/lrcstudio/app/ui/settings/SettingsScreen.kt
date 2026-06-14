@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
 import com.lrcstudio.app.data.repository.SettingsRepository
@@ -28,6 +29,7 @@ import com.lrcstudio.app.theme.LocalSnapSurface
 import com.lrcstudio.app.ui.components.ColorPickerDialog
 import com.lrcstudio.app.ui.components.parseHexColor
 import com.lrcstudio.app.ui.components.toHex
+import com.lrcstudio.app.ui.picker.rememberDirectoryPickerLauncher
 import com.lrcstudio.app.util.fabBottomPadding
 import kotlinx.coroutines.launch
 
@@ -211,6 +213,48 @@ fun SettingsScreen(
                         )
                     }
                 )
+            }
+
+            SettingsSection("Export") {
+                val pickDirectory = rememberDirectoryPickerLauncher { path ->
+                    if (path != null) {
+                        settingsRepository.setLrcSaveDirectory(path)
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "LRC save folder",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = settings.lrcSaveDirectory
+                                ?: "Not set — will ask each time",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (settings.lrcSaveDirectory != null) {
+                            TextButton(onClick = { settingsRepository.setLrcSaveDirectory(null) }) {
+                                Text("Clear")
+                            }
+                        }
+                        Button(
+                            onClick = { pickDirectory() },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Choose")
+                        }
+                    }
+                }
             }
 
             SettingsSection("About") {
