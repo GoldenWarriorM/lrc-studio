@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.picker
 
+import android.content.ContentValues
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,14 +26,12 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
             { content: String ->
                 try {
                     val treeUri = Uri.parse(directory)
-                    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-                    val docUri = DocumentsContract.buildDocumentUri(
-                        treeUri.authority, treeDocId
-                    )
-                    val created = DocumentsContract.createDocument(
-                        context.contentResolver, docUri,
-                        "text/plain", defaultName
-                    )
+                    val values = ContentValues().apply {
+                        put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
+                        put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
+                    }
+                    val childrenUri = Uri.withAppendedPath(treeUri, "children")
+                    val created = context.contentResolver.insert(childrenUri, values)
                     if (created != null) {
                         context.contentResolver.openOutputStream(created)?.use { output ->
                             output.write(content.toByteArray(Charsets.UTF_8))
