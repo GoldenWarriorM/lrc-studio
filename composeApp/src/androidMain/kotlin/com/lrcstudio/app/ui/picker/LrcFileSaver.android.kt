@@ -1,6 +1,5 @@
 package com.lrcstudio.app.ui.picker
 
-import android.content.ContentValues
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,19 +25,16 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
             { content: String ->
                 try {
                     val treeUri = Uri.parse(directory)
-                    val values = ContentValues().apply {
-                        put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
-                        put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
-                    }
                     val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-                    val docUri = treeUri.buildUpon().appendEncodedPath("document")
-                        .appendEncodedPath(treeDocId).build()
-                    val childrenUri = docUri.buildUpon().appendEncodedPath("children").build()
-                    var created = try {
-                        context.contentResolver.insert(childrenUri, values)
-                    } catch (_: SecurityException) {
-                        context.contentResolver.insert(
-                            treeUri.buildUpon().appendEncodedPath("children").build(), values
+                    val docUri = DocumentsContract.buildDocumentUri(treeUri.authority, treeDocId)
+                    var created: Uri? = null
+                    try {
+                        created = DocumentsContract.createDocument(
+                            context.contentResolver, treeUri, "text/plain", defaultName
+                        )
+                    } catch (_: IllegalArgumentException) {
+                        created = DocumentsContract.createDocument(
+                            context.contentResolver, docUri, "text/plain", defaultName
                         )
                     }
                     if (created != null) {
@@ -47,7 +43,7 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
                         }
                         onSuccess()
                     } else {
-                        onError("Failed to create file in selected directory")
+                        onError("Failed to create file")
                     }
                 } catch (e: Exception) {
                     onError(e.message ?: "Failed to save")
