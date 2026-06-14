@@ -15,6 +15,10 @@ actual fun writeTextFile(path: String, content: String) {
     File(path).writeText(content)
 }
 
+actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean {
+    return File(directory, fileName).exists()
+}
+
 @Composable
 actual fun rememberStorageDir(): String {
     return remember {

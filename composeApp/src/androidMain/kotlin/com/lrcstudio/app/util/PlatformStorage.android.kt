@@ -16,6 +16,8 @@ actual fun writeTextFile(path: String, content: String) {
     File(path).writeText(content)
 }
 
+actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean = false
+
 @Composable
 actual fun rememberStorageDir(): String {
     val context = LocalContext.current

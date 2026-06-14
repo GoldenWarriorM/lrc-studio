@@ -8,15 +8,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
-actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?): (content: String) -> Unit {
+actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, onSuccess: () -> Unit, onError: (String) -> Unit): (content: String) -> Unit {
     val context = LocalContext.current
     if (directory != null) {
         return remember(defaultName, directory) {
@@ -32,12 +34,17 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?):
                             output.write(content.toByteArray(Charsets.UTF_8))
                         }
                     }
-                } catch (_: Exception) { }
+                    onSuccess()
+                } catch (e: Exception) {
+                    onError(e.message ?: "Failed to save")
+                }
             }
         }
     }
     val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
     var pendingContent by remember { mutableStateOf<String?>(null) }
+    val currentOnSuccess = rememberUpdatedState(onSuccess)
+    val currentOnError = rememberUpdatedState(onError)
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/plain")
@@ -46,8 +53,13 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?):
         pendingContent = null
         if (uri != null) {
             scope.launch(Dispatchers.IO) {
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    output.write(content.toByteArray(Charsets.UTF_8))
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        output.write(content.toByteArray(Charsets.UTF_8))
+                    }
+                    withContext(Dispatchers.Main) { currentOnSuccess.value() }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) { currentOnError.value(e.message ?: "Failed to save") }
                 }
             }
         }
