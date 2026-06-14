@@ -25,26 +25,17 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
             { content: String ->
                 try {
                     val treeUri = Uri.parse(directory)
-                    val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, defaultName)
-                    var uri = docUri
-                    var out = context.contentResolver.openOutputStream(docUri)
-                    if (out == null) {
-                        val created = DocumentsContract.createDocument(
-                            context.contentResolver, treeUri,
-                            "text/plain", defaultName
-                        )
-                        if (created != null) {
-                            uri = created
-                            out = context.contentResolver.openOutputStream(created)
-                        }
-                    }
-                    if (out != null) {
-                        out.use { output ->
+                    val created = DocumentsContract.createDocument(
+                        context.contentResolver, treeUri,
+                        "text/plain", defaultName
+                    )
+                    if (created != null) {
+                        context.contentResolver.openOutputStream(created)?.use { output ->
                             output.write(content.toByteArray(Charsets.UTF_8))
                         }
                         onSuccess()
                     } else {
-                        onError("Failed to write to $uri")
+                        onError("Failed to create file in selected directory")
                     }
                 } catch (e: Exception) {
                     onError(e.message ?: "Failed to save")
