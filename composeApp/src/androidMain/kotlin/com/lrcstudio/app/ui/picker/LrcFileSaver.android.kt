@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.picker
 
+import android.content.ContentValues
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,17 +27,14 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
                 try {
                     val treeUri = Uri.parse(directory)
                     val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-                    val docUri = DocumentsContract.buildDocumentUri(treeUri.authority, treeDocId)
-                    var created: Uri? = null
-                    try {
-                        created = DocumentsContract.createDocument(
-                            context.contentResolver, treeUri, "text/plain", defaultName
-                        )
-                    } catch (_: IllegalArgumentException) {
-                        created = DocumentsContract.createDocument(
-                            context.contentResolver, docUri, "text/plain", defaultName
-                        )
+                    val insertUri = DocumentsContract.buildDocumentUri(
+                        treeUri.authority, "$treeDocId/children"
+                    )
+                    val values = ContentValues().apply {
+                        put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
+                        put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
                     }
+                    val created = context.contentResolver.insert(insertUri, values)
                     if (created != null) {
                         context.contentResolver.openOutputStream(created)?.use { output ->
                             output.write(content.toByteArray(Charsets.UTF_8))
