@@ -25,8 +25,12 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
             { content: String ->
                 try {
                     val treeUri = Uri.parse(directory)
+                    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+                    val docUri = DocumentsContract.buildDocumentUri(
+                        treeUri.authority, treeDocId
+                    )
                     val created = DocumentsContract.createDocument(
-                        context.contentResolver, treeUri,
+                        context.contentResolver, docUri,
                         "text/plain", defaultName
                     )
                     if (created != null) {
