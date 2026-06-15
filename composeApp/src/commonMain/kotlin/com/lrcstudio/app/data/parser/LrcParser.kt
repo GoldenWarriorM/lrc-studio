@@ -39,7 +39,7 @@ object LrcParser {
         val sorted = lyrics.sortedBy { it.timestamp }
         for (line in sorted) {
             if (line.timestamp == 0L) continue
-            val ts = line.timestampFormatted
+            val ts = line.timestampLrcFormatted
             sb.appendLine("[$ts]${line.text}")
         }
         return sb.toString().trimEnd()
@@ -52,7 +52,7 @@ object LrcParser {
         val sorted = lyrics.sortedBy { it.timestamp }
         for (line in sorted) {
             if (line.timestamp == 0L) continue
-            val ts = line.timestampFormatted
+            val ts = line.timestampLrcFormatted
             sb.appendLine("[$ts]${line.text}")
         }
         return sb.toString().trimEnd()
