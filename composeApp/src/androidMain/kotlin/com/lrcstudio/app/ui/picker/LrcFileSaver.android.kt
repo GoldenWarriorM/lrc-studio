@@ -1,7 +1,10 @@
 package com.lrcstudio.app.ui.picker
 
 import android.content.ContentValues
+import android.content.Context
 import android.net.Uri
+import android.os.Environment
+import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, onSuccess: () -> Unit, onError: (String) -> Unit): (content: String) -> Unit {
@@ -78,7 +83,7 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
 }
 
 private fun tryWriteDocUri(
-    context: android.content.Context,
+    context: Context,
     treeUri: Uri,
     treeDocId: String,
     fileUri: Uri,
@@ -86,19 +91,18 @@ private fun tryWriteDocUri(
 ): java.io.OutputStream? {
     val authority = treeUri.authority ?: return null
     val resolver = context.contentResolver
+
     val strategies = listOf(
-        // 1 — open existing file
         { strategyOpenExisting(resolver, fileUri) },
-        // 2 — createDocument on tree URI (official SAF)
-        { strategyCreateDocument(resolver, treeUri, defaultName) },
-        // 3 — insert on /document/root/children
+        { strategyDeleteThenCreate(resolver, treeUri, fileUri, defaultName) },
         { strategyInsertChildren(resolver, authority, treeDocId, defaultName) },
     )
     for (strategy in strategies) {
         val out = try { strategy() } catch (_: Exception) { null }
         if (out != null) return out
     }
-    return null
+
+    return strategyFileFallback(context, treeUri, defaultName)
 }
 
 private fun strategyOpenExisting(resolver: android.content.ContentResolver, fileUri: Uri): java.io.OutputStream? {
@@ -109,7 +113,16 @@ private fun strategyOpenExisting(resolver: android.content.ContentResolver, file
     }
 }
 
-private fun strategyCreateDocument(resolver: android.content.ContentResolver, treeUri: Uri, name: String): java.io.OutputStream? {
+private fun strategyDeleteThenCreate(
+    resolver: android.content.ContentResolver,
+    treeUri: Uri,
+    fileUri: Uri,
+    name: String
+): java.io.OutputStream? {
+    try {
+        DocumentsContract.deleteDocument(resolver, fileUri)
+    } catch (_: Exception) {}
+
     val created = DocumentsContract.createDocument(resolver, treeUri, "text/plain", name)
     return if (created != null) resolver.openOutputStream(created) else null
 }
@@ -123,4 +136,71 @@ private fun strategyInsertChildren(resolver: android.content.ContentResolver, au
     }
     val created = resolver.insert(insertUri, values)
     return if (created != null) resolver.openOutputStream(created) else null
+}
+
+private fun strategyFileFallback(context: Context, treeUri: Uri, name: String): java.io.OutputStream? {
+    try {
+        val realPath = getFullPathFromTreeUri(treeUri, context) ?: return null
+        val file = File(realPath, name)
+        file.parentFile?.mkdirs()
+        return FileOutputStream(file)
+    } catch (_: Exception) { return null }
+}
+
+private fun getFullPathFromTreeUri(treeUri: Uri, context: Context): String? {
+    if (treeUri.toString() == "content://com.android.providers.downloads.documents/tree/downloads") {
+        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+    }
+
+    val volumeId = getVolumeIdFromTreeUri(treeUri)
+    val volumePath = getVolumePath(volumeId, context) ?: return null
+
+    var documentPath = getDocumentPathFromTreeUri(treeUri)
+    if (documentPath.endsWith("/")) documentPath = documentPath.substring(0, documentPath.length - 1)
+
+    return if (documentPath.isNotEmpty()) {
+        if (documentPath.startsWith("/")) "$volumePath$documentPath"
+        else "$volumePath/$documentPath"
+    } else volumePath
+}
+
+private fun getVolumeIdFromTreeUri(treeUri: Uri): String? {
+    val docId = DocumentsContract.getTreeDocumentId(treeUri)
+    val split = docId.split(":")
+    return if (split.isNotEmpty()) split[0] else null
+}
+
+private fun getDocumentPathFromTreeUri(treeUri: Uri): String {
+    val docId = DocumentsContract.getTreeDocumentId(treeUri)
+    val split = docId.split(":")
+    return if (split.size >= 2) split[1] else "/"
+}
+
+private fun getVolumePath(volumeId: String?, context: Context): String? {
+    if (volumeId == null) return null
+    return try {
+        val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+        val storageVolumeClass = Class.forName("android.os.storage.StorageVolume")
+        val getVolumeList = storageManager.javaClass.getMethod("getVolumeList")
+        val getUuid = storageVolumeClass.getMethod("getUuid")
+        val getPath = storageVolumeClass.getMethod("getPath")
+        val isPrimary = storageVolumeClass.getMethod("isPrimary")
+
+        val result = getVolumeList.invoke(storageManager)
+        val length = java.lang.reflect.Array.getLength(result)
+
+        for (i in 0 until length) {
+            val storageVolume = java.lang.reflect.Array.get(result, i)!!
+            val uuid = getUuid.invoke(storageVolume) as? String
+            val primary = isPrimary.invoke(storageVolume) as Boolean
+
+            if (primary && "primary" == volumeId) {
+                return getPath.invoke(storageVolume) as String
+            }
+            if (uuid != null && uuid == volumeId) {
+                return getPath.invoke(storageVolume) as String
+            }
+        }
+        null
+    } catch (e: Exception) { null }
 }
