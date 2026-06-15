@@ -55,7 +55,7 @@ import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
-import com.lrcstudio.app.util.lrcFileInDirectoryExists
+import com.lrcstudio.app.util.rememberFileExistsChecker
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -82,6 +82,8 @@ fun EditorScreen(
     val playerState by viewModel.audioPlayer.state.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    val checkFileExists = rememberFileExistsChecker(lrcSaveDirectory)
 
     var showShiftDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -143,7 +145,12 @@ fun EditorScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.navigationBarsPadding()
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -617,7 +624,7 @@ fun EditorScreen(
                         creator = creator
                     )
                     val fileName = "${title.ifBlank { state.song?.title ?: "lyrics" }}.lrc"
-                    if (lrcSaveDirectory != null && lrcFileInDirectoryExists(lrcSaveDirectory, fileName)) {
+                    if (lrcSaveDirectory != null && checkFileExists(fileName)) {
                         pendingOverwriteContent = lrc
                         pendingOverwriteFileName = fileName
                         showOverwriteConfirm = true

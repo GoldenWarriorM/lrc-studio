@@ -9,4 +9,7 @@ expect fun writeTextFile(path: String, content: String)
 expect fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean
 
 @Composable
+expect fun rememberFileExistsChecker(directory: String?): (String) -> Boolean
+
+@Composable
 expect fun rememberStorageDir(): String

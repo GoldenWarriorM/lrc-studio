@@ -35,18 +35,36 @@ actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolea
 }
 
 private fun fileExistsInTree(context: Context, treeUriString: String, fileName: String): Boolean {
-    try {
-        val treeUri = Uri.parse(treeUriString)
-        val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-        val documentUri = DocumentsContract.buildDocumentUri(treeUri.authority, "$treeDocId/$fileName")
-        val mimeType = context.contentResolver.getType(documentUri)
-        if (mimeType != null) return true
-    } catch (_: Exception) {}
+    val treeUri = try { Uri.parse(treeUriString) } catch (_: Exception) { return false }
+    val treeDocId = try { DocumentsContract.getTreeDocumentId(treeUri) } catch (_: Exception) { return false }
+    val resolver = context.contentResolver
 
     try {
-        val realPath = getFullPathFromTreeUri(Uri.parse(treeUriString), context) ?: return false
+        // Query tree children with display name filter (works for all providers)
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+        val cursor = resolver.query(
+            childrenUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+            "${DocumentsContract.Document.COLUMN_DISPLAY_NAME} = ?",
+            arrayOf(fileName),
+            null
+        )
+        cursor?.use {
+            return it.count > 0
+        }
+    } catch (_: Exception) {}
+
+    // Fallback: path resolution + File.exists
+    try {
+        val realPath = getFullPathFromTreeUri(treeUri, context) ?: return false
         return File(realPath, fileName).exists()
     } catch (_: Exception) { return false }
+}
+
+@Composable
+actual fun rememberFileExistsChecker(directory: String?): (String) -> Boolean {
+    val context = LocalContext.current
+    return { fileName -> directory != null && fileExistsInTree(context, directory, fileName) }
 }
 
 @Composable

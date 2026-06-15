@@ -32,7 +32,7 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
     val currentOnError = rememberUpdatedState(onError)
 
     val pickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/plain")
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri: Uri? ->
         val content = pendingContent ?: return@rememberLauncherForActivityResult
         pendingContent = null
@@ -88,44 +88,71 @@ private fun tryWriteDocUri(
     fileUri: Uri,
     defaultName: String
 ): java.io.OutputStream? {
-    val authority = treeUri.authority ?: return null
     val resolver = context.contentResolver
 
-    val strategies = listOf(
-        { strategyOpenExisting(resolver, fileUri) },
-        { strategyDeleteThenCreate(resolver, treeUri, fileUri, defaultName) },
-        { strategyInsertChildren(resolver, authority, treeDocId, defaultName) },
-    )
-    for (strategy in strategies) {
-        val out = try { strategy() } catch (_: Exception) { null }
+    // Strategy 1: open existing file for overwrite (try bare doc URI + tree-anchored)
+    for (uri in openExistingUris(treeUri, "$treeDocId/$defaultName")) {
+        val out = try { resolver.openOutputStream(uri) } catch (_: Exception) { null }
         if (out != null) return out
     }
 
+    // Strategy 2: delete existing then create new (multiple parent URI formats)
+    try { deleteDocumentInTree(resolver, treeUri, defaultName) } catch (_: Exception) {}
+        for (parentUri in parentUrisForCreate(treeUri, treeDocId)) {
+            try {
+                val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", defaultName)
+            if (created != null) {
+                val out = resolver.openOutputStream(created)
+                if (out != null) return out
+            }
+        } catch (_: Exception) {}
+    }
+
+    // Strategy 3: insert via /children path (try bare doc URI + tree-anchored)
+    for (dirUri in dirUris(treeUri, treeDocId)) {
+        try {
+            val insertUri = Uri.withAppendedPath(dirUri, "children")
+            val values = ContentValues().apply {
+                put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
+                put(DocumentsContract.Document.COLUMN_MIME_TYPE, "application/octet-stream")
+            }
+            val created = resolver.insert(insertUri, values)
+            if (created != null) {
+                val out = resolver.openOutputStream(created)
+                if (out != null) return out
+            }
+        } catch (_: Exception) {}
+    }
+
+    // Strategy 4: fallback to java.io.File via path resolution
     return strategyFileFallback(context, treeUri, defaultName)
 }
 
-private fun strategyOpenExisting(resolver: android.content.ContentResolver, fileUri: Uri): java.io.OutputStream? {
-    return try {
-        resolver.openOutputStream(fileUri)
-    } catch (_: SecurityException) {
-        null
-    }
+private fun openExistingUris(treeUri: Uri, fileDocId: String): List<Uri> {
+    val bare = DocumentsContract.buildDocumentUri(treeUri.authority, fileDocId)
+    val treeAnchored = treeUri.buildUpon()
+        .appendEncodedPath("document")
+        .appendEncodedPath(Uri.encode(fileDocId))
+        .build()
+    return listOf(bare, treeAnchored)
 }
 
-private fun strategyDeleteThenCreate(
-    resolver: android.content.ContentResolver,
-    treeUri: Uri,
-    fileUri: Uri,
-    name: String
-): java.io.OutputStream? {
-    try {
-        deleteDocumentInTree(resolver, treeUri, name)
-    } catch (_: Exception) {}
+private fun parentUrisForCreate(treeUri: Uri, treeDocId: String): List<Uri> {
+    val bare = DocumentsContract.buildDocumentUri(treeUri.authority, treeDocId)
+    val treeAnchored = treeUri.buildUpon()
+        .appendEncodedPath("document")
+        .appendEncodedPath(Uri.encode(treeDocId))
+        .build()
+    return listOf(bare, treeUri, treeAnchored)
+}
 
-    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-    val parentDocUri = DocumentsContract.buildDocumentUri(treeUri.authority, treeDocId)
-    val created = DocumentsContract.createDocument(resolver, parentDocUri, "text/plain", name)
-    return if (created != null) resolver.openOutputStream(created) else null
+private fun dirUris(treeUri: Uri, treeDocId: String): List<Uri> {
+    val bare = DocumentsContract.buildDocumentUri(treeUri.authority, treeDocId)
+    val treeAnchored = treeUri.buildUpon()
+        .appendEncodedPath("document")
+        .appendEncodedPath(Uri.encode(treeDocId))
+        .build()
+    return listOf(bare, treeAnchored)
 }
 
 private fun deleteDocumentInTree(resolver: android.content.ContentResolver, treeUri: Uri, fileName: String) {
@@ -147,17 +174,6 @@ private fun deleteDocumentInTree(resolver: android.content.ContentResolver, tree
             }
         }
     }
-}
-
-private fun strategyInsertChildren(resolver: android.content.ContentResolver, authority: String, treeDocId: String, name: String): java.io.OutputStream? {
-    val docUri = DocumentsContract.buildDocumentUri(authority, treeDocId)
-    val insertUri = Uri.withAppendedPath(docUri, "children")
-    val values = ContentValues().apply {
-        put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, name)
-        put(DocumentsContract.Document.COLUMN_MIME_TYPE, "text/plain")
-    }
-    val created = resolver.insert(insertUri, values)
-    return if (created != null) resolver.openOutputStream(created) else null
 }
 
 private fun strategyFileFallback(context: Context, treeUri: Uri, name: String): java.io.OutputStream? {

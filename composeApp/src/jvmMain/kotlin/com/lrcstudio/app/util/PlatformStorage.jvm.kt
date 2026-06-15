@@ -20,6 +20,11 @@ actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolea
 }
 
 @Composable
+actual fun rememberFileExistsChecker(directory: String?): (String) -> Boolean {
+    return { fileName -> directory != null && File(directory, fileName).exists() }
+}
+
+@Composable
 actual fun rememberStorageDir(): String {
     return remember {
         File(System.getProperty("user.home"), ".lrcstudio").absolutePath.also {
