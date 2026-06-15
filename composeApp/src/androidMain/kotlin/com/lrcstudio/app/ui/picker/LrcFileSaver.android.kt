@@ -69,8 +69,7 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
                         onError("Save error: ${e.message}")
                     }
                 } else {
-                    pendingContent = content
-                    pickerLauncher.launch(defaultName)
+                    onError("Failed to save — unable to write to the selected directory")
                 }
             }
         }
