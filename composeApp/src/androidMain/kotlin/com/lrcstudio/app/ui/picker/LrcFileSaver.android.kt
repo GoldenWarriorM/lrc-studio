@@ -122,7 +122,9 @@ private fun strategyDeleteThenCreate(
         deleteDocumentInTree(resolver, treeUri, name)
     } catch (_: Exception) {}
 
-    val created = DocumentsContract.createDocument(resolver, treeUri, "text/plain", name)
+    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+    val parentDocUri = DocumentsContract.buildDocumentUri(treeUri.authority, treeDocId)
+    val created = DocumentsContract.createDocument(resolver, parentDocUri, "text/plain", name)
     return if (created != null) resolver.openOutputStream(created) else null
 }
 
