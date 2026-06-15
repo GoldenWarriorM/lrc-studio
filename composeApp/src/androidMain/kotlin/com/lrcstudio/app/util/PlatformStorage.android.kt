@@ -40,21 +40,16 @@ private fun fileExistsInTree(context: Context, treeUriString: String, fileName: 
     val resolver = context.contentResolver
 
     try {
-        // Query tree children with display name filter (works for all providers)
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
-        val cursor = resolver.query(
-            childrenUri,
-            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
-            "${DocumentsContract.Document.COLUMN_DISPLAY_NAME} = ?",
-            arrayOf(fileName),
-            null
-        )
+        val cursor = resolver.query(childrenUri, null, null, null, null)
         cursor?.use {
-            return it.count > 0
+            while (it.moveToNext()) {
+                val name = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+                if (name == fileName) return true
+            }
         }
     } catch (_: Exception) {}
 
-    // Fallback: path resolution + File.exists
     try {
         val realPath = getFullPathFromTreeUri(treeUri, context) ?: return false
         return File(realPath, fileName).exists()
