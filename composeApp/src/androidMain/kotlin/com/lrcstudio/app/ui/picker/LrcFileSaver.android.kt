@@ -119,11 +119,32 @@ private fun strategyDeleteThenCreate(
     name: String
 ): java.io.OutputStream? {
     try {
-        DocumentsContract.deleteDocument(resolver, fileUri)
+        deleteDocumentInTree(resolver, treeUri, name)
     } catch (_: Exception) {}
 
     val created = DocumentsContract.createDocument(resolver, treeUri, "text/plain", name)
     return if (created != null) resolver.openOutputStream(created) else null
+}
+
+private fun deleteDocumentInTree(resolver: android.content.ContentResolver, treeUri: Uri, fileName: String) {
+    val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+    val cursor = resolver.query(childrenUri, null, null, null, null) ?: return
+
+    cursor.use {
+        while (it.moveToNext()) {
+            val displayName = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+            if (displayName == fileName) {
+                val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
+                val docUri = treeUri.buildUpon()
+                    .appendEncodedPath("document")
+                    .appendEncodedPath(Uri.encode(docId))
+                    .build()
+                DocumentsContract.deleteDocument(resolver, docUri)
+                return
+            }
+        }
+    }
 }
 
 private fun strategyInsertChildren(resolver: android.content.ContentResolver, authority: String, treeDocId: String, name: String): java.io.OutputStream? {
