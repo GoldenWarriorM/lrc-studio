@@ -17,10 +17,10 @@ data class LrcLine(
             val minutes = (totalMs / 60000).toInt()
             val seconds = ((totalMs % 60000) / 1000).toInt()
             val hundredths = ((totalMs % 1000) / 10).toInt()
-            val minStr = minutes.toString()
+            val minStr = minutes.toString().padStart(2, '0')
             val secStr = seconds.toString().padStart(2, '0')
             val fracStr = hundredths.toString().padStart(2, '0')
-            return "$minStr:$secStr:$fracStr"
+            return "$minStr:$secStr.$fracStr"
         }
 
     companion object {
