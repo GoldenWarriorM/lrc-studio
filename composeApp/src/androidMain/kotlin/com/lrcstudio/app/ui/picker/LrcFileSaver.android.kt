@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -89,63 +90,80 @@ private fun tryWriteDocUri(
     defaultName: String
 ): java.io.OutputStream? {
     val resolver = context.contentResolver
+    val tag = "LrcFileSaver"
+    Log.d(tag, "treeUri=$treeUri treeDocId=$treeDocId fileDocId=$treeDocId/$defaultName fileUri=$fileUri")
 
     // Strategy 1: open existing file for overwrite (try bare doc URI + tree-anchored)
     for (uri in openExistingUris(treeUri, "$treeDocId/$defaultName")) {
-        val out = try { resolver.openOutputStream(uri) } catch (_: Exception) { null }
-        if (out != null) return out
+        Log.d(tag, "S1 trying openOutputStream on $uri")
+        val out = try { resolver.openOutputStream(uri) } catch (e: Exception) { Log.d(tag, "S1 failed: ${e.message}"); null }
+        if (out != null) { Log.d(tag, "S1 success on $uri"); return out }
     }
 
     // Strategy 1.5: find existing file via children query, open for write with tree-anchored URI
     try {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+        Log.d(tag, "S1.5 query children $childrenUri")
         val cursor = resolver.query(childrenUri, null, null, null, null)
+        var childCount = 0
         cursor?.use {
             while (it.moveToNext()) {
                 val displayName = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+                val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
+                childCount++
+                Log.d(tag, "S1.5 child #$childCount displayName=$displayName docId=$docId")
                 if (displayName == defaultName) {
-                    val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
                     val docUri = treeUri.buildUpon()
                         .appendEncodedPath("document")
                         .appendEncodedPath(Uri.encode(docId))
                         .build()
-                    val out = try { resolver.openOutputStream(docUri) } catch (_: Exception) { null }
-                    if (out != null) return out
+                    Log.d(tag, "S1.5 matched, trying openOutputStream on $docUri")
+                    val out = try { resolver.openOutputStream(docUri) } catch (e: Exception) { Log.d(tag, "S1.5 openOutputStream failed: ${e.message}"); null }
+                    if (out != null) { Log.d(tag, "S1.5 success on $docUri"); return out }
                 }
             }
         }
-    } catch (_: Exception) {}
+        Log.d(tag, "S1.5 done, childCount=$childCount")
+    } catch (e: Exception) { Log.d(tag, "S1.5 exception: ${e.message}") }
 
     // Strategy 2: delete existing then create new (multiple parent URI formats)
-    deleteDocumentInTree(resolver, treeUri, defaultName, context)
+    Log.d(tag, "S2 calling deleteDocumentInTree for $defaultName")
+    deleteDocumentInTree(resolver, treeUri, defaultName, context, tag)
     for (parentUri in parentUrisForCreate(treeUri, treeDocId)) {
+        Log.d(tag, "S2 trying createDocument on parent=$parentUri mime=application/octet-stream name=$defaultName")
         try {
             val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", defaultName)
+            Log.d(tag, "S2 createDocument returned ${if (created != null) created else "null"}")
             if (created != null) {
-                val out = resolver.openOutputStream(created)
-                if (out != null) return out
+                val out = try { resolver.openOutputStream(created) } catch (e: Exception) { Log.d(tag, "S2 openOutputStream failed: ${e.message}"); null }
+                if (out != null) { Log.d(tag, "S2 success on $created"); return out }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) { Log.d(tag, "S2 createDocument threw: ${e.message}") }
     }
 
     // Strategy 3: insert via /children path (try bare doc URI + tree-anchored)
     for (dirUri in dirUris(treeUri, treeDocId)) {
+        val insertUri = Uri.withAppendedPath(dirUri, "children")
+        Log.d(tag, "S3 trying insert on $insertUri")
         try {
-            val insertUri = Uri.withAppendedPath(dirUri, "children")
             val values = ContentValues().apply {
                 put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
                 put(DocumentsContract.Document.COLUMN_MIME_TYPE, "application/octet-stream")
             }
             val created = resolver.insert(insertUri, values)
+            Log.d(tag, "S3 insert returned ${if (created != null) created else "null"}")
             if (created != null) {
-                val out = resolver.openOutputStream(created)
-                if (out != null) return out
+                val out = try { resolver.openOutputStream(created) } catch (e: Exception) { Log.d(tag, "S3 openOutputStream failed: ${e.message}"); null }
+                if (out != null) { Log.d(tag, "S3 success on $created"); return out }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) { Log.d(tag, "S3 insert threw: ${e.message}") }
     }
 
     // Strategy 4: fallback to java.io.File via path resolution
-    return strategyFileFallback(context, treeUri, defaultName)
+    Log.d(tag, "S4 trying java.io.File fallback")
+    val result = strategyFileFallback(context, treeUri, defaultName)
+    Log.d(tag, "S4 returned ${if (result != null) "OutputStream" else "null"}")
+    return result
 }
 
 private fun openExistingUris(treeUri: Uri, fileDocId: String): List<Uri> {
@@ -175,28 +193,36 @@ private fun dirUris(treeUri: Uri, treeDocId: String): List<Uri> {
     return listOf(bare, treeAnchored)
 }
 
-private fun deleteDocumentInTree(resolver: android.content.ContentResolver, treeUri: Uri, fileName: String, context: Context?) {
+private fun deleteDocumentInTree(resolver: android.content.ContentResolver, treeUri: Uri, fileName: String, context: Context?, tag: String) {
     val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
+    Log.d(tag, "deleteDocumentInTree fileName=$fileName treeDocId=$treeDocId")
 
     // Attempt 1: find via children query + delete via tree-anchored child URI
     try {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+        Log.d(tag, "del-A1 childrenUri=$childrenUri")
         val cursor = resolver.query(childrenUri, null, null, null, null)
+        var delChildCount = 0
         cursor?.use {
             while (it.moveToNext()) {
                 val displayName = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+                val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
+                delChildCount++
+                Log.d(tag, "del-A1 child #$delChildCount displayName=$displayName docId=$docId")
                 if (displayName == fileName) {
-                    val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
                     val docUri = treeUri.buildUpon()
                         .appendEncodedPath("document")
                         .appendEncodedPath(Uri.encode(docId))
                         .build()
+                    Log.d(tag, "del-A1 matched, deleting $docUri")
                     DocumentsContract.deleteDocument(resolver, docUri)
+                    Log.d(tag, "del-A1 delete succeeded")
                     return
                 }
             }
         }
-    } catch (_: Exception) {}
+        Log.d(tag, "del-A1 no match, childCount=$delChildCount")
+    } catch (e: Exception) { Log.d(tag, "del-A1 exception: ${e.message}") }
 
     // Attempt 2: delete via tree-anchored URI constructed directly
     try {
@@ -204,24 +230,35 @@ private fun deleteDocumentInTree(resolver: android.content.ContentResolver, tree
             .appendEncodedPath("document")
             .appendEncodedPath(Uri.encode("$treeDocId/$fileName"))
             .build()
+        Log.d(tag, "del-A2 directUri=$directUri")
         DocumentsContract.deleteDocument(resolver, directUri)
+        Log.d(tag, "del-A2 delete succeeded")
         return
-    } catch (_: Exception) {}
+    } catch (e: Exception) { Log.d(tag, "del-A2 exception: ${e.message}") }
 
     // Attempt 3: delete via bare document URI
     try {
         val bareUri = DocumentsContract.buildDocumentUri(treeUri.authority, "$treeDocId/$fileName")
+        Log.d(tag, "del-A3 bareUri=$bareUri")
         DocumentsContract.deleteDocument(resolver, bareUri)
+        Log.d(tag, "del-A3 delete succeeded")
         return
-    } catch (_: Exception) {}
+    } catch (e: Exception) { Log.d(tag, "del-A3 exception: ${e.message}") }
 
     // Attempt 4: java.io.File fallback via path resolution
     if (context != null) {
         try {
-            val realPath = getFullPathFromTreeUri(treeUri, context) ?: return
-            val f = File(realPath, fileName)
-            if (f.exists()) f.delete()
-        } catch (_: Exception) {}
+            val realPath = getFullPathFromTreeUri(treeUri, context)
+            Log.d(tag, "del-A4 realPath=$realPath")
+            if (realPath != null) {
+                val f = File(realPath, fileName)
+                Log.d(tag, "del-A4 file=${f.absolutePath} exists=${f.exists()}")
+                if (f.exists()) {
+                    f.delete()
+                    Log.d(tag, "del-A4 file deleted=${!f.exists()}")
+                }
+            }
+        } catch (e: Exception) { Log.d(tag, "del-A4 exception: ${e.message}") }
     }
 }
 
