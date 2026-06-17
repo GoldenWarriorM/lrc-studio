@@ -156,7 +156,9 @@ fun EditorScreen(
                 title = {
                     Text(
                         text = state.song?.title ?: "Editor",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
