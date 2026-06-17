@@ -96,11 +96,31 @@ private fun tryWriteDocUri(
         if (out != null) return out
     }
 
+    // Strategy 1.5: find existing file via children query, open for write with tree-anchored URI
+    try {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+        val cursor = resolver.query(childrenUri, null, null, null, null)
+        cursor?.use {
+            while (it.moveToNext()) {
+                val displayName = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+                if (displayName == defaultName) {
+                    val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
+                    val docUri = treeUri.buildUpon()
+                        .appendEncodedPath("document")
+                        .appendEncodedPath(Uri.encode(docId))
+                        .build()
+                    val out = try { resolver.openOutputStream(docUri) } catch (_: Exception) { null }
+                    if (out != null) return out
+                }
+            }
+        }
+    } catch (_: Exception) {}
+
     // Strategy 2: delete existing then create new (multiple parent URI formats)
-    try { deleteDocumentInTree(resolver, treeUri, defaultName) } catch (_: Exception) {}
-        for (parentUri in parentUrisForCreate(treeUri, treeDocId)) {
-            try {
-                val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", defaultName)
+    deleteDocumentInTree(resolver, treeUri, defaultName, context)
+    for (parentUri in parentUrisForCreate(treeUri, treeDocId)) {
+        try {
+            val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", defaultName)
             if (created != null) {
                 val out = resolver.openOutputStream(created)
                 if (out != null) return out
@@ -155,24 +175,53 @@ private fun dirUris(treeUri: Uri, treeDocId: String): List<Uri> {
     return listOf(bare, treeAnchored)
 }
 
-private fun deleteDocumentInTree(resolver: android.content.ContentResolver, treeUri: Uri, fileName: String) {
+private fun deleteDocumentInTree(resolver: android.content.ContentResolver, treeUri: Uri, fileName: String, context: Context?) {
     val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
-    val cursor = resolver.query(childrenUri, null, null, null, null) ?: return
 
-    cursor.use {
-        while (it.moveToNext()) {
-            val displayName = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
-            if (displayName == fileName) {
-                val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
-                val docUri = treeUri.buildUpon()
-                    .appendEncodedPath("document")
-                    .appendEncodedPath(Uri.encode(docId))
-                    .build()
-                DocumentsContract.deleteDocument(resolver, docUri)
-                return
+    // Attempt 1: find via children query + delete via tree-anchored child URI
+    try {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+        val cursor = resolver.query(childrenUri, null, null, null, null)
+        cursor?.use {
+            while (it.moveToNext()) {
+                val displayName = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
+                if (displayName == fileName) {
+                    val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
+                    val docUri = treeUri.buildUpon()
+                        .appendEncodedPath("document")
+                        .appendEncodedPath(Uri.encode(docId))
+                        .build()
+                    DocumentsContract.deleteDocument(resolver, docUri)
+                    return
+                }
             }
         }
+    } catch (_: Exception) {}
+
+    // Attempt 2: delete via tree-anchored URI constructed directly
+    try {
+        val directUri = treeUri.buildUpon()
+            .appendEncodedPath("document")
+            .appendEncodedPath(Uri.encode("$treeDocId/$fileName"))
+            .build()
+        DocumentsContract.deleteDocument(resolver, directUri)
+        return
+    } catch (_: Exception) {}
+
+    // Attempt 3: delete via bare document URI
+    try {
+        val bareUri = DocumentsContract.buildDocumentUri(treeUri.authority, "$treeDocId/$fileName")
+        DocumentsContract.deleteDocument(resolver, bareUri)
+        return
+    } catch (_: Exception) {}
+
+    // Attempt 4: java.io.File fallback via path resolution
+    if (context != null) {
+        try {
+            val realPath = getFullPathFromTreeUri(treeUri, context) ?: return
+            val f = File(realPath, fileName)
+            if (f.exists()) f.delete()
+        } catch (_: Exception) {}
     }
 }
 
