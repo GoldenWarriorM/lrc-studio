@@ -25,7 +25,8 @@ data class AppSettings(
     val showUndoRedo: Boolean = true,
     val showVibrationToast: Boolean = false,
     val accentColorName: String = "Purple",
-    val customAccentColor: String? = null
+    val customAccentColor: String? = null,
+    val lrcSaveDirectory: String? = null
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -139,6 +140,13 @@ class SettingsRepository(private val storageDir: String) {
         _settings.value = _settings.value.copy(
             customAccentColor = hex,
             accentColorName = if (hex != null) "Custom" else "Purple"
+        )
+        saveToDisk()
+    }
+
+    fun setLrcSaveDirectory(path: String?) {
+        _settings.value = _settings.value.copy(
+            lrcSaveDirectory = path
         )
         saveToDisk()
     }

@@ -6,5 +6,16 @@ expect fun readTextFile(path: String): String?
 
 expect fun writeTextFile(path: String, content: String)
 
+expect fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean
+
+@Composable
+expect fun rememberFileExistsChecker(directory: String?): (String) -> Boolean
+
 @Composable
 expect fun rememberStorageDir(): String
+
+fun treeUriToDisplayPath(treeUriString: String): String {
+    return treeUriToDisplayPathImpl(treeUriString)
+}
+
+expect fun treeUriToDisplayPathImpl(treeUriString: String): String

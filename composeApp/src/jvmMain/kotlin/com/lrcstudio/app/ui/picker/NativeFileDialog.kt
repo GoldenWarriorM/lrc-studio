@@ -15,6 +15,11 @@ object NativeFileDialog {
         isDark: Boolean
     ): String? = tryZenitySave(title, defaultName, isDark)
 
+    fun showDirectoryDialog(
+        title: String,
+        isDark: Boolean
+    ): String? = tryZenityDirectory(title, isDark)
+
     private fun tryZenity(title: String, extensions: List<String>, isDark: Boolean): String? {
         return try {
             val filter = if (extensions.isNotEmpty()) {
@@ -37,6 +42,20 @@ object NativeFileDialog {
             val pb = ProcessBuilder(
                 "zenity", "--file-selection", "--save",
                 "--title=$title", "--filename=$defaultName"
+            )
+            pb.environment()["GTK_THEME"] = if (isDark) "Adwaita:dark" else "Adwaita"
+            val process = pb.start()
+            if (process.waitFor() == 0) {
+                process.inputStream.bufferedReader().readText().trim().ifEmpty { null }
+            } else null
+        } catch (_: Exception) { null }
+    }
+
+    private fun tryZenityDirectory(title: String, isDark: Boolean): String? {
+        return try {
+            val pb = ProcessBuilder(
+                "zenity", "--file-selection", "--directory",
+                "--title=$title"
             )
             pb.environment()["GTK_THEME"] = if (isDark) "Adwaita:dark" else "Adwaita"
             val process = pb.start()

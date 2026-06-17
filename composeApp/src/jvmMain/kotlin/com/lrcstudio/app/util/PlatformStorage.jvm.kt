@@ -15,6 +15,15 @@ actual fun writeTextFile(path: String, content: String) {
     File(path).writeText(content)
 }
 
+actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean {
+    return File(directory, fileName).exists()
+}
+
+@Composable
+actual fun rememberFileExistsChecker(directory: String?): (String) -> Boolean {
+    return { fileName -> directory != null && File(directory, fileName).exists() }
+}
+
 @Composable
 actual fun rememberStorageDir(): String {
     return remember {
@@ -23,3 +32,5 @@ actual fun rememberStorageDir(): String {
         }
     }
 }
+
+actual fun treeUriToDisplayPathImpl(treeUriString: String): String = treeUriString

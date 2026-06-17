@@ -204,7 +204,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     swipeInstantDelete = settings.swipeInstantDelete,
                                     showDebugBorders = settings.showDebugBorders,
                                     showUndoRedo = settings.showUndoRedo,
-                                    showVibrationToast = settings.showVibrationToast
+                                    showVibrationToast = settings.showVibrationToast,
+                                    lrcSaveDirectory = settings.lrcSaveDirectory
                                 )
                             }
                         }

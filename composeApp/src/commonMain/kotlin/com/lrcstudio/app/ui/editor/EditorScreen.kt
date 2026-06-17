@@ -55,6 +55,7 @@ import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
+import com.lrcstudio.app.util.rememberFileExistsChecker
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -74,12 +75,15 @@ fun EditorScreen(
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
     showUndoRedo: Boolean = true,
-    showVibrationToast: Boolean = false
+    showVibrationToast: Boolean = false,
+    lrcSaveDirectory: String? = null
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    val checkFileExists = rememberFileExistsChecker(lrcSaveDirectory)
 
     var showShiftDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -90,6 +94,10 @@ fun EditorScreen(
     var isPreviewMode by remember { mutableStateOf(false) }
     var speed by remember { mutableStateOf(1f) }
     var showSpeedDialog by remember { mutableStateOf(false) }
+    var showOverwriteConfirm by remember { mutableStateOf(false) }
+    var pendingOverwriteContent by remember { mutableStateOf<String?>(null) }
+    var pendingOverwriteFileName by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
     val timeScale by animateFloatAsState(
@@ -98,7 +106,10 @@ fun EditorScreen(
         label = "timeScale"
     )
     val saveLrcFile = rememberLrcFileSaveLauncher(
-        defaultName = "${state.song?.title ?: "lyrics"}.lrc"
+        defaultName = "${state.song?.title ?: "lyrics"}.lrc",
+        directory = lrcSaveDirectory,
+        onSuccess = { scope.launch { snackbarHostState.showSnackbar("LRC saved") } },
+        onError = { msg -> scope.launch { snackbarHostState.showSnackbar("Save failed: $msg") } }
     )
 
     val displayItems = remember(state.lyrics, state.editingLineIndex) {
@@ -128,14 +139,18 @@ fun EditorScreen(
     }
 
     val canCapture = state.lyrics.isNotEmpty() && !isPreviewMode
-    val snackbarHostState = remember { SnackbarHostState() }
     val onVibrationToast: (String) -> Unit = { msg ->
         scope.launch { snackbarHostState.showSnackbar(msg) }
     }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.navigationBarsPadding()
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -608,7 +623,14 @@ fun EditorScreen(
                         composer = composer,
                         creator = creator
                     )
-                    saveLrcFile(lrc)
+                    val fileName = "${title.ifBlank { state.song?.title ?: "lyrics" }}.lrc"
+                    if (lrcSaveDirectory != null && checkFileExists(fileName)) {
+                        pendingOverwriteContent = lrc
+                        pendingOverwriteFileName = fileName
+                        showOverwriteConfirm = true
+                    } else {
+                        saveLrcFile(lrc)
+                    }
                 }
             },
             onCopyPlain = {
@@ -658,6 +680,33 @@ fun EditorScreen(
                 TextButton(onClick = { showSpeedDialog = false }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (showOverwriteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showOverwriteConfirm = false },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("File exists", style = MaterialTheme.typography.headlineSmall) },
+            text = {
+                Text("\"$pendingOverwriteFileName\" already exists. Overwrite?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        pendingOverwriteContent?.let { saveLrcFile(it) }
+                        showOverwriteConfirm = false
+                        pendingOverwriteContent = null
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Overwrite") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showOverwriteConfirm = false
+                    pendingOverwriteContent = null
+                }) { Text("Cancel") }
             }
         )
     }
