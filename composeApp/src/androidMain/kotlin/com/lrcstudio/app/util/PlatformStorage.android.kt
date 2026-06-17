@@ -141,3 +141,11 @@ private fun getVolumePath(volumeId: String?, context: Context): String? {
         null
     } catch (e: Exception) { null }
 }
+
+actual fun treeUriToDisplayPathImpl(treeUriString: String): String {
+    val ctx = appContext ?: return treeUriString
+    return try {
+        val treeUri = Uri.parse(treeUriString)
+        getFullPathFromTreeUri(treeUri, ctx) ?: treeUriString
+    } catch (_: Exception) { treeUriString }
+}

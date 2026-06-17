@@ -31,6 +31,7 @@ import com.lrcstudio.app.ui.components.parseHexColor
 import com.lrcstudio.app.ui.components.toHex
 import com.lrcstudio.app.ui.picker.rememberDirectoryPickerLauncher
 import com.lrcstudio.app.util.fabBottomPadding
+import com.lrcstudio.app.util.treeUriToDisplayPath
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -233,8 +234,9 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         var expanded by remember { mutableStateOf(false) }
+                        val displayPath = settings.lrcSaveDirectory?.let { treeUriToDisplayPath(it) }
                         Text(
-                            text = settings.lrcSaveDirectory
+                            text = displayPath
                                 ?: "Not set — will ask each time",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

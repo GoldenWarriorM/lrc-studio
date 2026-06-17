@@ -32,3 +32,5 @@ actual fun rememberStorageDir(): String {
         }
     }
 }
+
+actual fun treeUriToDisplayPathImpl(treeUriString: String): String = treeUriString

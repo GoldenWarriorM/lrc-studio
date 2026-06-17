@@ -13,3 +13,9 @@ expect fun rememberFileExistsChecker(directory: String?): (String) -> Boolean
 
 @Composable
 expect fun rememberStorageDir(): String
+
+fun treeUriToDisplayPath(treeUriString: String): String {
+    return treeUriToDisplayPathImpl(treeUriString)
+}
+
+expect fun treeUriToDisplayPathImpl(treeUriString: String): String
