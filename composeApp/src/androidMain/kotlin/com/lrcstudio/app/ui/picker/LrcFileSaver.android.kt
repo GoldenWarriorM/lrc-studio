@@ -144,24 +144,38 @@ private fun tryWriteDocUri(
     // Strategy 2: delete existing then create new (multiple parent URI formats)
     Log.w(tag, "S2 calling deleteDocumentInTree for $name")
     deleteDocumentInTree(resolver, treeUri, name, context, tag)
+    var suffixedFallback: Uri? = null
     for (parentUri in parentUrisForCreate(treeUri, treeDocId)) {
         Log.w(tag, "S2 trying createDocument on parent=$parentUri mime=application/octet-stream name=$name")
         try {
             val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", name)
             if (created != null) {
-                val createdName = created.lastPathSegment
-                Log.w(tag, "S2 createDocument returned $created lastPathSegment=$createdName")
-                if (createdName != name) {
-                    Log.w(tag, "S2 createDocument got suffixed name, deleting and retrying...")
-                    try { DocumentsContract.deleteDocument(resolver, created) } catch (_: Exception) {}
-                    continue
+                val createdName = created.lastPathSegment?.substringAfterLast('/')
+                Log.w(tag, "S2 createDocument returned $created displayName=$createdName")
+                if (createdName == name) {
+                    val out = try { resolver.openOutputStream(created) } catch (e: Exception) { Log.w(tag, "S2 openOutputStream failed: ${e.message}"); null }
+                    if (out != null) { Log.w(tag, "S2 success on $created"); return out }
+                } else {
+                    // Suffixed name — delete original might have failed (Android 16 ESP)
+                    // Save as last-resort fallback, try next parent URI
+                    Log.w(tag, "S2 got suffixed name, saving as fallback")
+                    if (suffixedFallback == null) {
+                        suffixedFallback = created
+                    } else {
+                        try { DocumentsContract.deleteDocument(resolver, created) } catch (_: Exception) {}
+                    }
                 }
-                val out = try { resolver.openOutputStream(created) } catch (e: Exception) { Log.w(tag, "S2 openOutputStream failed: ${e.message}"); null }
-                if (out != null) { Log.w(tag, "S2 success on $created"); return out }
             } else {
                 Log.w(tag, "S2 createDocument returned null")
             }
         } catch (e: Exception) { Log.w(tag, "S2 createDocument threw: ${e.message}") }
+    }
+    // Try the suffixed fallback if all parent URIs created suffixed files
+    if (suffixedFallback != null) {
+        Log.w(tag, "S2 trying suffixed fallback: $suffixedFallback")
+        val out = try { resolver.openOutputStream(suffixedFallback) } catch (e: Exception) { Log.w(tag, "S2 suffixed fallback failed: ${e.message}"); null }
+        if (out != null) { Log.w(tag, "S2 success on suffixed fallback"); return out }
+        try { DocumentsContract.deleteDocument(resolver, suffixedFallback) } catch (_: Exception) {}
     }
 
     // Strategy 3: insert via /children path (try bare doc URI + tree-anchored)
@@ -325,7 +339,7 @@ private fun getDocumentPathFromTreeUri(treeUri: Uri): String {
 
 private fun getVolumePath(volumeId: String?, context: Context): String? {
     if (volumeId == null) return null
-    return try {
+    try {
         val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
         val storageVolumeClass = Class.forName("android.os.storage.StorageVolume")
         val getVolumeList = storageManager.javaClass.getMethod("getVolumeList")
@@ -348,6 +362,10 @@ private fun getVolumePath(volumeId: String?, context: Context): String? {
                 return getPath.invoke(storageVolume) as String
             }
         }
-        null
-    } catch (e: Exception) { null }
+    } catch (_: Exception) {}
+    // Fallback for primary volume using deprecated-but-functional API
+    if (volumeId == "primary") {
+        return Environment.getExternalStorageDirectory().absolutePath
+    }
+    return null
 }
