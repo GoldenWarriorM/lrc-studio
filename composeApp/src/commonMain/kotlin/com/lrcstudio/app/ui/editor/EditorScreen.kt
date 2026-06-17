@@ -145,8 +145,11 @@ fun EditorScreen(
         scope.launch { snackbarHostState.showSnackbar(msg) }
     }
 
-    if (forceLandscapeEditor) {
-        Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight
+        val useLandscape = forceLandscapeEditor || isLandscape
+
+        if (useLandscape) {
             Row(modifier = Modifier.fillMaxSize()) {
                 val lyricsSide = @Composable {
                     Column(modifier = Modifier
@@ -546,7 +549,7 @@ fun EditorScreen(
                 }
             }
         }
-    } else {
+    else {
         Scaffold(
             contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
             snackbarHost = {
@@ -945,6 +948,7 @@ fun EditorScreen(
                 }
             }
         }
+    }
     }
 
     if (showShiftDialog) {
