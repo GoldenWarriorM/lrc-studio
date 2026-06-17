@@ -205,7 +205,9 @@ fun App(audioPlayer: AudioPlayer) {
                                     showDebugBorders = settings.showDebugBorders,
                                     showUndoRedo = settings.showUndoRedo,
                                     showVibrationToast = settings.showVibrationToast,
-                                    lrcSaveDirectory = settings.lrcSaveDirectory
+                                    lrcSaveDirectory = settings.lrcSaveDirectory,
+                                    forceLandscapeEditor = settings.forceLandscapeEditor,
+                                    landscapeInverted = settings.invertLandscapeSides
                                 )
                             }
                         }

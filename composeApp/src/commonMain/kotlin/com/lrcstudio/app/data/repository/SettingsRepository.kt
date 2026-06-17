@@ -26,7 +26,9 @@ data class AppSettings(
     val showVibrationToast: Boolean = false,
     val accentColorName: String = "Purple",
     val customAccentColor: String? = null,
-    val lrcSaveDirectory: String? = null
+    val lrcSaveDirectory: String? = null,
+    val forceLandscapeEditor: Boolean = false,
+    val invertLandscapeSides: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -140,6 +142,20 @@ class SettingsRepository(private val storageDir: String) {
         _settings.value = _settings.value.copy(
             customAccentColor = hex,
             accentColorName = if (hex != null) "Custom" else "Purple"
+        )
+        saveToDisk()
+    }
+
+    fun toggleForceLandscapeEditor() {
+        _settings.value = _settings.value.copy(
+            forceLandscapeEditor = !_settings.value.forceLandscapeEditor
+        )
+        saveToDisk()
+    }
+
+    fun toggleInvertLandscapeSides() {
+        _settings.value = _settings.value.copy(
+            invertLandscapeSides = !_settings.value.invertLandscapeSides
         )
         saveToDisk()
     }

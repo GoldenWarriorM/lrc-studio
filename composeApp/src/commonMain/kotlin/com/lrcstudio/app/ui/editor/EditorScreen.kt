@@ -76,7 +76,9 @@ fun EditorScreen(
     showDebugBorders: Boolean = false,
     showUndoRedo: Boolean = true,
     showVibrationToast: Boolean = false,
-    lrcSaveDirectory: String? = null
+    lrcSaveDirectory: String? = null,
+    forceLandscapeEditor: Boolean = false,
+    landscapeInverted: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -143,398 +145,801 @@ fun EditorScreen(
         scope.launch { snackbarHostState.showSnackbar(msg) }
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-        snackbarHost = {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.navigationBarsPadding()
-            )
-        },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = state.song?.title ?: "Editor",
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onImportAudioFile) {
-                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                    }
-                    IconButton(onClick = { showSaveDialog = true }) {
-                        Icon(Icons.Default.Save, contentDescription = "Save LRC")
+    if (forceLandscapeEditor) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                val lyricsSide = @Composable {
+                    Column(modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth()
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Lyrics (${state.lyrics.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .navigationBarsPadding(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            contentPadding = PaddingValues(bottom = 88.dp)
+                        ) {
+                            items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
+                                when (item) {
+                                    is DisplayItem.Line -> {
+                                        val i = item.index
+                                        LyricLineCard(
+                                            line = item.lrcLine,
+                                            isCurrentLine = i == state.selectedLineIndex,
+                                            isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
+                                            isEditing = state.editingLineIndex == i && !isPreviewMode,
+                                            editingText = if (state.editingLineIndex == i) state.editingText else "",
+                                            isPreviewMode = isPreviewMode,
+                                            compactControls = compactControls,
+                                            swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                            swipeActivationThresholdDp = swipeActivationThresholdDp,
+                                            swipeGesturesEnabled = swipeGesturesEnabled,
+                                            showSnapButton = showSnapButton,
+                                            showClearDeleteButton = showClearDeleteButton,
+                                            swipeInstantDelete = swipeInstantDelete,
+                                            showDebugBorders = showDebugBorders,
+                                            showVibrationToast = showVibrationToast,
+                                            onVibrationToast = onVibrationToast,
+                                            onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
+                                            onEditStart = { viewModel.startEditing(i) },
+                                            onEditChange = { viewModel.updateEditingText(it) },
+                                            onEditDone = { viewModel.finishEditing() },
+                                            onClearTimestamp = { viewModel.clearTimestamp(i) },
+                                            onDelete = { showDeleteConfirm = i },
+                                            onInstantDelete = { viewModel.deleteLine(i) },
+                                            onClick = { viewModel.selectLine(i) },
+                                            onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
+                                            onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
+                                            onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    is DisplayItem.InsertAbove -> {
+                                        if (!isPreviewMode) {
+                                            InsertLineButton(
+                                                text = "Insert line above",
+                                                onClick = { viewModel.insertLineBefore(item.index) },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                    is DisplayItem.InsertBelow -> {
+                                        if (!isPreviewMode) {
+                                            InsertLineButton(
+                                                text = "Insert line below",
+                                                onClick = { viewModel.insertLineAfter(item.index) },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (state.isRecording) {
+                            RecordingBanner(
+                                text = state.newLyricText,
+                                onTextChange = { viewModel.updateNewLyricText(it) },
+                                onCapture = { viewModel.captureTimestamp() },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
-            )
+
+                val controlsSide = @Composable {
+                    Scaffold(
+                        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+                        snackbarHost = {
+                            SnackbarHost(
+                                hostState = snackbarHostState,
+                                modifier = Modifier.navigationBarsPadding()
+                            )
+                        },
+                        topBar = {
+                            TopAppBar(
+                                title = {
+                                    Text(
+                                        text = state.song?.title ?: "Editor",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                navigationIcon = {
+                                    IconButton(onClick = onBack) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                    }
+                                },
+                                actions = {
+                                    IconButton(onClick = onImportAudioFile) {
+                                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                                    }
+                                    IconButton(onClick = { showSaveDialog = true }) {
+                                        Icon(Icons.Default.Save, contentDescription = "Save LRC")
+                                    }
+                                }
+                            )
+                        }
+                    ) { padding ->
+                        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                if (state.song?.audioPath.isNullOrEmpty()) {
+                                    ImportAudioButton(
+                                        onClick = onImportAudioFile,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                } else {
+                                    PlayerBar(
+                                        playerState = playerState,
+                                        onPlayPause = { viewModel.playPause() },
+                                        onSeek = { viewModel.seekTo(it) },
+                                        currentSpeed = speed,
+                                        onSpeedChange = {
+                                            speed = it
+                                            viewModel.audioPlayer.setSpeed(it)
+                                        },
+                                        onSpeedClick = { showSpeedDialog = true },
+                                        compactControls = compactControls,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        if (!isPreviewMode) {
+                                            FilledTonalIconButton(
+                                                onClick = { showAddDialog = true },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                    contentColor = MaterialTheme.colorScheme.primary
+                                                )
+                                            ) {
+                                                Icon(Icons.Default.Add, contentDescription = "Add manually")
+                                            }
+                                        }
+
+                                        FilledTonalIconButton(
+                                            onClick = { isPreviewMode = !isPreviewMode },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                containerColor = if (isPreviewMode)
+                                                    MaterialTheme.colorScheme.error
+                                                else
+                                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                                                contentColor = if (isPreviewMode)
+                                                    MaterialTheme.colorScheme.onError
+                                                else
+                                                    MaterialTheme.colorScheme.secondary
+                                            )
+                                        ) {
+                                            Icon(
+                                                if (isPreviewMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = if (isPreviewMode) "Preview off" else "Preview",
+                                                tint = if (isPreviewMode)
+                                                    MaterialTheme.colorScheme.onError
+                                                else
+                                                    MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
+
+                                        FilledTonalIconButton(
+                                            onClick = { autoScrollEnabled = !autoScrollEnabled },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                contentColor = MaterialTheme.colorScheme.primary
+                                            )
+                                        ) {
+                                            Icon(
+                                                if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
+                                                contentDescription = "Auto-scroll",
+                                                tint = if (autoScrollEnabled)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+
+                                        if (!isPreviewMode) {
+                                            FilledTonalIconButton(
+                                                onClick = { showShiftDialog = true },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                    contentColor = MaterialTheme.colorScheme.primary
+                                                )
+                                            ) {
+                                                Icon(Icons.Default.Timer, contentDescription = "Batch shift")
+                                            }
+
+                                            FilledTonalIconButton(
+                                                onClick = { showClearAllConfirm = true },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                                )
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.DeleteSweep,
+                                                    contentDescription = "Clear all timestamps",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.weight(1f))
+
+                                if (canCapture) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .navigationBarsPadding()
+                                            .padding(bottom = 24.dp)
+                                            .padding(horizontal = 16.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.Center)
+                                                .width(160.dp)
+                                                .height(56.dp)
+                                                .clickable(
+                                                    interactionSource = timeInteractionSource,
+                                                    indication = null,
+                                                    onClick = { viewModel.captureCurrentLineTimestamp() },
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .graphicsLayer(scaleX = timeScale)
+                                                    .clip(RoundedCornerShape(28.dp))
+                                                    .background(MaterialTheme.colorScheme.primary)
+                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(horizontal = 32.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.TouchApp,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = "Time",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            }
+                                        }
+
+                                        if (showUndoRedo) {
+                                            Row(
+                                                modifier = Modifier.align(Alignment.CenterEnd),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                val undoInteractionSource = remember { MutableInteractionSource() }
+                                                val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
+                                                val undoScale by animateFloatAsState(
+                                                    targetValue = if (isUndoPressed) 52f / 48f else 1f,
+                                                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                                                    label = "undoScale"
+                                                )
+                                                val redoInteractionSource = remember { MutableInteractionSource() }
+                                                val isRedoPressed by redoInteractionSource.collectIsPressedAsState()
+                                                val redoScale by animateFloatAsState(
+                                                    targetValue = if (isRedoPressed) 52f / 48f else 1f,
+                                                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                                                    label = "redoScale"
+                                                )
+                                                val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                                val undoIconColor = if (state.canUndo)
+                                                    MaterialTheme.colorScheme.onSurface
+                                                else
+                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                                val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                                val redoIconColor = if (state.canRedo)
+                                                    MaterialTheme.colorScheme.onSurface
+                                                else
+                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(48.dp)
+                                                        .clickable(
+                                                            interactionSource = undoInteractionSource,
+                                                            indication = null,
+                                                            enabled = state.canUndo,
+                                                            onClick = { viewModel.undo() },
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .graphicsLayer(
+                                                                scaleX = undoScale,
+                                                                scaleY = undoScale
+                                                            )
+                                                            .clip(CircleShape)
+                                                            .background(undoBgColor)
+                                                    )
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.Undo,
+                                                        contentDescription = "Undo",
+                                                        tint = undoIconColor,
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                                }
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(48.dp)
+                                                        .clickable(
+                                                            interactionSource = redoInteractionSource,
+                                                            indication = null,
+                                                            enabled = state.canRedo,
+                                                            onClick = { viewModel.redo() },
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .graphicsLayer(
+                                                                scaleX = redoScale,
+                                                                scaleY = redoScale
+                                                            )
+                                                            .clip(CircleShape)
+                                                            .background(redoBgColor)
+                                                    )
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.Redo,
+                                                        contentDescription = "Redo",
+                                                        tint = redoIconColor,
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (landscapeInverted) {
+                    Box(modifier = Modifier.weight(1f)) { controlsSide() }
+                    Box(modifier = Modifier.weight(1f)) { lyricsSide() }
+                } else {
+                    Box(modifier = Modifier.weight(1f)) { lyricsSide() }
+                    Box(modifier = Modifier.weight(1f)) { controlsSide() }
+                }
+            }
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
+    } else {
+        Scaffold(
+            contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+            snackbarHost = {
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.navigationBarsPadding()
+                )
+            },
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = state.song?.title ?: "Editor",
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onImportAudioFile) {
+                            Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                        }
+                        IconButton(onClick = { showSaveDialog = true }) {
+                            Icon(Icons.Default.Save, contentDescription = "Save LRC")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
             ) {
-                if (state.song?.audioPath.isNullOrEmpty()) {
-                    ImportAudioButton(
-                        onClick = onImportAudioFile,
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (state.song?.audioPath.isNullOrEmpty()) {
+                        ImportAudioButton(
+                            onClick = onImportAudioFile,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    } else {
+                        PlayerBar(
+                            playerState = playerState,
+                            onPlayPause = { viewModel.playPause() },
+                            onSeek = { viewModel.seekTo(it) },
+                            currentSpeed = speed,
+                            onSpeedChange = {
+                                speed = it
+                                viewModel.audioPlayer.setSpeed(it)
+                            },
+                            onSpeedClick = { showSpeedDialog = true },
+                            compactControls = compactControls,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                } else {
-                    PlayerBar(
-                        playerState = playerState,
-                        onPlayPause = { viewModel.playPause() },
-                        onSeek = { viewModel.seekTo(it) },
-                        currentSpeed = speed,
-                        onSpeedChange = {
-                            speed = it
-                            viewModel.audioPlayer.setSpeed(it)
-                        },
-                        onSpeedClick = { showSpeedDialog = true },
-                        compactControls = compactControls,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Lyrics (${state.lyrics.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Lyrics (${state.lyrics.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (!isPreviewMode) {
-                            FilledTonalIconButton(
-                                onClick = { showAddDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                )
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add manually")
-                            }
-                        }
-
-                        FilledTonalIconButton(
-                            onClick = { isPreviewMode = !isPreviewMode },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = if (isPreviewMode)
-                                    MaterialTheme.colorScheme.error
-                                else
-                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-                                contentColor = if (isPreviewMode)
-                                    MaterialTheme.colorScheme.onError
-                                else
-                                    MaterialTheme.colorScheme.secondary
-                            )
-                        ) {
-                            Icon(
-                                if (isPreviewMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (isPreviewMode) "Preview off" else "Preview",
-                                tint = if (isPreviewMode)
-                                    MaterialTheme.colorScheme.onError
-                                else
-                                    MaterialTheme.colorScheme.secondary
-                            )
-                        }
-
-                        FilledTonalIconButton(
-                            onClick = { autoScrollEnabled = !autoScrollEnabled },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                contentColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
-                                contentDescription = "Auto-scroll",
-                                tint = if (autoScrollEnabled)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.outline
-                            )
-                        }
-
-                        if (!isPreviewMode) {
-                            FilledTonalIconButton(
-                                onClick = { showShiftDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                )
-                            ) {
-                                Icon(Icons.Default.Timer, contentDescription = "Batch shift")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (!isPreviewMode) {
+                                FilledTonalIconButton(
+                                    onClick = { showAddDialog = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add manually")
+                                }
                             }
 
                             FilledTonalIconButton(
-                                onClick = { showClearAllConfirm = true },
+                                onClick = { isPreviewMode = !isPreviewMode },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                    containerColor = if (isPreviewMode)
+                                        MaterialTheme.colorScheme.error
+                                    else
+                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                                    contentColor = if (isPreviewMode)
+                                        MaterialTheme.colorScheme.onError
+                                    else
+                                        MaterialTheme.colorScheme.secondary
                                 )
                             ) {
                                 Icon(
-                                    Icons.Default.DeleteSweep,
-                                    contentDescription = "Clear all timestamps",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                    if (isPreviewMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (isPreviewMode) "Preview off" else "Preview",
+                                    tint = if (isPreviewMode)
+                                        MaterialTheme.colorScheme.onError
+                                    else
+                                        MaterialTheme.colorScheme.secondary
                                 )
                             }
-                        }
-                    }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .navigationBarsPadding(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(bottom = 88.dp)
-                ) {
-                    items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
-                        when (item) {
-                            is DisplayItem.Line -> {
-                                val i = item.index
-                                LyricLineCard(
-                                    line = item.lrcLine,
-                                    isCurrentLine = i == state.selectedLineIndex,
-                                    isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
-                                    isEditing = state.editingLineIndex == i && !isPreviewMode,
-                                    editingText = if (state.editingLineIndex == i) state.editingText else "",
-                                    isPreviewMode = isPreviewMode,
-                                    compactControls = compactControls,
-                                    swipeDeleteThresholdDp = swipeDeleteThresholdDp,
-                                    swipeActivationThresholdDp = swipeActivationThresholdDp,
-                                    swipeGesturesEnabled = swipeGesturesEnabled,
-                                    showSnapButton = showSnapButton,
-                                    showClearDeleteButton = showClearDeleteButton,
-                                    swipeInstantDelete = swipeInstantDelete,
-                                    showDebugBorders = showDebugBorders,
-                                    showVibrationToast = showVibrationToast,
-                                    onVibrationToast = onVibrationToast,
-                                    onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
-                                    onEditStart = { viewModel.startEditing(i) },
-                                    onEditChange = { viewModel.updateEditingText(it) },
-                                    onEditDone = { viewModel.finishEditing() },
-                                    onClearTimestamp = { viewModel.clearTimestamp(i) },
-                                    onDelete = { showDeleteConfirm = i },
-                                    onInstantDelete = { viewModel.deleteLine(i) },
-                                    onClick = { viewModel.selectLine(i) },
-                                    onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
-                                    onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
-                                    onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
-                                    modifier = Modifier.fillMaxWidth()
+                            FilledTonalIconButton(
+                                onClick = { autoScrollEnabled = !autoScrollEnabled },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
+                                    contentDescription = "Auto-scroll",
+                                    tint = if (autoScrollEnabled)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline
                                 )
                             }
-                            is DisplayItem.InsertAbove -> {
-                                if (!isPreviewMode) {
-                                    InsertLineButton(
-                                        text = "Insert line above",
-                                        onClick = { viewModel.insertLineBefore(item.index) },
-                                        modifier = Modifier.fillMaxWidth()
+
+                            if (!isPreviewMode) {
+                                FilledTonalIconButton(
+                                    onClick = { showShiftDialog = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        contentColor = MaterialTheme.colorScheme.primary
                                     )
+                                ) {
+                                    Icon(Icons.Default.Timer, contentDescription = "Batch shift")
                                 }
-                            }
-                            is DisplayItem.InsertBelow -> {
-                                if (!isPreviewMode) {
-                                    InsertLineButton(
-                                        text = "Insert line below",
-                                        onClick = { viewModel.insertLineAfter(item.index) },
-                                        modifier = Modifier.fillMaxWidth()
+
+                                FilledTonalIconButton(
+                                    onClick = { showClearAllConfirm = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.Default.DeleteSweep,
+                                        contentDescription = "Clear all timestamps",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                 }
                             }
                         }
                     }
-                }
 
-                if (state.isRecording) {
-                    RecordingBanner(
-                        text = state.newLyricText,
-                        onTextChange = { viewModel.updateNewLyricText(it) },
-                        onCapture = { viewModel.captureTimestamp() },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-            val bottomGradientColor = MaterialTheme.colorScheme.surface
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .align(Alignment.BottomCenter)
-                    .drawBehind {
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, bottomGradientColor)
-                            )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .navigationBarsPadding(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        contentPadding = PaddingValues(bottom = 88.dp)
+                    ) {
+                        items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
+                            when (item) {
+                                is DisplayItem.Line -> {
+                                    val i = item.index
+                                    LyricLineCard(
+                                        line = item.lrcLine,
+                                        isCurrentLine = i == state.selectedLineIndex,
+                                        isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
+                                        isEditing = state.editingLineIndex == i && !isPreviewMode,
+                                        editingText = if (state.editingLineIndex == i) state.editingText else "",
+                                        isPreviewMode = isPreviewMode,
+                                        compactControls = compactControls,
+                                        swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                        swipeActivationThresholdDp = swipeActivationThresholdDp,
+                                        swipeGesturesEnabled = swipeGesturesEnabled,
+                                        showSnapButton = showSnapButton,
+                                        showClearDeleteButton = showClearDeleteButton,
+                                        swipeInstantDelete = swipeInstantDelete,
+                                        showDebugBorders = showDebugBorders,
+                                        showVibrationToast = showVibrationToast,
+                                        onVibrationToast = onVibrationToast,
+                                        onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
+                                        onEditStart = { viewModel.startEditing(i) },
+                                        onEditChange = { viewModel.updateEditingText(it) },
+                                        onEditDone = { viewModel.finishEditing() },
+                                        onClearTimestamp = { viewModel.clearTimestamp(i) },
+                                        onDelete = { showDeleteConfirm = i },
+                                        onInstantDelete = { viewModel.deleteLine(i) },
+                                        onClick = { viewModel.selectLine(i) },
+                                        onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
+                                        onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
+                                        onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                is DisplayItem.InsertAbove -> {
+                                    if (!isPreviewMode) {
+                                        InsertLineButton(
+                                            text = "Insert line above",
+                                            onClick = { viewModel.insertLineBefore(item.index) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                is DisplayItem.InsertBelow -> {
+                                    if (!isPreviewMode) {
+                                        InsertLineButton(
+                                            text = "Insert line below",
+                                            onClick = { viewModel.insertLineAfter(item.index) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (state.isRecording) {
+                        RecordingBanner(
+                            text = state.newLyricText,
+                            onTextChange = { viewModel.updateNewLyricText(it) },
+                            onCapture = { viewModel.captureTimestamp() },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-            )
+                }
 
-            if (canCapture) {
-                val undoInteractionSource = remember { MutableInteractionSource() }
-                val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
-                val undoScale by animateFloatAsState(
-                    targetValue = if (isUndoPressed) 52f / 48f else 1f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
-                    label = "undoScale"
-                )
-                val redoInteractionSource = remember { MutableInteractionSource() }
-                val isRedoPressed by redoInteractionSource.collectIsPressedAsState()
-                val redoScale by animateFloatAsState(
-                    targetValue = if (isRedoPressed) 52f / 48f else 1f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
-                    label = "redoScale"
-                )
-                val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                val undoIconColor = if (state.canUndo)
-                    MaterialTheme.colorScheme.onSurface
-                else
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                val redoIconColor = if (state.canRedo)
-                    MaterialTheme.colorScheme.onSurface
-                else
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-
+                val bottomGradientColor = MaterialTheme.colorScheme.surface
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(160.dp)
                         .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 24.dp)
-                        .padding(horizontal = 16.dp)
-                ) {
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, bottomGradientColor)
+                                )
+                            )
+                        }
+                )
+
+                if (canCapture) {
+                    val undoInteractionSource = remember { MutableInteractionSource() }
+                    val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
+                    val undoScale by animateFloatAsState(
+                        targetValue = if (isUndoPressed) 52f / 48f else 1f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                        label = "undoScale"
+                    )
+                    val redoInteractionSource = remember { MutableInteractionSource() }
+                    val isRedoPressed by redoInteractionSource.collectIsPressedAsState()
+                    val redoScale by animateFloatAsState(
+                        targetValue = if (isRedoPressed) 52f / 48f else 1f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                        label = "redoScale"
+                    )
+                    val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                    val undoIconColor = if (state.canUndo)
+                        MaterialTheme.colorScheme.onSurface
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                    val redoIconColor = if (state.canRedo)
+                        MaterialTheme.colorScheme.onSurface
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+
                     Box(
                         modifier = Modifier
-                            .align(Alignment.Center)
-                            .width(160.dp)
-                            .height(56.dp)
-                            .clickable(
-                                interactionSource = timeInteractionSource,
-                                indication = null,
-                                onClick = { viewModel.captureCurrentLineTimestamp() },
-                            ),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                            .padding(bottom = 24.dp)
+                            .padding(horizontal = 16.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer(scaleX = timeScale)
-                                .clip(RoundedCornerShape(28.dp))
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.TouchApp,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Time",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
-
-                    if (showUndoRedo) {
-                        Row(
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
+                                .align(Alignment.Center)
+                                .width(160.dp)
+                                .height(56.dp)
                                 .clickable(
-                                    interactionSource = undoInteractionSource,
+                                    interactionSource = timeInteractionSource,
                                     indication = null,
-                                    enabled = state.canUndo,
-                                    onClick = { viewModel.undo() },
+                                    onClick = { viewModel.captureCurrentLineTimestamp() },
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer(
-                                        scaleX = undoScale,
-                                        scaleY = undoScale
-                                    )
-                                    .clip(CircleShape)
-                                    .background(undoBgColor)
+                                    .graphicsLayer(scaleX = timeScale)
+                                    .clip(RoundedCornerShape(28.dp))
+                                    .background(MaterialTheme.colorScheme.primary)
                             )
-                            Icon(
-                                Icons.AutoMirrored.Filled.Undo,
-                                contentDescription = "Undo",
-                                tint = undoIconColor,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.TouchApp,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Time",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clickable(
-                                    interactionSource = redoInteractionSource,
-                                    indication = null,
-                                    enabled = state.canRedo,
-                                    onClick = { viewModel.redo() },
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        if (showUndoRedo) {
+                            Row(
+                                modifier = Modifier.align(Alignment.CenterEnd),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer(
-                                        scaleX = redoScale,
-                                        scaleY = redoScale
-                                    )
-                                    .clip(CircleShape)
-                                    .background(redoBgColor)
-                            )
-                            Icon(
-                                Icons.AutoMirrored.Filled.Redo,
-                                contentDescription = "Redo",
-                                tint = redoIconColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                                    .size(48.dp)
+                                    .clickable(
+                                        interactionSource = undoInteractionSource,
+                                        indication = null,
+                                        enabled = state.canUndo,
+                                        onClick = { viewModel.undo() },
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer(
+                                            scaleX = undoScale,
+                                            scaleY = undoScale
+                                        )
+                                        .clip(CircleShape)
+                                        .background(undoBgColor)
+                                )
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Undo,
+                                    contentDescription = "Undo",
+                                    tint = undoIconColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clickable(
+                                        interactionSource = redoInteractionSource,
+                                        indication = null,
+                                        enabled = state.canRedo,
+                                        onClick = { viewModel.redo() },
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer(
+                                            scaleX = redoScale,
+                                            scaleY = redoScale
+                                        )
+                                        .clip(CircleShape)
+                                        .background(redoBgColor)
+                                )
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Redo,
+                                    contentDescription = "Redo",
+                                    tint = redoIconColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            }
                         }
                     }
                 }

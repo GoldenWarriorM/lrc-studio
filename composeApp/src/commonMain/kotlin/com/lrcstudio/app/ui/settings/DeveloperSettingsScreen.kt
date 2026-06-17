@@ -43,6 +43,29 @@ fun DeveloperSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            SettingsSection("Layout") {
+                SettingsRow(
+                    title = "Force landscape editor",
+                    subtitle = "Split screen: lyrics left, controls right",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.forceLandscapeEditor,
+                            onCheckedChange = { settingsRepository.toggleForceLandscapeEditor() }
+                        )
+                    }
+                )
+                SettingsRow(
+                    title = "Invert landscape sides",
+                    subtitle = "Swap lyrics and controls sides",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.invertLandscapeSides,
+                            onCheckedChange = { settingsRepository.toggleInvertLandscapeSides() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("Debug") {
                 SettingsRow(
                     title = "Debug borders",
