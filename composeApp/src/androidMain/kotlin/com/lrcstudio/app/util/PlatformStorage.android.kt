@@ -36,7 +36,12 @@ actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolea
     return fileExistsInTree(context, directory, fileName)
 }
 
+private fun sanitizeFileName(name: String): String {
+    return name.replace(':', '_')
+}
+
 private fun fileExistsInTree(context: Context, treeUriString: String, fileName: String): Boolean {
+    val safeName = sanitizeFileName(fileName)
     val treeUri = try { Uri.parse(treeUriString) } catch (e: Exception) { Log.w("LrcSA", "fileExistsInTree: bad URI: ${e.message}"); return false }
     val treeDocId = try { DocumentsContract.getTreeDocumentId(treeUri) } catch (e: Exception) { Log.w("LrcSA", "fileExistsInTree: no treeDocId: ${e.message}"); return false }
     val resolver = context.contentResolver
@@ -51,7 +56,7 @@ private fun fileExistsInTree(context: Context, treeUriString: String, fileName: 
                 val name = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
                 childCount++
                 Log.w("LrcSA", "fileExistsInTree: child #$childCount name=$name")
-                if (name == fileName) { Log.w("LrcSA", "fileExistsInTree: $fileName FOUND in SAF"); return true }
+                if (name == safeName) { Log.w("LrcSA", "fileExistsInTree: $fileName FOUND in SAF (as $safeName)"); return true }
             }
         }
         Log.w("LrcSA", "fileExistsInTree: SAF children done, count=$childCount, $fileName NOT found")
@@ -61,9 +66,9 @@ private fun fileExistsInTree(context: Context, treeUriString: String, fileName: 
         val realPath = getFullPathFromTreeUri(treeUri, context)
         Log.w("LrcSA", "fileExistsInTree: realPath=$realPath")
         if (realPath != null) {
-            val f = File(realPath, fileName)
+            val f = File(realPath, safeName)
             val exists = f.exists()
-            Log.w("LrcSA", "fileExistsInTree: File($realPath, $fileName).exists()=$exists")
+            Log.w("LrcSA", "fileExistsInTree: File($realPath, $safeName).exists()=$exists")
             return exists
         }
         return false

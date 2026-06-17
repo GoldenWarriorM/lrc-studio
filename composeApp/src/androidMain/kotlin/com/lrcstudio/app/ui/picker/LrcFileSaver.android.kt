@@ -56,10 +56,8 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
             { content: String ->
                 val treeUri = Uri.parse(directory)
                 val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-                val fileDocId = "$treeDocId/$defaultName"
-                val fileUri = DocumentsContract.buildDocumentUri(treeUri.authority, fileDocId)
 
-                val out = tryWriteDocUri(context, treeUri, treeDocId, fileUri, defaultName)
+                val out = tryWriteDocUri(context, treeUri, treeDocId, defaultName)
                 if (out != null) {
                     try {
                         out.use { output ->
@@ -82,19 +80,25 @@ actual fun rememberLrcFileSaveLauncher(defaultName: String, directory: String?, 
     }
 }
 
+private fun sanitizeFileName(name: String): String {
+    // SAF providers (especially on Android 16+) replace ':' with '_' in filenames
+    return name.replace(':', '_')
+}
+
 private fun tryWriteDocUri(
     context: Context,
     treeUri: Uri,
     treeDocId: String,
-    fileUri: Uri,
     defaultName: String
 ): java.io.OutputStream? {
+    val name = sanitizeFileName(defaultName)
     val resolver = context.contentResolver
     val tag = "LrcFileSaver"
-    Log.w(tag, "treeUri=$treeUri treeDocId=$treeDocId fileDocId=$treeDocId/$defaultName fileUri=$fileUri")
+    Log.w(tag, "treeUri=$treeUri treeDocId=$treeDocId name=$name (was=$defaultName)")
 
     // Strategy 1: open existing file for overwrite (try bare doc URI + tree-anchored)
-    for (uri in openExistingUris(treeUri, "$treeDocId/$defaultName")) {
+    val sanitizedFileDocId = "$treeDocId/$name"
+    for (uri in openExistingUris(treeUri, sanitizedFileDocId)) {
         Log.w(tag, "S1 trying openOutputStream on $uri")
         val out = try { resolver.openOutputStream(uri) } catch (e: Exception) { Log.w(tag, "S1 failed: ${e.message}"); null }
         if (out != null) { Log.w(tag, "S1 success on $uri"); return out }
@@ -112,7 +116,7 @@ private fun tryWriteDocUri(
                 val docId = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID))
                 childCount++
                 Log.w(tag, "S1.5 child #$childCount displayName=$displayName docId=$docId")
-                if (displayName == defaultName) {
+                if (displayName == name) {
                     val docUri = treeUri.buildUpon()
                         .appendEncodedPath("document")
                         .appendEncodedPath(Uri.encode(docId))
@@ -130,7 +134,7 @@ private fun tryWriteDocUri(
     try {
         val directDocUri = treeUri.buildUpon()
             .appendEncodedPath("document")
-            .appendEncodedPath(Uri.encode("$treeDocId/$defaultName"))
+            .appendEncodedPath(Uri.encode(sanitizedFileDocId))
             .build()
         Log.w(tag, "S1.6 trying openOutputStream($directDocUri, \"rwt\")")
         val out = try { resolver.openOutputStream(directDocUri, "rwt") } catch (e: Exception) { Log.w(tag, "S1.6 failed: ${e.message}"); null }
@@ -138,16 +142,16 @@ private fun tryWriteDocUri(
     } catch (_: Exception) {}
 
     // Strategy 2: delete existing then create new (multiple parent URI formats)
-    Log.w(tag, "S2 calling deleteDocumentInTree for $defaultName")
-    deleteDocumentInTree(resolver, treeUri, defaultName, context, tag)
+    Log.w(tag, "S2 calling deleteDocumentInTree for $name")
+    deleteDocumentInTree(resolver, treeUri, name, context, tag)
     for (parentUri in parentUrisForCreate(treeUri, treeDocId)) {
-        Log.w(tag, "S2 trying createDocument on parent=$parentUri mime=application/octet-stream name=$defaultName")
+        Log.w(tag, "S2 trying createDocument on parent=$parentUri mime=application/octet-stream name=$name")
         try {
-            val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", defaultName)
+            val created = DocumentsContract.createDocument(resolver, parentUri, "application/octet-stream", name)
             if (created != null) {
                 val createdName = created.lastPathSegment
                 Log.w(tag, "S2 createDocument returned $created lastPathSegment=$createdName")
-                if (createdName != defaultName) {
+                if (createdName != name) {
                     Log.w(tag, "S2 createDocument got suffixed name, deleting and retrying...")
                     try { DocumentsContract.deleteDocument(resolver, created) } catch (_: Exception) {}
                     continue
@@ -166,7 +170,7 @@ private fun tryWriteDocUri(
         Log.w(tag, "S3 trying insert on $insertUri")
         try {
             val values = ContentValues().apply {
-                put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, defaultName)
+                put(DocumentsContract.Document.COLUMN_DISPLAY_NAME, name)
                 put(DocumentsContract.Document.COLUMN_MIME_TYPE, "application/octet-stream")
             }
             val created = resolver.insert(insertUri, values)
@@ -180,7 +184,7 @@ private fun tryWriteDocUri(
 
     // Strategy 4: fallback to java.io.File via path resolution
     Log.w(tag, "S4 trying java.io.File fallback")
-    val result = strategyFileFallback(context, treeUri, defaultName)
+    val result = strategyFileFallback(context, treeUri, name)
     Log.w(tag, "S4 returned ${if (result != null) "OutputStream" else "null"}")
     return result
 }
