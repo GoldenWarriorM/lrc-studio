@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -31,8 +30,7 @@ actual fun writeTextFile(path: String, content: String) {
 }
 
 actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean {
-    val context = appContext ?: return false.also { Log.w("LrcSA", "lrcFileInDirectoryExists: no context") }
-    Log.w("LrcSA", "lrcFileInDirectoryExists: directory=$directory fileName=$fileName")
+    val context = appContext ?: return false
     return fileExistsInTree(context, directory, fileName)
 }
 
@@ -42,37 +40,29 @@ private fun sanitizeFileName(name: String): String {
 
 private fun fileExistsInTree(context: Context, treeUriString: String, fileName: String): Boolean {
     val safeName = sanitizeFileName(fileName)
-    val treeUri = try { Uri.parse(treeUriString) } catch (e: Exception) { Log.w("LrcSA", "fileExistsInTree: bad URI: ${e.message}"); return false }
-    val treeDocId = try { DocumentsContract.getTreeDocumentId(treeUri) } catch (e: Exception) { Log.w("LrcSA", "fileExistsInTree: no treeDocId: ${e.message}"); return false }
+    val treeUri = try { Uri.parse(treeUriString) } catch (_: Exception) { return false }
+    val treeDocId = try { DocumentsContract.getTreeDocumentId(treeUri) } catch (_: Exception) { return false }
     val resolver = context.contentResolver
 
     try {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
-        Log.w("LrcSA", "fileExistsInTree: query $childrenUri")
         val cursor = resolver.query(childrenUri, null, null, null, null)
-        var childCount = 0
         cursor?.use {
             while (it.moveToNext()) {
                 val name = it.getString(it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME))
-                childCount++
-                Log.w("LrcSA", "fileExistsInTree: child #$childCount name=$name")
-                if (name == safeName) { Log.w("LrcSA", "fileExistsInTree: $fileName FOUND in SAF (as $safeName)"); return true }
+                if (name == safeName) return true
             }
         }
-        Log.w("LrcSA", "fileExistsInTree: SAF children done, count=$childCount, $fileName NOT found")
-    } catch (e: Exception) { Log.w("LrcSA", "fileExistsInTree: SAF query exception: ${e.message}") }
+    } catch (_: Exception) {}
 
     try {
         val realPath = getFullPathFromTreeUri(treeUri, context)
-        Log.w("LrcSA", "fileExistsInTree: realPath=$realPath")
         if (realPath != null) {
             val f = File(realPath, safeName)
-            val exists = f.exists()
-            Log.w("LrcSA", "fileExistsInTree: File($realPath, $safeName).exists()=$exists")
-            return exists
+            return f.exists()
         }
         return false
-    } catch (e: Exception) { Log.w("LrcSA", "fileExistsInTree: File fallback exception: ${e.message}"); return false }
+    } catch (_: Exception) { return false }
 }
 
 @Composable
