@@ -232,13 +232,15 @@ fun SettingsScreen(
                             text = "LRC save folder",
                             style = MaterialTheme.typography.bodyLarge
                         )
+                        var expanded by remember { mutableStateOf(false) }
                         Text(
                             text = settings.lrcSaveDirectory
                                 ?: "Not set — will ask each time",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = if (expanded) Int.MAX_VALUE else 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.clickable { expanded = !expanded }
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
