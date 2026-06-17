@@ -113,9 +113,11 @@ private fun getDocumentPathFromTreeUri(treeUri: Uri): String {
     return if (split.size >= 2) split[1] else "/"
 }
 
+
+
 private fun getVolumePath(volumeId: String?, context: Context): String? {
     if (volumeId == null) return null
-    return try {
+    try {
         val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
         val storageVolumeClass = Class.forName("android.os.storage.StorageVolume")
         val getVolumeList = storageManager.javaClass.getMethod("getVolumeList")
@@ -138,14 +140,47 @@ private fun getVolumePath(volumeId: String?, context: Context): String? {
                 return getPath.invoke(storageVolume) as String
             }
         }
-        null
-    } catch (e: Exception) { null }
+    } catch (_: Exception) {}
+    if (volumeId == "primary") {
+        return Environment.getExternalStorageDirectory().absolutePath
+    }
+    return null
 }
 
 actual fun treeUriToDisplayPathImpl(treeUriString: String): String {
     val ctx = appContext ?: return treeUriString
     return try {
         val treeUri = Uri.parse(treeUriString)
-        getFullPathFromTreeUri(treeUri, ctx) ?: treeUriString
+        val resolver = ctx.contentResolver
+
+        // Strategy 1: resolve via volume path + docId
+        val volumePath = getVolumePath(getVolumeIdFromTreeUri(treeUri), ctx)
+        if (volumePath != null) {
+            val docPath = getDocumentPathFromTreeUri(treeUri)
+            val fullPath = if (docPath.isNotEmpty()) {
+                if (docPath.startsWith("/")) "$volumePath$docPath" else "$volumePath/$docPath"
+            } else volumePath
+            return fullPath
+        }
+
+        // Strategy 2: use DocumentsContract.findDocumentPath (API 26+)
+        try {
+            val path = DocumentsContract.findDocumentPath(resolver, treeUri)
+            val segments = path.path
+            // Build a human-readable path from segments
+            if (segments.size >= 2) {
+                val volumeSegment = segments[0] // e.g. "primary:Download" or just "primary"
+                val rest = segments.drop(1).joinToString("/")
+                val volumeId = volumeSegment.split(":").first()
+                val vp = getVolumePath(volumeId, ctx)
+                if (vp != null) {
+                    val dir = volumeSegment.split(":").drop(1).joinToString(":")
+                    val base = if (dir.isNotEmpty()) "$vp/$dir" else vp
+                    return "$base/$rest"
+                }
+            }
+        } catch (_: Exception) {}
+
+        treeUriString
     } catch (_: Exception) { treeUriString }
 }
