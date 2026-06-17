@@ -166,7 +166,7 @@ actual fun treeUriToDisplayPathImpl(treeUriString: String): String {
         // Strategy 2: use DocumentsContract.findDocumentPath (API 26+)
         try {
             val path = DocumentsContract.findDocumentPath(resolver, treeUri)
-            val segments = path.path
+            val segments = path!!.path
             // Build a human-readable path from segments
             if (segments.size >= 2) {
                 val volumeSegment = segments[0] // e.g. "primary:Download" or just "primary"
