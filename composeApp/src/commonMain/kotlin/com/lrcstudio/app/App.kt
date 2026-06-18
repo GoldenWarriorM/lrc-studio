@@ -207,7 +207,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     showVibrationToast = settings.showVibrationToast,
                                     lrcSaveDirectory = settings.lrcSaveDirectory,
                                     forceLandscapeEditor = settings.forceLandscapeEditor,
-                                    landscapeInverted = settings.invertLandscapeSides
+                                    landscapeInverted = settings.invertLandscapeSides,
+                                    ignoreCutout = settings.ignoreCutout
                                 )
                             }
                         }

@@ -28,7 +28,8 @@ data class AppSettings(
     val customAccentColor: String? = null,
     val lrcSaveDirectory: String? = null,
     val forceLandscapeEditor: Boolean = false,
-    val invertLandscapeSides: Boolean = false
+    val invertLandscapeSides: Boolean = false,
+    val ignoreCutout: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -156,6 +157,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleInvertLandscapeSides() {
         _settings.value = _settings.value.copy(
             invertLandscapeSides = !_settings.value.invertLandscapeSides
+        )
+        saveToDisk()
+    }
+
+    fun toggleIgnoreCutout() {
+        _settings.value = _settings.value.copy(
+            ignoreCutout = !_settings.value.ignoreCutout
         )
         saveToDisk()
     }
