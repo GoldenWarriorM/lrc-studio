@@ -89,6 +89,19 @@ fun DeveloperSettingsScreen(
                 )
             }
 
+            SettingsSection("Platform") {
+                SettingsRow(
+                    title = "Show platform-specific options",
+                    subtitle = "Show settings from other platforms for testing",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.showPlatformSpecific,
+                            onCheckedChange = { settingsRepository.toggleShowPlatformSpecific() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("Animation") {
                 SettingsRow(
                     title = "Slow animations",

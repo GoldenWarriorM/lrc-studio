@@ -261,17 +261,19 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSection("Display") {
-                SettingsRow(
-                    title = "Ignore camera cutout",
-                    subtitle = "Don't add padding for the front camera notch in landscape editor",
-                    trailing = {
-                        AccentSwitch(
-                            checked = settings.ignoreCutout,
-                            onCheckedChange = { settingsRepository.toggleIgnoreCutout() }
-                        )
-                    }
-                )
+            if (ShowCutoutSetting() || settings.showPlatformSpecific) {
+                SettingsSection("Display") {
+                    SettingsRow(
+                        title = "Ignore camera cutout",
+                        subtitle = "Don't add padding for the front camera notch in landscape editor",
+                        trailing = {
+                            AccentSwitch(
+                                checked = settings.ignoreCutout,
+                                onCheckedChange = { settingsRepository.toggleIgnoreCutout() }
+                            )
+                        }
+                    )
+                }
             }
 
             SettingsSection("About") {

@@ -29,7 +29,8 @@ data class AppSettings(
     val lrcSaveDirectory: String? = null,
     val forceLandscapeEditor: Boolean = false,
     val invertLandscapeSides: Boolean = false,
-    val ignoreCutout: Boolean = false
+    val ignoreCutout: Boolean = false,
+    val showPlatformSpecific: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -164,6 +165,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleIgnoreCutout() {
         _settings.value = _settings.value.copy(
             ignoreCutout = !_settings.value.ignoreCutout
+        )
+        saveToDisk()
+    }
+
+    fun toggleShowPlatformSpecific() {
+        _settings.value = _settings.value.copy(
+            showPlatformSpecific = !_settings.value.showPlatformSpecific
         )
         saveToDisk()
     }
