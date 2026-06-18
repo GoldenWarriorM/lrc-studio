@@ -10,10 +10,10 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -231,7 +231,6 @@ fun PlayerBar(
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SpeedPresets(
     currentSpeed: Float,
@@ -253,9 +252,16 @@ private fun SpeedPresets(
             modifier = Modifier
                 .weight(1f)
                 .horizontalScroll(scrollState)
-                .onPointerEvent(PointerEventType.Scroll, PointerEventPass.Initial) { event ->
-                    val delta = event.changes.firstOrNull()?.scrollDelta ?: return@onPointerEvent
-                    scrollState.dispatchRawDelta((-delta.x - delta.y) * 4f)
+                .pointerInput(scrollState) {
+                    awaitEachGesture {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        if (event.type == PointerEventType.Scroll) {
+                            val delta = event.changes.firstOrNull()?.scrollDelta ?: return@awaitEachGesture
+                            if (delta.x != 0f || delta.y != 0f) {
+                                scrollState.dispatchRawDelta((-delta.x - delta.y) * 4f)
+                            }
+                        }
+                    }
                 },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
