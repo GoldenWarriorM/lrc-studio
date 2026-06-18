@@ -4,13 +4,15 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -228,6 +230,7 @@ fun PlayerBar(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SpeedPresets(
     currentSpeed: Float,
@@ -237,7 +240,7 @@ private fun SpeedPresets(
 ) {
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val presets = listOf(0.25f, 0.5f, 1f, 1.5f, 2f)
-    val listState = rememberLazyListState()
+    val scrollState = rememberScrollState()
 
     Row(
         modifier = Modifier
@@ -245,13 +248,18 @@ private fun SpeedPresets(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        LazyRow(
-            state = listState,
-            modifier = Modifier.weight(1f),
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(scrollState)
+                .onPointerEvent(PointerEventType.Scroll) { event ->
+                    val delta = event.changes.firstOrNull()?.scrollDelta ?: return@onPointerEvent
+                    if (delta.y != 0f) scrollState.dispatchRawDelta(-delta.y)
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            items(presets) { preset ->
+            presets.forEach { preset ->
                 val isActive = currentSpeed == preset
                 SuggestionChip(
                     onClick = { onSpeedChange(preset) },
