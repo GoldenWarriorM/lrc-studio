@@ -295,6 +295,14 @@ private fun SpeedPresets(
         }
 
         Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(32.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(primary)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
 
         Box(
             modifier = Modifier
