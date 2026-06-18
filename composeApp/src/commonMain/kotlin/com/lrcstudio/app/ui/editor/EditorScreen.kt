@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
+import com.lrcstudio.app.util.SetImmersiveMode
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
@@ -148,6 +149,8 @@ fun EditorScreen(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
         val useLandscape = forceLandscapeEditor || isLandscape
+
+        SetImmersiveMode(useLandscape)
 
         if (useLandscape) {
             Row(modifier = Modifier.fillMaxSize()) {
