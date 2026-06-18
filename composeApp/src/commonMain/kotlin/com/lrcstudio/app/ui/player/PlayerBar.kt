@@ -301,6 +301,7 @@ private fun SpeedPresets(
                 .clip(RoundedCornerShape(8.dp))
                 .background(primary.copy(alpha = 0.1f))
                 .clickable { onSpeedClick() }
+                .heightIn(min = 32.dp)
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
