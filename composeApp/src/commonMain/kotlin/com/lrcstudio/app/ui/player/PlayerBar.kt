@@ -280,7 +280,7 @@ private fun SpeedPresets(
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         )
                     },
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = if (isActive) primary.copy(alpha = 0.2f) else primary.copy(alpha = 0.08f),
                         labelColor = if (isActive) primary else onSurfaceVariant
