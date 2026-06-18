@@ -56,7 +56,6 @@ import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.util.SetImmersiveMode
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
-import com.lrcstudio.app.ui.player.SpeedControl
 import com.lrcstudio.app.util.rememberFileExistsChecker
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -308,7 +307,7 @@ fun EditorScreen(
                                         },
                                         onSpeedClick = { showSpeedDialog = true },
                                         compactControls = compactControls,
-                                        hideSpeedControls = true,
+                                        speedBelowSeek = true,
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                     )
                                 }
@@ -404,18 +403,6 @@ fun EditorScreen(
                                         }
                                     }
                                 }
-
-                                SpeedControl(
-                                    currentSpeed = speed,
-                                    onSpeedChange = {
-                                        speed = it
-                                        viewModel.audioPlayer.setSpeed(it)
-                                    },
-                                    onSpeedClick = { showSpeedDialog = true },
-                                    compactControls = compactControls,
-                                    primary = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                                )
 
                                 Spacer(modifier = Modifier.weight(1f))
 

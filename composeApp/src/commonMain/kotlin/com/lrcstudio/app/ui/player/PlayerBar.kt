@@ -34,7 +34,7 @@ fun PlayerBar(
     onSpeedChange: (Float) -> Unit = {},
     onSpeedClick: () -> Unit = {},
     compactControls: Boolean = false,
-    hideSpeedControls: Boolean = false,
+    speedBelowSeek: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
@@ -168,7 +168,7 @@ fun PlayerBar(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                if (!hideSpeedControls) {
+                if (!speedBelowSeek) {
                     SpeedControl(
                         currentSpeed = currentSpeed,
                         onSpeedChange = onSpeedChange,
@@ -211,6 +211,77 @@ fun PlayerBar(
                     color = onSurfaceVariant
                 )
             }
+
+            if (speedBelowSeek) {
+                Spacer(modifier = Modifier.height(8.dp))
+                SpeedPresets(
+                    currentSpeed = currentSpeed,
+                    onSpeedChange = onSpeedChange,
+                    onSpeedClick = onSpeedClick,
+                    primary = primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeedPresets(
+    currentSpeed: Float,
+    onSpeedChange: (Float) -> Unit,
+    onSpeedClick: () -> Unit,
+    primary: androidx.compose.ui.graphics.Color
+) {
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val presets = listOf(0.25f, 0.5f, 1f, 1.5f, 2f)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        ) {
+            presets.forEach { preset ->
+                val isActive = currentSpeed == preset
+                SuggestionChip(
+                    onClick = { onSpeedChange(preset) },
+                    label = {
+                        Text(
+                            text = "%.2gx".format(preset),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = if (isActive) primary.copy(alpha = 0.2f) else primary.copy(alpha = 0.08f),
+                        labelColor = if (isActive) primary else onSurfaceVariant
+                    ),
+                    border = if (isActive) SuggestionChipDefaults.suggestionChipBorder(
+                        borderColor = primary,
+                        enabled = true,
+                        borderWidth = 1.dp
+                    ) else null
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Speed: %.2fx".format(currentSpeed),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                color = primary,
+                modifier = Modifier.clickable { onSpeedClick() }
+            )
         }
     }
 }
