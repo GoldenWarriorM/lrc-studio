@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.util.SetImmersiveMode
-import com.lrcstudio.app.util.cutoutPaddingValues
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
@@ -155,8 +154,10 @@ fun EditorScreen(
         SetImmersiveMode(useLandscape)
 
         if (useLandscape) {
-            val cutoutPadding = if (ignoreCutout) PaddingValues(0.dp) else cutoutPaddingValues()
-            Row(modifier = Modifier.fillMaxSize().padding(cutoutPadding)) {
+            Row(modifier = Modifier
+                .fillMaxSize()
+                .then(if (!ignoreCutout) Modifier.windowInsetsPadding(WindowInsets.displayCutout) else Modifier)
+            ) {
                 val lyricsSide = @Composable {
                     Column(modifier = Modifier
                         .fillMaxHeight()
