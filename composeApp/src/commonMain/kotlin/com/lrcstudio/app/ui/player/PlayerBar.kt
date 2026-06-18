@@ -267,15 +267,22 @@ private fun SpeedPresets(
                 drawContent()
 
                 val fadeWidth = 24.dp.toPx()
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        0f to Color.Transparent,
-                        fadeWidth / size.width to Color.Black,
-                        1f - fadeWidth / size.width to Color.Black,
-                        1f to Color.Transparent
-                    ),
-                    blendMode = BlendMode.DstIn
-                )
+                val width = size.width
+                if (width > 0f) {
+                    val ratio = fadeWidth / width
+                    val atStart = scrollState.value <= 0f
+                    val atEnd = scrollState.value >= scrollState.maxValue
+
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            0f to if (atStart) Color.Black else Color.Transparent,
+                            ratio to Color.Black,
+                            (1f - ratio).coerceAtLeast(ratio) to Color.Black,
+                            1f to if (atEnd) Color.Black else Color.Transparent
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                }
             }
     ) {
         Row(
