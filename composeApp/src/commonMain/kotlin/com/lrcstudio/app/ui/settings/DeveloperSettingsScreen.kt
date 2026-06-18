@@ -64,6 +64,39 @@ fun DeveloperSettingsScreen(
                         )
                     }
                 )
+                var splitRatio by remember(settings.landscapeSplitRatio) {
+                    mutableFloatStateOf(settings.landscapeSplitRatio)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Split ratio",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Lyrics ${(splitRatio * 100).toInt()}% / Controls ${((1f - splitRatio) * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Slider(
+                    value = splitRatio,
+                    onValueChange = { splitRatio = it },
+                    onValueChangeFinished = { settingsRepository.setLandscapeSplitRatio(splitRatio) },
+                    valueRange = 0.15f..0.85f,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                    )
+                )
             }
 
             SettingsSection("Debug") {

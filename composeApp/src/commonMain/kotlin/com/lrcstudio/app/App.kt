@@ -208,7 +208,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     lrcSaveDirectory = settings.lrcSaveDirectory,
                                     forceLandscapeEditor = settings.forceLandscapeEditor,
                                     landscapeInverted = settings.invertLandscapeSides,
-                                    ignoreCutout = settings.ignoreCutout
+                                    ignoreCutout = settings.ignoreCutout,
+                                    landscapeSplitRatio = settings.landscapeSplitRatio
                                 )
                             }
                         }

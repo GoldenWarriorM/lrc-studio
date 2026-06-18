@@ -80,7 +80,8 @@ fun EditorScreen(
     lrcSaveDirectory: String? = null,
     forceLandscapeEditor: Boolean = false,
     landscapeInverted: Boolean = false,
-    ignoreCutout: Boolean = false
+    ignoreCutout: Boolean = false,
+    landscapeSplitRatio: Float = 0.5f
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -547,12 +548,14 @@ fun EditorScreen(
                     }
                 }
 
+                val lyricsWeight = landscapeSplitRatio
+                val controlsWeight = 1f - landscapeSplitRatio
                 if (landscapeInverted) {
-                    Box(modifier = Modifier.weight(1f)) { controlsSide() }
-                    Box(modifier = Modifier.weight(1f)) { lyricsSide() }
+                    Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
+                    Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
                 } else {
-                    Box(modifier = Modifier.weight(1f)) { lyricsSide() }
-                    Box(modifier = Modifier.weight(1f)) { controlsSide() }
+                    Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
+                    Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                 }
             }
         }
