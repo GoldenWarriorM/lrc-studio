@@ -4,13 +4,13 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -29,6 +29,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
@@ -246,18 +253,41 @@ private fun SpeedPresets(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
+    ) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .clipToBounds()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+
+                val fadeWidth = 24.dp.toPx()
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        fadeWidth / size.width to Color.Black,
+                        1f - fadeWidth / size.width to Color.Black,
+                        1f to Color.Transparent
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
     ) {
         Row(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .horizontalScroll(scrollState)
                 .pointerInput(scrollState) {
                     awaitEachGesture {
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         if (event.type == PointerEventType.Scroll) {
-                            val delta = event.changes.firstOrNull()?.scrollDelta ?: return@awaitEachGesture
+                            val delta = event.changes.firstOrNull()?.scrollDelta
+                                ?: return@awaitEachGesture
                             if (delta.y != 0f) {
                                 scrollState.dispatchRawDelta(-delta.y * 10f)
                             }
@@ -293,26 +323,27 @@ private fun SpeedPresets(
                 )
             }
         }
+    }
 
-        Spacer(modifier = Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(32.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(primary)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+    Spacer(modifier = Modifier.width(8.dp))
+    Box(
+        modifier = Modifier
+            .width(4.dp)
+            .height(32.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(primary)
+    )
+    Spacer(modifier = Modifier.width(8.dp))
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(primary.copy(alpha = 0.1f))
-                .clickable { onSpeedClick() }
-                .heightIn(min = 32.dp)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(primary.copy(alpha = 0.1f))
+            .clickable { onSpeedClick() }
+            .heightIn(min = 32.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
             Text(
                 text = "%.2fx".format(currentSpeed),
                 style = MaterialTheme.typography.bodySmall,
