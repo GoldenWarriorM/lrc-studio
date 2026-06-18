@@ -254,7 +254,7 @@ private fun SpeedPresets(
                 .horizontalScroll(scrollState)
                 .onPointerEvent(PointerEventType.Scroll) { event ->
                     val delta = event.changes.firstOrNull()?.scrollDelta ?: return@onPointerEvent
-                    if (delta.y != 0f) scrollState.dispatchRawDelta(-delta.y)
+                    scrollState.dispatchRawDelta((-delta.x - delta.y) * 2f)
                 },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
