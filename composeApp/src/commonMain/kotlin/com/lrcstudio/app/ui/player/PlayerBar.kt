@@ -204,7 +204,7 @@ fun PlayerBar(
                     valueRange = 0f..playerState.duration.coerceAtLeast(1).toFloat(),
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 8.dp),
+            .padding(horizontal = 4.dp),
                     colors = SliderDefaults.colors(
                         thumbColor = primary,
                         activeTrackColor = primary,
