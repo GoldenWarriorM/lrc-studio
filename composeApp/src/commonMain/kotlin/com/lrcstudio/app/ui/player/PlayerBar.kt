@@ -301,19 +301,24 @@ private fun SpeedPresets(
         )
         Spacer(modifier = Modifier.width(4.dp))
 
-        Text(
-            text = "%.2fx".format(currentSpeed),
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-            color = primary,
-            maxLines = 1,
-            softWrap = false,
+        Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
                 .background(primary.copy(alpha = 0.1f))
                 .clickable { onSpeedClick() }
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-        )
+                .wrapContentHeight()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "%.2fx".format(currentSpeed),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                color = primary,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
     }
 }
 
