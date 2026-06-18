@@ -294,12 +294,7 @@ private fun SpeedPresets(
             }
         }
 
-        Spacer(modifier = Modifier.width(4.dp))
-        VerticalDivider(
-            thickness = 1.dp,
-            color = primary.copy(alpha = 0.3f)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Box(
             modifier = Modifier
