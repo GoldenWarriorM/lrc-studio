@@ -1,6 +1,5 @@
 package com.lrcstudio.app.ui.editor
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -35,6 +34,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
@@ -519,6 +519,10 @@ fun EditorScreen(
                 }
 
                 val controlsSide = @Composable {
+                    val controlsAlpha by animateFloatAsState(
+                        targetValue = if (isAtTop) 0f else 1f,
+                        animationSpec = tween(300)
+                    )
                     Scaffold(
                         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
                         snackbarHost = {
@@ -528,34 +532,38 @@ fun EditorScreen(
                             )
                         },
                         topBar = {
-                            TopAppBar(
-                                title = {
-                                    Text(
-                                        text = state.song?.title ?: "Editor",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                navigationIcon = {
-                                    IconButton(onClick = onBack) {
-                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Box(modifier = Modifier.alpha(controlsAlpha)) {
+                                TopAppBar(
+                                    title = {
+                                        Text(
+                                            text = state.song?.title ?: "Editor",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        IconButton(onClick = onBack) {
+                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                        }
+                                    },
+                                    actions = {
+                                        IconButton(onClick = onImportAudioFile) {
+                                            Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                                        }
+                                        IconButton(onClick = { showSaveDialog = true }) {
+                                            Icon(Icons.Default.Save, contentDescription = "Save LRC")
+                                        }
                                     }
-                                },
-                                actions = {
-                                    IconButton(onClick = onImportAudioFile) {
-                                        Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                                    }
-                                    IconButton(onClick = { showSaveDialog = true }) {
-                                        Icon(Icons.Default.Save, contentDescription = "Save LRC")
-                                    }
-                                }
-                            )
+                                )
+                            }
                         }
                     ) { padding ->
                         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                controlsOverlay()
+                                Box(modifier = Modifier.alpha(controlsAlpha)) {
+                                    controlsOverlay()
+                                }
                                 Spacer(modifier = Modifier.weight(1f))
                                 timeOverlay()
                             }
@@ -566,10 +574,23 @@ fun EditorScreen(
                 val lyricsWeight = landscapeSplitRatio
                 val controlsWeight = 1f - landscapeSplitRatio
 
-                Crossfade(targetState = isAtTop, animationSpec = tween(300)) { top ->
-                    if (top) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Column(modifier = Modifier.fillMaxSize()) {
+                val overlayAlpha by animateFloatAsState(
+                    targetValue = if (isAtTop) 1f else 0f,
+                    animationSpec = tween(300)
+                )
+                val lyricsSideWrapper = @Composable {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        lyricsSide()
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    translationY = -(1f - overlayAlpha) * size.height * 0.15f
+                                    alpha = overlayAlpha
+                                }
+                        ) {
+                            Column {
                                 TopAppBar(
                                     title = {
                                         Text(
@@ -594,22 +615,18 @@ fun EditorScreen(
                                     }
                                 )
                                 controlsOverlay()
-                                lyricsSide()
-                            }
-                            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                                timeOverlay()
                             }
                         }
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxSize()) {
+                    if (landscapeInverted) {
+                        Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
+                        Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }
                     } else {
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            if (landscapeInverted) {
-                                Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
-                                Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
-                            } else {
-                                Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
-                                Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
-                            }
-                        }
+                        Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }
+                        Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                     }
                 }
             }
