@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.editor
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -155,7 +156,11 @@ fun EditorScreen(
         SetImmersiveMode(useLandscape)
 
         if (useLandscape) {
-            Row(modifier = Modifier
+            val density = LocalDensity.current
+            val scrollThreshold = with(density) { 80.dp.toPx() }
+            val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < scrollThreshold
+
+            Box(modifier = Modifier
                 .fillMaxSize()
                 .then(if (!ignoreCutout) Modifier.windowInsetsPadding(WindowInsets.displayCutout) else Modifier)
             ) {
@@ -251,6 +256,267 @@ fun EditorScreen(
                     }
                 }
 
+                val controlsOverlay = @Composable {
+                    Column {
+                        if (state.song?.audioPath.isNullOrEmpty()) {
+                            ImportAudioButton(
+                                onClick = onImportAudioFile,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        } else {
+                            PlayerBar(
+                                playerState = playerState,
+                                onPlayPause = { viewModel.playPause() },
+                                onSeek = { viewModel.seekTo(it) },
+                                currentSpeed = speed,
+                                onSpeedChange = {
+                                    speed = it
+                                    viewModel.audioPlayer.setSpeed(it)
+                                },
+                                onSpeedClick = { showSpeedDialog = true },
+                                compactControls = compactControls,
+                                speedBelowSeek = true,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (!isPreviewMode) {
+                                    FilledTonalIconButton(
+                                        onClick = { showAddDialog = true },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            contentColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "Add manually")
+                                    }
+                                }
+
+                                FilledTonalIconButton(
+                                    onClick = { isPreviewMode = !isPreviewMode },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = if (isPreviewMode)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+                                        contentColor = if (isPreviewMode)
+                                            MaterialTheme.colorScheme.onError
+                                        else
+                                            MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Icon(
+                                        if (isPreviewMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (isPreviewMode) "Preview off" else "Preview",
+                                        tint = if (isPreviewMode)
+                                            MaterialTheme.colorScheme.onError
+                                        else
+                                            MaterialTheme.colorScheme.secondary
+                                    )
+                                }
+
+                                FilledTonalIconButton(
+                                    onClick = { autoScrollEnabled = !autoScrollEnabled },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
+                                        contentDescription = "Auto-scroll",
+                                        tint = if (autoScrollEnabled)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.outline
+                                    )
+                                }
+
+                                if (!isPreviewMode) {
+                                    FilledTonalIconButton(
+                                        onClick = { showShiftDialog = true },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            contentColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Timer, contentDescription = "Batch shift")
+                                    }
+
+                                    FilledTonalIconButton(
+                                        onClick = { showClearAllConfirm = true },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer
+                                        )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.DeleteSweep,
+                                            contentDescription = "Clear all timestamps",
+                                            tint = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                val timeOverlay = @Composable {
+                    if (canCapture) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(bottom = 24.dp)
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .width(160.dp)
+                                    .height(56.dp)
+                                    .clickable(
+                                        interactionSource = timeInteractionSource,
+                                        indication = null,
+                                        onClick = { viewModel.captureCurrentLineTimestamp() },
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer(scaleX = timeScale)
+                                        .clip(RoundedCornerShape(28.dp))
+                                        .background(MaterialTheme.colorScheme.primary)
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.TouchApp,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Time",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+                            }
+
+                            if (showUndoRedo) {
+                                Row(
+                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val undoInteractionSource = remember { MutableInteractionSource() }
+                                    val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
+                                    val undoScale by animateFloatAsState(
+                                        targetValue = if (isUndoPressed) 52f / 48f else 1f,
+                                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                                        label = "undoScale"
+                                    )
+                                    val redoInteractionSource = remember { MutableInteractionSource() }
+                                    val isRedoPressed by redoInteractionSource.collectIsPressedAsState()
+                                    val redoScale by animateFloatAsState(
+                                        targetValue = if (isRedoPressed) 52f / 48f else 1f,
+                                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+                                        label = "redoScale"
+                                    )
+                                    val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                    val undoIconColor = if (state.canUndo)
+                                        MaterialTheme.colorScheme.onSurface
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                    val redoIconColor = if (state.canRedo)
+                                        MaterialTheme.colorScheme.onSurface
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clickable(
+                                                interactionSource = undoInteractionSource,
+                                                indication = null,
+                                                enabled = state.canUndo,
+                                                onClick = { viewModel.undo() },
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .graphicsLayer(
+                                                    scaleX = undoScale,
+                                                    scaleY = undoScale
+                                                )
+                                                .clip(CircleShape)
+                                                .background(undoBgColor)
+                                        )
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.Undo,
+                                            contentDescription = "Undo",
+                                            tint = undoIconColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clickable(
+                                                interactionSource = redoInteractionSource,
+                                                indication = null,
+                                                enabled = state.canRedo,
+                                                onClick = { viewModel.redo() },
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .graphicsLayer(
+                                                    scaleX = redoScale,
+                                                    scaleY = redoScale
+                                                )
+                                                .clip(CircleShape)
+                                                .background(redoBgColor)
+                                        )
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.Redo,
+                                            contentDescription = "Redo",
+                                            tint = redoIconColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 val controlsSide = @Composable {
                     Scaffold(
                         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
@@ -288,262 +554,9 @@ fun EditorScreen(
                     ) { padding ->
                         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                if (state.song?.audioPath.isNullOrEmpty()) {
-                                    ImportAudioButton(
-                                        onClick = onImportAudioFile,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                } else {
-                                    PlayerBar(
-                                        playerState = playerState,
-                                        onPlayPause = { viewModel.playPause() },
-                                        onSeek = { viewModel.seekTo(it) },
-                                        currentSpeed = speed,
-                                        onSpeedChange = {
-                                            speed = it
-                                            viewModel.audioPlayer.setSpeed(it)
-                                        },
-                                        onSpeedClick = { showSpeedDialog = true },
-                                        compactControls = compactControls,
-                                        speedBelowSeek = true,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        if (!isPreviewMode) {
-                                            FilledTonalIconButton(
-                                                onClick = { showAddDialog = true },
-                                                shape = RoundedCornerShape(12.dp),
-                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                                    contentColor = MaterialTheme.colorScheme.primary
-                                                )
-                                            ) {
-                                                Icon(Icons.Default.Add, contentDescription = "Add manually")
-                                            }
-                                        }
-
-                                        FilledTonalIconButton(
-                                            onClick = { isPreviewMode = !isPreviewMode },
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                                containerColor = if (isPreviewMode)
-                                                    MaterialTheme.colorScheme.error
-                                                else
-                                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-                                                contentColor = if (isPreviewMode)
-                                                    MaterialTheme.colorScheme.onError
-                                                else
-                                                    MaterialTheme.colorScheme.secondary
-                                            )
-                                        ) {
-                                            Icon(
-                                                if (isPreviewMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = if (isPreviewMode) "Preview off" else "Preview",
-                                                tint = if (isPreviewMode)
-                                                    MaterialTheme.colorScheme.onError
-                                                else
-                                                    MaterialTheme.colorScheme.secondary
-                                            )
-                                        }
-
-                                        FilledTonalIconButton(
-                                            onClick = { autoScrollEnabled = !autoScrollEnabled },
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                                contentColor = MaterialTheme.colorScheme.primary
-                                            )
-                                        ) {
-                                            Icon(
-                                                if (autoScrollEnabled) Icons.Default.SwapVert else Icons.Default.Close,
-                                                contentDescription = "Auto-scroll",
-                                                tint = if (autoScrollEnabled)
-                                                    MaterialTheme.colorScheme.primary
-                                                else
-                                                    MaterialTheme.colorScheme.outline
-                                            )
-                                        }
-
-                                        if (!isPreviewMode) {
-                                            FilledTonalIconButton(
-                                                onClick = { showShiftDialog = true },
-                                                shape = RoundedCornerShape(12.dp),
-                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                                    contentColor = MaterialTheme.colorScheme.primary
-                                                )
-                                            ) {
-                                                Icon(Icons.Default.Timer, contentDescription = "Batch shift")
-                                            }
-
-                                            FilledTonalIconButton(
-                                                onClick = { showClearAllConfirm = true },
-                                                shape = RoundedCornerShape(12.dp),
-                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                                    containerColor = MaterialTheme.colorScheme.errorContainer
-                                                )
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.DeleteSweep,
-                                                    contentDescription = "Clear all timestamps",
-                                                    tint = MaterialTheme.colorScheme.onErrorContainer
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
+                                controlsOverlay()
                                 Spacer(modifier = Modifier.weight(1f))
-
-                                if (canCapture) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .navigationBarsPadding()
-                                            .padding(bottom = 24.dp)
-                                            .padding(horizontal = 16.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.Center)
-                                                .width(160.dp)
-                                                .height(56.dp)
-                                                .clickable(
-                                                    interactionSource = timeInteractionSource,
-                                                    indication = null,
-                                                    onClick = { viewModel.captureCurrentLineTimestamp() },
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .graphicsLayer(scaleX = timeScale)
-                                                    .clip(RoundedCornerShape(28.dp))
-                                                    .background(MaterialTheme.colorScheme.primary)
-                                            )
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.padding(horizontal = 32.dp)
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.TouchApp,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    text = "Time",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    color = MaterialTheme.colorScheme.onPrimary
-                                                )
-                                            }
-                                        }
-
-                                        if (showUndoRedo) {
-                                            Row(
-                                                modifier = Modifier.align(Alignment.CenterEnd),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                val undoInteractionSource = remember { MutableInteractionSource() }
-                                                val isUndoPressed by undoInteractionSource.collectIsPressedAsState()
-                                                val undoScale by animateFloatAsState(
-                                                    targetValue = if (isUndoPressed) 52f / 48f else 1f,
-                                                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
-                                                    label = "undoScale"
-                                                )
-                                                val redoInteractionSource = remember { MutableInteractionSource() }
-                                                val isRedoPressed by redoInteractionSource.collectIsPressedAsState()
-                                                val redoScale by animateFloatAsState(
-                                                    targetValue = if (isRedoPressed) 52f / 48f else 1f,
-                                                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
-                                                    label = "redoScale"
-                                                )
-                                                val undoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                                                val undoIconColor = if (state.canUndo)
-                                                    MaterialTheme.colorScheme.onSurface
-                                                else
-                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                                val redoBgColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                                                val redoIconColor = if (state.canRedo)
-                                                    MaterialTheme.colorScheme.onSurface
-                                                else
-                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(48.dp)
-                                                        .clickable(
-                                                            interactionSource = undoInteractionSource,
-                                                            indication = null,
-                                                            enabled = state.canUndo,
-                                                            onClick = { viewModel.undo() },
-                                                        ),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .graphicsLayer(
-                                                                scaleX = undoScale,
-                                                                scaleY = undoScale
-                                                            )
-                                                            .clip(CircleShape)
-                                                            .background(undoBgColor)
-                                                    )
-                                                    Icon(
-                                                        Icons.AutoMirrored.Filled.Undo,
-                                                        contentDescription = "Undo",
-                                                        tint = undoIconColor,
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                }
-
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(48.dp)
-                                                        .clickable(
-                                                            interactionSource = redoInteractionSource,
-                                                            indication = null,
-                                                            enabled = state.canRedo,
-                                                            onClick = { viewModel.redo() },
-                                                        ),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .graphicsLayer(
-                                                                scaleX = redoScale,
-                                                                scaleY = redoScale
-                                                            )
-                                                            .clip(CircleShape)
-                                                            .background(redoBgColor)
-                                                    )
-                                                    Icon(
-                                                        Icons.AutoMirrored.Filled.Redo,
-                                                        contentDescription = "Redo",
-                                                        tint = redoIconColor,
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                timeOverlay()
                             }
                         }
                     }
@@ -551,12 +564,52 @@ fun EditorScreen(
 
                 val lyricsWeight = landscapeSplitRatio
                 val controlsWeight = 1f - landscapeSplitRatio
-                if (landscapeInverted) {
-                    Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
-                    Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
-                } else {
-                    Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
-                    Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
+
+                Crossfade(targetState = isAtTop, animationSpec = tween(300)) { top ->
+                    if (top) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                TopAppBar(
+                                    title = {
+                                        Text(
+                                            text = state.song?.title ?: "Editor",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        IconButton(onClick = onBack) {
+                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                        }
+                                    },
+                                    actions = {
+                                        IconButton(onClick = onImportAudioFile) {
+                                            Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                                        }
+                                        IconButton(onClick = { showSaveDialog = true }) {
+                                            Icon(Icons.Default.Save, contentDescription = "Save LRC")
+                                        }
+                                    }
+                                )
+                                controlsOverlay()
+                                lyricsSide()
+                            }
+                            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                                timeOverlay()
+                            }
+                        }
+                    } else {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            if (landscapeInverted) {
+                                Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
+                                Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
+                            } else {
+                                Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSide() }
+                                Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
+                            }
+                        }
+                    }
                 }
             }
         }
