@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.material.icons.Icons
@@ -252,9 +253,9 @@ private fun SpeedPresets(
             modifier = Modifier
                 .weight(1f)
                 .horizontalScroll(scrollState)
-                .onPointerEvent(PointerEventType.Scroll) { event ->
+                .onPointerEvent(PointerEventType.Scroll, PointerEventPass.Initial) { event ->
                     val delta = event.changes.firstOrNull()?.scrollDelta ?: return@onPointerEvent
-                    scrollState.dispatchRawDelta((-delta.x - delta.y) * 2f)
+                    scrollState.dispatchRawDelta((-delta.x - delta.y) * 4f)
                 },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
