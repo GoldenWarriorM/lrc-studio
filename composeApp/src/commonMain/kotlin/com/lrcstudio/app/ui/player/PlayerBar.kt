@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -14,6 +13,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -251,15 +251,16 @@ private fun SpeedPresets(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .horizontalScroll(scrollState)
+                .offset { IntOffset(-scrollState.value, 0) }
                 .pointerInput(scrollState) {
                     awaitEachGesture {
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         if (event.type == PointerEventType.Scroll) {
                             val delta = event.changes.firstOrNull()?.scrollDelta ?: return@awaitEachGesture
-                                if (delta.x != 0f) {
-                                    scrollState.dispatchRawDelta(delta.x * 10f)
-                                }
+                            val total = delta.x + delta.y
+                            if (total != 0f) {
+                                scrollState.dispatchRawDelta(-total * 10f)
+                            }
                         }
                     }
                 },
