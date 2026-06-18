@@ -4,9 +4,11 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -234,14 +236,20 @@ private fun SpeedPresets(
 ) {
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val presets = listOf(0.25f, 0.5f, 1f, 1.5f, 2f)
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    val scrollState = rememberScrollState()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(scrollState),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             presets.forEach { preset ->
                 val isActive = currentSpeed == preset
@@ -268,21 +276,15 @@ private fun SpeedPresets(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Speed: %.2fx".format(currentSpeed),
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = primary,
-                modifier = Modifier.clickable { onSpeedClick() }
-            )
-        }
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = "%.2fx".format(currentSpeed),
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            color = primary,
+            modifier = Modifier.clickable { onSpeedClick() }
+        )
     }
 }
 
