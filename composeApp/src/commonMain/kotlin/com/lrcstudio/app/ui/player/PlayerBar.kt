@@ -302,7 +302,8 @@ private fun SpeedPresets(
                 .background(primary.copy(alpha = 0.1f))
                 .clickable { onSpeedClick() }
                 .heightIn(min = 32.dp)
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "%.2fx".format(currentSpeed),
