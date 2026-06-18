@@ -306,7 +306,7 @@ private fun SpeedPresets(
                 .clip(RoundedCornerShape(8.dp))
                 .background(primary.copy(alpha = 0.1f))
                 .clickable { onSpeedClick() }
-                .height(32.dp)
+                .wrapContentHeight()
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center
         ) {
