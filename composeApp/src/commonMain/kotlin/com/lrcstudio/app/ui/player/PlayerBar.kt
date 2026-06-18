@@ -1,7 +1,9 @@
 package com.lrcstudio.app.ui.player
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -250,6 +252,18 @@ private fun SpeedPresets(
     val presets = listOf(0.25f, 0.5f, 1f, 1.5f, 2f)
     val scrollState = rememberScrollState()
 
+    val atStart = scrollState.value <= 0f
+    val atEnd = scrollState.value >= scrollState.maxValue
+
+    val leftOpaqueAlpha by animateFloatAsState(
+        targetValue = if (atStart) 1f else 0f,
+        animationSpec = tween(250)
+    )
+    val rightOpaqueAlpha by animateFloatAsState(
+        targetValue = if (atEnd) 1f else 0f,
+        animationSpec = tween(250)
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -266,19 +280,17 @@ private fun SpeedPresets(
             .drawWithContent {
                 drawContent()
 
-                val fadeWidth = 24.dp.toPx()
+                val fadeWidth = 12.dp.toPx()
                 val width = size.width
                 if (width > 0f) {
                     val ratio = fadeWidth / width
-                    val atStart = scrollState.value <= 0f
-                    val atEnd = scrollState.value >= scrollState.maxValue
 
                     drawRect(
                         brush = Brush.horizontalGradient(
-                            0f to if (atStart) Color.Black else Color.Transparent,
+                            0f to Color.Black.copy(alpha = leftOpaqueAlpha),
                             ratio to Color.Black,
                             (1f - ratio).coerceAtLeast(ratio) to Color.Black,
-                            1f to if (atEnd) Color.Black else Color.Transparent
+                            1f to Color.Black.copy(alpha = rightOpaqueAlpha)
                         ),
                         blendMode = BlendMode.DstIn
                     )
