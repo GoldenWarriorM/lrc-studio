@@ -257,9 +257,9 @@ private fun SpeedPresets(
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         if (event.type == PointerEventType.Scroll) {
                             val delta = event.changes.firstOrNull()?.scrollDelta ?: return@awaitEachGesture
-                            if (delta.x != 0f || delta.y != 0f) {
-                                scrollState.dispatchRawDelta((-delta.x - delta.y) * 4f)
-                            }
+                                if (delta.x != 0f) {
+                                    scrollState.dispatchRawDelta(delta.x * 10f)
+                                }
                         }
                     }
                 },
