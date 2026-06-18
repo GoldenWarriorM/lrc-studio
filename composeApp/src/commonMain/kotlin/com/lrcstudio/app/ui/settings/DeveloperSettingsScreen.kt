@@ -78,18 +78,27 @@ fun DeveloperSettingsScreen(
                             text = "Split ratio",
                             style = MaterialTheme.typography.bodyLarge
                         )
+                        val lyricsPct = (splitRatio * 100).toInt()
                         Text(
-                            text = "Lyrics ${(splitRatio * 100).toInt()}% / Controls ${((1f - splitRatio) * 100).toInt()}%",
+                            text = "Lyrics ${lyricsPct}% / Controls ${100 - lyricsPct}%",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                    TextButton(
+                        onClick = {
+                            splitRatio = 0.5f
+                            settingsRepository.setLandscapeSplitRatio(0.5f)
+                        }
+                    ) {
+                        Text("Reset", color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Slider(
                     value = splitRatio,
                     onValueChange = { splitRatio = it },
                     onValueChangeFinished = { settingsRepository.setLandscapeSplitRatio(splitRatio) },
-                    valueRange = 0.15f..0.85f,
+                    valueRange = 0.30f..0.70f,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     colors = SliderDefaults.colors(
                         activeTrackColor = MaterialTheme.colorScheme.primary,
