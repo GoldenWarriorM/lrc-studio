@@ -323,9 +323,7 @@ private fun SpeedPresets(
                     label = {
                         Text(
                             text = "%.2gx".format(preset),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 10.sp
-                            ),
+                            style = MaterialTheme.typography.bodySmall,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         )
                     },
