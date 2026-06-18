@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -273,11 +274,13 @@ private fun SpeedPresets(
                     label = {
                         Text(
                             text = "%.2gx".format(preset),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp
+                            ),
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         )
                     },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(4.dp),
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = if (isActive) primary.copy(alpha = 0.2f) else primary.copy(alpha = 0.08f),
                         labelColor = if (isActive) primary else onSurfaceVariant
