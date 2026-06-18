@@ -518,6 +518,32 @@ fun EditorScreen(
                     }
                 }
 
+                val topBarContent = @Composable {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = state.song?.title ?: "Editor",
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = onImportAudioFile) {
+                                Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
+                            }
+                            IconButton(onClick = { showSaveDialog = true }) {
+                                Icon(Icons.Default.Save, contentDescription = "Save LRC")
+                            }
+                        }
+                    )
+                }
+
                 val controlsSide = @Composable {
                     val controlsAlpha by animateFloatAsState(
                         targetValue = if (isAtTop) 0f else 1f,
@@ -533,37 +559,13 @@ fun EditorScreen(
                         },
                         topBar = {
                             Box(modifier = Modifier.alpha(controlsAlpha)) {
-                                TopAppBar(
-                                    title = {
-                                        Text(
-                                            text = state.song?.title ?: "Editor",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        IconButton(onClick = onBack) {
-                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                        }
-                                    },
-                                    actions = {
-                                        IconButton(onClick = onImportAudioFile) {
-                                            Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                                        }
-                                        IconButton(onClick = { showSaveDialog = true }) {
-                                            Icon(Icons.Default.Save, contentDescription = "Save LRC")
-                                        }
-                                    }
-                                )
+                                topBarContent()
                             }
                         }
                     ) { padding ->
                         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                Box(modifier = Modifier.alpha(controlsAlpha)) {
-                                    controlsOverlay()
-                                }
+                                controlsOverlay()
                                 Spacer(modifier = Modifier.weight(1f))
                                 timeOverlay()
                             }
@@ -578,9 +580,17 @@ fun EditorScreen(
                     targetValue = if (isAtTop) 1f else 0f,
                     animationSpec = tween(300)
                 )
+                val topBarHeightDp = 64.dp
+                val topBarPadding by animateDpAsState(
+                    targetValue = if (isAtTop) topBarHeightDp else 0.dp,
+                    animationSpec = tween(300)
+                )
                 val lyricsSideWrapper = @Composable {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        lyricsSide()
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Spacer(modifier = Modifier.height(topBarPadding))
+                            lyricsSide()
+                        }
 
                         Box(
                             modifier = Modifier
@@ -590,32 +600,7 @@ fun EditorScreen(
                                     alpha = overlayAlpha
                                 }
                         ) {
-                            Column {
-                                TopAppBar(
-                                    title = {
-                                        Text(
-                                            text = state.song?.title ?: "Editor",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        IconButton(onClick = onBack) {
-                                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                        }
-                                    },
-                                    actions = {
-                                        IconButton(onClick = onImportAudioFile) {
-                                            Icon(Icons.Default.LibraryMusic, contentDescription = "Switch track")
-                                        }
-                                        IconButton(onClick = { showSaveDialog = true }) {
-                                            Icon(Icons.Default.Save, contentDescription = "Save LRC")
-                                        }
-                                    }
-                                )
-                                controlsOverlay()
-                            }
+                            topBarContent()
                         }
                     }
                 }
