@@ -608,7 +608,7 @@ fun EditorScreen(
                 val controlsSide = @Composable {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            Box(modifier = Modifier.alpha(1f - overlayProgress)) {
+                            Box(modifier = Modifier.alpha(if (landscapeOverlay) 1f - overlayProgress else 1f)) {
                                 topBarContent()
                             }
                             controlsOverlay()
@@ -627,7 +627,9 @@ fun EditorScreen(
 
                 val lyricsSideWrapper = @Composable {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
+                        if (landscapeOverlay) {
+                            Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
+                        }
                         lyricsSide()
                     }
                 }
@@ -644,13 +646,15 @@ fun EditorScreen(
                     }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopStart)
-                        .alpha(overlayProgress)
-                ) {
-                    topBarContent()
+                if (landscapeOverlay) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopStart)
+                            .alpha(overlayProgress)
+                    ) {
+                        topBarContent()
+                    }
                 }
             }
         }
