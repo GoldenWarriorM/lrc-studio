@@ -163,6 +163,7 @@ fun EditorScreen(
         if (useLandscape) {
             val topBarHeight = 64.dp
             val topBarHeightPx = with(LocalDensity.current) { topBarHeight.toPx() }
+            val totalWidthDp = maxWidth
             val overlayAnim = remember { Animatable(1f) }
             var overlayProgress by remember { mutableFloatStateOf(1f) }
             LaunchedEffect(overlayAnim) {
@@ -580,50 +581,28 @@ fun EditorScreen(
                 }
 
                 val controlsSide = @Composable {
-                    Scaffold(
-                        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
-                        snackbarHost = {
-                            SnackbarHost(
-                                hostState = snackbarHostState,
-                                modifier = Modifier.navigationBarsPadding()
-                            )
-                        },
-                        topBar = {
-                            Box(modifier = Modifier.alpha(overlayProgress)) {
-                                topBarContent()
-                            }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Spacer(modifier = Modifier.height(topBarHeight))
+                            controlsOverlay()
+                            Spacer(modifier = Modifier.weight(1f))
+                            timeOverlay()
                         }
-                    ) { padding ->
-                        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                controlsOverlay()
-                                Spacer(modifier = Modifier.weight(1f))
-                                timeOverlay()
-                            }
-                        }
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier.navigationBarsPadding()
+                        )
                     }
                 }
 
                 val lyricsWeight = landscapeSplitRatio
                 val controlsWeight = 1f - landscapeSplitRatio
+                val controlsPanelWidthDp = totalWidthDp * controlsWeight
 
                 val lyricsSideWrapper = @Composable {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
-                            lyricsSide()
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer {
-                                    translationY = -(1f - overlayProgress) * size.height * 0.15f
-                                    alpha = overlayProgress
-                                }
-                        ) {
-                            topBarContent()
-                        }
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
+                        lyricsSide()
                     }
                 }
 
@@ -635,6 +614,18 @@ fun EditorScreen(
                         Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }
                         Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                     }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .width(totalWidthDp * overlayProgress + controlsPanelWidthDp * (1f - overlayProgress))
+                        .align(Alignment.TopStart)
+                        .graphicsLayer {
+                            translationX = if (landscapeInverted) 0f
+                                else (totalWidthDp * (1f - overlayProgress) * lyricsWeight).toPx()
+                        }
+                ) {
+                    topBarContent()
                 }
             }
         }
