@@ -191,6 +191,18 @@ fun EditorScreen(
                         return Offset.Zero
                     }
 
+                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                        val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                        if (atTop && overlayProgress < 1f) {
+                            val isMouse = source == NestedScrollSource.UserInput
+                            val towardTop = if (isMouse) consumed.y > 0f else consumed.y < 0f
+                            if (towardTop) {
+                                scope.launch { overlayAnim.snapTo(1f) }
+                            }
+                        }
+                        return Offset.Zero
+                    }
+
                     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                         val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
                         if (overlayProgress > 0f && overlayProgress < 1f) {
