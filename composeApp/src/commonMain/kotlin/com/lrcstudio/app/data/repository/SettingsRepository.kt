@@ -181,7 +181,7 @@ class SettingsRepository(private val storageDir: String) {
 
     fun setLandscapeSplitRatio(ratio: Float) {
         _settings.value = _settings.value.copy(
-            landscapeSplitRatio = ratio.coerceIn(0.30f, 0.70f)
+            landscapeSplitRatio = ratio.coerceIn(0.40f, 0.60f)
         )
         saveToDisk()
     }

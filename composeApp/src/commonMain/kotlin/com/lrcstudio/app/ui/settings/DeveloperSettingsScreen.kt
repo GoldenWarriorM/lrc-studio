@@ -55,16 +55,6 @@ fun DeveloperSettingsScreen(
                     }
                 )
                 SettingsRow(
-                    title = "Invert landscape sides",
-                    subtitle = "Swap lyrics and controls sides",
-                    trailing = {
-                        AccentSwitch(
-                            checked = settings.invertLandscapeSides,
-                            onCheckedChange = { settingsRepository.toggleInvertLandscapeSides() }
-                        )
-                    }
-                )
-                SettingsRow(
                     title = "Landscape overlay panel",
                     subtitle = "Scrollable overlay with animated top bar in landscape mode",
                     trailing = {
@@ -83,48 +73,6 @@ fun DeveloperSettingsScreen(
                             onCheckedChange = { settingsRepository.toggleDisableFullscreen() }
                         )
                     }
-                )
-                var splitRatio by remember(settings.landscapeSplitRatio) {
-                    mutableFloatStateOf(settings.landscapeSplitRatio)
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Split ratio",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        val lyricsPct = (splitRatio * 100).toInt()
-                        Text(
-                            text = "Lyrics ${lyricsPct}% / Controls ${100 - lyricsPct}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(
-                        onClick = {
-                            splitRatio = 0.5f
-                            settingsRepository.setLandscapeSplitRatio(0.5f)
-                        }
-                    ) {
-                        Text("Reset", color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Slider(
-                    value = splitRatio,
-                    onValueChange = { splitRatio = it },
-                    onValueChangeFinished = { settingsRepository.setLandscapeSplitRatio(splitRatio) },
-                    valueRange = 0.30f..0.70f,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                    )
                 )
             }
 
