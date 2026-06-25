@@ -175,8 +175,9 @@ fun EditorScreen(
                     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                         val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
                         val isNearTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < topBarHeightPx
-                        val scrollsAwayFromTop = if (isDesktop()) available.y < 0f else available.y > 0f
-                        val scrollsTowardTop = if (isDesktop()) available.y > 0f else available.y < 0f
+                        val isMouseWheel = source == NestedScrollSource.UserInput
+                        val scrollsAwayFromTop = if (isMouseWheel) available.y < 0f else available.y > 0f
+                        val scrollsTowardTop = if (isMouseWheel) available.y > 0f else available.y < 0f
                         if (scrollsAwayFromTop && overlayProgress > 0.001f) {
                             val np = (overlayProgress - abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
                             scope.launch { overlayAnim.snapTo(np) }
