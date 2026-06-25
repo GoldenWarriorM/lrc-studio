@@ -179,21 +179,13 @@ fun EditorScreen(
                         val scrollsAwayFromTop = if (isMouseWheel) available.y < 0f else available.y > 0f
                         val scrollsTowardTop = if (isMouseWheel) available.y > 0f else available.y < 0f
                         if (scrollsAwayFromTop && overlayProgress > 0.001f) {
-                            if (isMouseWheel) {
-                                scope.launch { overlayAnim.snapTo(0f) }
-                            } else {
-                                val np = (overlayProgress - abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
-                                scope.launch { overlayAnim.snapTo(np) }
-                            }
+                            val np = (overlayProgress - abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
+                            scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
                         }
                         if (scrollsTowardTop && overlayProgress < 1f && isAtTop) {
-                            if (isMouseWheel) {
-                                scope.launch { overlayAnim.snapTo(1f) }
-                            } else {
-                                val np = (overlayProgress + abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
-                                scope.launch { overlayAnim.snapTo(np) }
-                            }
+                            val np = (overlayProgress + abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
+                            scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
                         }
                         return Offset.Zero
@@ -205,7 +197,7 @@ fun EditorScreen(
                             val isMouse = source == NestedScrollSource.UserInput
                             val towardTop = if (isMouse) consumed.y > 0f else consumed.y < 0f
                             if (towardTop) {
-                                scope.launch { overlayAnim.snapTo(1f) }
+                                scope.launch { overlayAnim.animateTo(1f, tween(durationMillis = 150)) }
                             }
                         }
                         return Offset.Zero
