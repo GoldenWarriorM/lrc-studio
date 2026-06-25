@@ -43,6 +43,39 @@ fun DeveloperSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            SettingsSection("Layout") {
+                SettingsRow(
+                    title = "Force landscape editor",
+                    subtitle = "Split screen: lyrics left, controls right",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.forceLandscapeEditor,
+                            onCheckedChange = { settingsRepository.toggleForceLandscapeEditor() }
+                        )
+                    }
+                )
+                SettingsRow(
+                    title = "Landscape overlay panel",
+                    subtitle = "Scrollable overlay with animated top bar in landscape mode",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.landscapeOverlay,
+                            onCheckedChange = { settingsRepository.toggleLandscapeOverlay() }
+                        )
+                    }
+                )
+                SettingsRow(
+                    title = "Disable fullscreen",
+                    subtitle = "Prevent app from entering immersive fullscreen mode",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.disableFullscreen,
+                            onCheckedChange = { settingsRepository.toggleDisableFullscreen() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("Debug") {
                 SettingsRow(
                     title = "Debug borders",
@@ -61,6 +94,19 @@ fun DeveloperSettingsScreen(
                         AccentSwitch(
                             checked = settings.showVibrationToast,
                             onCheckedChange = { settingsRepository.toggleVibrationToast() }
+                        )
+                    }
+                )
+            }
+
+            SettingsSection("Platform") {
+                SettingsRow(
+                    title = "Show platform-specific options",
+                    subtitle = "Show settings from other platforms for testing",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.showPlatformSpecific,
+                            onCheckedChange = { settingsRepository.toggleShowPlatformSpecific() }
                         )
                     }
                 )

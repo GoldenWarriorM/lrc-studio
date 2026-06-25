@@ -1,13 +1,22 @@
 package com.lrcstudio.app.ui.player
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -22,6 +31,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
@@ -34,6 +50,7 @@ fun PlayerBar(
     onSpeedChange: (Float) -> Unit = {},
     onSpeedClick: () -> Unit = {},
     compactControls: Boolean = false,
+    speedBelowSeek: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
@@ -167,115 +184,14 @@ fun PlayerBar(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                Box(
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    if (compactControls) {
-                        Column(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(primary.copy(alpha = 0.1f))
-                                .padding(vertical = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "%.2fx".format(currentSpeed),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = primary,
-                                modifier = Modifier
-                                    .clickable { onSpeedClick() }
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        val idx = speeds.indexOf(currentSpeed)
-                                        if (idx > 0) onSpeedChange(speeds[idx - 1])
-                                    },
-                                    modifier = Modifier.size(28.dp),
-                                    enabled = speeds.indexOf(currentSpeed) > 0
-                                ) {
-                                    Icon(
-                                        Icons.Default.Remove, contentDescription = "Decrease speed",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = primary
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        val idx = speeds.indexOf(currentSpeed)
-                                        if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
-                                    },
-                                    modifier = Modifier.size(28.dp),
-                                    enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
-                                ) {
-                                    Icon(
-                                        Icons.Default.Add, contentDescription = "Increase speed",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = primary
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(primary.copy(alpha = 0.1f)),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    val idx = speeds.indexOf(currentSpeed)
-                                    if (idx > 0) onSpeedChange(speeds[idx - 1])
-                                },
-                                modifier = Modifier.size(32.dp),
-                                enabled = speeds.indexOf(currentSpeed) > 0
-                            ) {
-                                Icon(
-                                    Icons.Default.Remove, contentDescription = "Decrease speed",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = primary
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .wrapContentWidth()
-                                    .clickable { onSpeedClick() }
-                                    .padding(horizontal = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "%.2fx".format(currentSpeed),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = primary
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    val idx = speeds.indexOf(currentSpeed)
-                                    if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
-                                },
-                                modifier = Modifier.size(32.dp),
-                                enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
-                            ) {
-                                Icon(
-                                    Icons.Default.Add, contentDescription = "Increase speed",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = primary
-                                )
-                            }
-                        }
-                    }
+                if (!speedBelowSeek) {
+                    SpeedControl(
+                        currentSpeed = currentSpeed,
+                        onSpeedChange = onSpeedChange,
+                        onSpeedClick = onSpeedClick,
+                        compactControls = compactControls,
+                        primary = primary
+                    )
                 }
             }
 
@@ -297,7 +213,7 @@ fun PlayerBar(
                     valueRange = 0f..playerState.duration.coerceAtLeast(1).toFloat(),
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 8.dp),
+            .padding(horizontal = 4.dp),
                     colors = SliderDefaults.colors(
                         thumbColor = primary,
                         activeTrackColor = primary,
@@ -309,6 +225,267 @@ fun PlayerBar(
                     text = formatDuration(playerState.duration),
                     style = MaterialTheme.typography.labelSmall,
                     color = onSurfaceVariant
+                )
+            }
+
+            if (speedBelowSeek) {
+                Spacer(modifier = Modifier.height(8.dp))
+                SpeedPresets(
+                    currentSpeed = currentSpeed,
+                    onSpeedChange = onSpeedChange,
+                    onSpeedClick = onSpeedClick,
+                    primary = primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeedPresets(
+    currentSpeed: Float,
+    onSpeedChange: (Float) -> Unit,
+    onSpeedClick: () -> Unit,
+    primary: androidx.compose.ui.graphics.Color
+) {
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val presets = listOf(0.25f, 0.5f, 1f, 1.5f, 2f)
+    val scrollState = rememberScrollState()
+
+    val atStart = scrollState.value <= 0f
+    val atEnd = scrollState.value >= scrollState.maxValue
+
+    val leftOpaqueAlpha by animateFloatAsState(
+        targetValue = if (atStart) 1f else 0f,
+        animationSpec = tween(250)
+    )
+    val rightOpaqueAlpha by animateFloatAsState(
+        targetValue = if (atEnd) 1f else 0f,
+        animationSpec = tween(250)
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .clipToBounds()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+
+                val fadeWidth = 12.dp.toPx()
+                val width = size.width
+                if (width > 0f) {
+                    val ratio = fadeWidth / width
+
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            0f to Color.Black.copy(alpha = leftOpaqueAlpha),
+                            ratio to Color.Black,
+                            (1f - ratio).coerceAtLeast(ratio) to Color.Black,
+                            1f to Color.Black.copy(alpha = rightOpaqueAlpha)
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                }
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(scrollState)
+                .pointerInput(scrollState) {
+                    awaitEachGesture {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        if (event.type == PointerEventType.Scroll) {
+                            val delta = event.changes.firstOrNull()?.scrollDelta
+                                ?: return@awaitEachGesture
+                            if (delta.y != 0f) {
+                                scrollState.dispatchRawDelta(-delta.y * 10f)
+                            }
+                        }
+                    }
+                },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            presets.forEach { preset ->
+                val isActive = currentSpeed == preset
+                SuggestionChip(
+                    onClick = { onSpeedChange(preset) },
+                    label = {
+                        Text(
+                            text = "%.2gx".format(preset),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = if (isActive) primary.copy(alpha = 0.2f) else primary.copy(alpha = 0.08f),
+                        labelColor = if (isActive) primary else onSurfaceVariant
+                    ),
+                    border = if (isActive) SuggestionChipDefaults.suggestionChipBorder(
+                        borderColor = primary,
+                        enabled = true,
+                        borderWidth = 1.dp
+                    ) else null
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.width(8.dp))
+    Box(
+        modifier = Modifier
+            .width(4.dp)
+            .height(32.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(primary)
+    )
+    Spacer(modifier = Modifier.width(8.dp))
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(primary.copy(alpha = 0.1f))
+            .clickable { onSpeedClick() }
+            .heightIn(min = 32.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+            Text(
+                text = "%.2fx".format(currentSpeed),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                color = primary,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+
+@Composable
+fun SpeedControl(
+    currentSpeed: Float,
+    onSpeedChange: (Float) -> Unit,
+    onSpeedClick: () -> Unit,
+    compactControls: Boolean,
+    primary: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    val speeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
+
+    if (compactControls) {
+        Column(
+            modifier = modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(primary.copy(alpha = 0.1f))
+                .padding(vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "%.2fx".format(currentSpeed),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = primary,
+                modifier = Modifier
+                    .clickable { onSpeedClick() }
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        val idx = speeds.indexOf(currentSpeed)
+                        if (idx > 0) onSpeedChange(speeds[idx - 1])
+                    },
+                    modifier = Modifier.size(28.dp),
+                    enabled = speeds.indexOf(currentSpeed) > 0
+                ) {
+                    Icon(
+                        Icons.Default.Remove, contentDescription = "Decrease speed",
+                        modifier = Modifier.size(14.dp),
+                        tint = primary
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        val idx = speeds.indexOf(currentSpeed)
+                        if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                    },
+                    modifier = Modifier.size(28.dp),
+                    enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+                ) {
+                    Icon(
+                        Icons.Default.Add, contentDescription = "Increase speed",
+                        modifier = Modifier.size(14.dp),
+                        tint = primary
+                    )
+                }
+            }
+        }
+    } else {
+        Row(
+            modifier = modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(primary.copy(alpha = 0.1f)),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    val idx = speeds.indexOf(currentSpeed)
+                    if (idx > 0) onSpeedChange(speeds[idx - 1])
+                },
+                modifier = Modifier.size(32.dp),
+                enabled = speeds.indexOf(currentSpeed) > 0
+            ) {
+                Icon(
+                    Icons.Default.Remove, contentDescription = "Decrease speed",
+                    modifier = Modifier.size(16.dp),
+                    tint = primary
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .wrapContentWidth()
+                    .clickable { onSpeedClick() }
+                    .padding(horizontal = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "%.2fx".format(currentSpeed),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = primary
+                )
+            }
+
+            IconButton(
+                onClick = {
+                    val idx = speeds.indexOf(currentSpeed)
+                    if (idx < speeds.lastIndex) onSpeedChange(speeds[idx + 1])
+                },
+                modifier = Modifier.size(32.dp),
+                enabled = speeds.indexOf(currentSpeed) < speeds.lastIndex
+            ) {
+                Icon(
+                    Icons.Default.Add, contentDescription = "Increase speed",
+                    modifier = Modifier.size(16.dp),
+                    tint = primary
                 )
             }
         }

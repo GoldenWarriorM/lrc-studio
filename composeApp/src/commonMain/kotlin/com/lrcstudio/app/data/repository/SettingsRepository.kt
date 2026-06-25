@@ -26,7 +26,14 @@ data class AppSettings(
     val showVibrationToast: Boolean = false,
     val accentColorName: String = "Purple",
     val customAccentColor: String? = null,
-    val lrcSaveDirectory: String? = null
+    val lrcSaveDirectory: String? = null,
+    val forceLandscapeEditor: Boolean = false,
+    val invertLandscapeSides: Boolean = false,
+    val ignoreCutout: Boolean = false,
+    val showPlatformSpecific: Boolean = false,
+    val landscapeSplitRatio: Float = 0.5f,
+    val landscapeOverlay: Boolean = false,
+    val disableFullscreen: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -140,6 +147,55 @@ class SettingsRepository(private val storageDir: String) {
         _settings.value = _settings.value.copy(
             customAccentColor = hex,
             accentColorName = if (hex != null) "Custom" else "Purple"
+        )
+        saveToDisk()
+    }
+
+    fun toggleForceLandscapeEditor() {
+        _settings.value = _settings.value.copy(
+            forceLandscapeEditor = !_settings.value.forceLandscapeEditor
+        )
+        saveToDisk()
+    }
+
+    fun toggleInvertLandscapeSides() {
+        _settings.value = _settings.value.copy(
+            invertLandscapeSides = !_settings.value.invertLandscapeSides
+        )
+        saveToDisk()
+    }
+
+    fun toggleIgnoreCutout() {
+        _settings.value = _settings.value.copy(
+            ignoreCutout = !_settings.value.ignoreCutout
+        )
+        saveToDisk()
+    }
+
+    fun toggleShowPlatformSpecific() {
+        _settings.value = _settings.value.copy(
+            showPlatformSpecific = !_settings.value.showPlatformSpecific
+        )
+        saveToDisk()
+    }
+
+    fun setLandscapeSplitRatio(ratio: Float) {
+        _settings.value = _settings.value.copy(
+            landscapeSplitRatio = ratio.coerceIn(0.40f, 0.60f)
+        )
+        saveToDisk()
+    }
+
+    fun toggleLandscapeOverlay() {
+        _settings.value = _settings.value.copy(
+            landscapeOverlay = !_settings.value.landscapeOverlay
+        )
+        saveToDisk()
+    }
+
+    fun toggleDisableFullscreen() {
+        _settings.value = _settings.value.copy(
+            disableFullscreen = !_settings.value.disableFullscreen
         )
         saveToDisk()
     }

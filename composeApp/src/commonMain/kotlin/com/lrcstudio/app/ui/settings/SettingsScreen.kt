@@ -216,6 +216,61 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Landscape") {
+                SettingsRow(
+                    title = "Invert landscape sides",
+                    subtitle = "Swap lyrics and controls sides in landscape mode",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.invertLandscapeSides,
+                            onCheckedChange = { settingsRepository.toggleInvertLandscapeSides() }
+                        )
+                    }
+                )
+                var splitRatio by remember(settings.landscapeSplitRatio) {
+                    mutableFloatStateOf(settings.landscapeSplitRatio)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Split ratio",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        val lyricsPct = (splitRatio * 100).toInt()
+                        Text(
+                            text = "Lyrics ${lyricsPct}% / Controls ${100 - lyricsPct}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(
+                        onClick = {
+                            splitRatio = 0.5f
+                            settingsRepository.setLandscapeSplitRatio(0.5f)
+                        }
+                    ) {
+                        Text("Reset", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Slider(
+                    value = splitRatio,
+                    onValueChange = { splitRatio = it },
+                    onValueChangeFinished = { settingsRepository.setLandscapeSplitRatio(splitRatio) },
+                    valueRange = 0.40f..0.60f,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                    )
+                )
+            }
+
             SettingsSection("Export") {
                 val pickDirectory = rememberDirectoryPickerLauncher { path ->
                     if (path != null) {
@@ -258,6 +313,21 @@ fun SettingsScreen(
                             Text("Choose")
                         }
                     }
+                }
+            }
+
+            if (ShowCutoutSetting() || settings.showPlatformSpecific) {
+                SettingsSection("Display") {
+                    SettingsRow(
+                        title = "Ignore camera cutout",
+                        subtitle = "Don't add padding for the front camera notch in landscape editor",
+                        trailing = {
+                            AccentSwitch(
+                                checked = settings.ignoreCutout,
+                                onCheckedChange = { settingsRepository.toggleIgnoreCutout() }
+                            )
+                        }
+                    )
                 }
             }
 
