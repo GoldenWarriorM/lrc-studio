@@ -488,7 +488,7 @@ fun EditorScreen(
 
                             if (showUndoRedo) {
                                 Row(
-                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                    modifier = Modifier.align(if (landscapeInverted) Alignment.CenterStart else Alignment.CenterEnd),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
