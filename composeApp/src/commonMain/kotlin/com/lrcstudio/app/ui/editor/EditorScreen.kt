@@ -174,12 +174,13 @@ fun EditorScreen(
                 object : NestedScrollConnection {
                     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                         val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                        val isNearTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < topBarHeightPx
                         if (available.y > 0f && overlayProgress > 0.001f) {
                             val np = (overlayProgress - available.y / topBarHeightPx).coerceIn(0f, 1f)
                             scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
                         }
-                        if (available.y < 0f && overlayProgress < 1f && isAtTop) {
+                        if (available.y < 0f && overlayProgress < 1f && (isAtTop || isNearTop)) {
                             val np = (overlayProgress - available.y / topBarHeightPx).coerceIn(0f, 1f)
                             scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
@@ -188,9 +189,13 @@ fun EditorScreen(
                     }
 
                     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                        val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
                         if (overlayProgress > 0f && overlayProgress < 1f) {
-                            val target = if (overlayProgress > 0.5f) 1f else 0f
+                            val target = if (atTop) 1f else if (overlayProgress > 0.5f) 1f else 0f
                             overlayAnim.animateTo(target, spring(dampingRatio = 0.65f, stiffness = 500f))
+                        }
+                        if (overlayProgress <= 0f && atTop) {
+                            overlayAnim.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = 500f))
                         }
                         return Velocity.Zero
                     }
