@@ -3,7 +3,6 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -25,6 +24,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
@@ -157,9 +161,40 @@ fun EditorScreen(
         SetImmersiveMode(useLandscape)
 
         if (useLandscape) {
-            val density = LocalDensity.current
-            val scrollThreshold = with(density) { 80.dp.toPx() }
-            val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < scrollThreshold
+            val topBarHeight = 64.dp
+            val topBarHeightPx = with(LocalDensity.current) { topBarHeight.toPx() }
+            val overlayAnim = remember { Animatable(1f) }
+            var overlayProgress by remember { mutableFloatStateOf(1f) }
+            LaunchedEffect(overlayAnim) {
+                snapshotFlow { overlayAnim.value }
+                    .collect { overlayProgress = it }
+            }
+            val nestedScrollConnection = remember {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                        if (available.y > 0f && overlayProgress > 0.001f) {
+                            val np = (overlayProgress - available.y / topBarHeightPx).coerceIn(0f, 1f)
+                            scope.launch { overlayAnim.snapTo(np) }
+                            return Offset(0f, available.y)
+                        }
+                        if (available.y < 0f && overlayProgress < 1f && isAtTop) {
+                            val np = (overlayProgress - available.y / topBarHeightPx).coerceIn(0f, 1f)
+                            scope.launch { overlayAnim.snapTo(np) }
+                            return Offset(0f, available.y)
+                        }
+                        return Offset.Zero
+                    }
+
+                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                        if (overlayProgress > 0f && overlayProgress < 1f) {
+                            val target = if (overlayProgress > 0.5f) 1f else 0f
+                            overlayAnim.animateTo(target, spring(dampingRatio = 0.65f, stiffness = 500f))
+                        }
+                        return Velocity.Zero
+                    }
+                }
+            }
 
             Box(modifier = Modifier
                 .fillMaxSize()
@@ -545,10 +580,6 @@ fun EditorScreen(
                 }
 
                 val controlsSide = @Composable {
-                    val controlsAlpha by animateFloatAsState(
-                        targetValue = if (isAtTop) 0f else 1f,
-                        animationSpec = tween(300)
-                    )
                     Scaffold(
                         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
                         snackbarHost = {
@@ -558,7 +589,7 @@ fun EditorScreen(
                             )
                         },
                         topBar = {
-                            Box(modifier = Modifier.alpha(controlsAlpha)) {
+                            Box(modifier = Modifier.alpha(overlayProgress)) {
                                 topBarContent()
                             }
                         }
@@ -576,19 +607,10 @@ fun EditorScreen(
                 val lyricsWeight = landscapeSplitRatio
                 val controlsWeight = 1f - landscapeSplitRatio
 
-                val overlayAlpha by animateFloatAsState(
-                    targetValue = if (isAtTop) 1f else 0f,
-                    animationSpec = tween(300)
-                )
-                val topBarHeightDp = 64.dp
-                val topBarPadding by animateDpAsState(
-                    targetValue = if (isAtTop) topBarHeightDp else 0.dp,
-                    animationSpec = tween(300)
-                )
                 val lyricsSideWrapper = @Composable {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            Spacer(modifier = Modifier.height(topBarPadding))
+                            Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
                             lyricsSide()
                         }
 
@@ -596,8 +618,8 @@ fun EditorScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .graphicsLayer {
-                                    translationY = -(1f - overlayAlpha) * size.height * 0.15f
-                                    alpha = overlayAlpha
+                                    translationY = -(1f - overlayProgress) * size.height * 0.15f
+                                    alpha = overlayProgress
                                 }
                         ) {
                             topBarContent()
@@ -605,7 +627,7 @@ fun EditorScreen(
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
                     if (landscapeInverted) {
                         Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                         Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }
