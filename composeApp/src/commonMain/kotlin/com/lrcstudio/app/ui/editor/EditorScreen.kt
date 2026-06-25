@@ -628,21 +628,11 @@ fun EditorScreen(
                         .width(totalWidthDp * overlayProgress + controlsPanelWidthDp * (1f - overlayProgress))
                         .align(Alignment.TopStart)
                         .graphicsLayer {
-                            clip = true
                             translationX = if (landscapeInverted) 0f
                                 else (totalWidthDp * (1f - overlayProgress) * lyricsWeight).toPx()
                         }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .requiredWidth(totalWidthDp)
-                            .offset(
-                                x = if (landscapeInverted) 0.dp
-                                    else -(totalWidthDp * (1f - overlayProgress) * lyricsWeight)
-                            )
-                    ) {
-                        topBarContent()
-                    }
+                    topBarContent()
                 }
             }
         }
