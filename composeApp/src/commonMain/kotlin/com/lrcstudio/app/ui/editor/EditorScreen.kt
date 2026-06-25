@@ -591,7 +591,7 @@ fun EditorScreen(
                 val controlsSide = @Composable {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            Spacer(modifier = Modifier.height(topBarHeight))
+                            Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
                             controlsOverlay()
                             Spacer(modifier = Modifier.weight(1f))
                             timeOverlay()
@@ -605,7 +605,6 @@ fun EditorScreen(
 
                 val lyricsWeight = landscapeSplitRatio
                 val controlsWeight = 1f - landscapeSplitRatio
-                val controlsPanelWidthDp = totalWidthDp * controlsWeight
 
                 val lyricsSideWrapper = @Composable {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -626,12 +625,9 @@ fun EditorScreen(
 
                 Box(
                     modifier = Modifier
-                        .width(totalWidthDp * overlayProgress + controlsPanelWidthDp * (1f - overlayProgress))
+                        .fillMaxWidth()
                         .align(Alignment.TopStart)
-                        .graphicsLayer {
-                            translationX = if (landscapeInverted) 0f
-                                else (totalWidthDp * (1f - overlayProgress) * lyricsWeight).toPx()
-                        }
+                        .alpha(overlayProgress)
                 ) {
                     topBarContent()
                 }
