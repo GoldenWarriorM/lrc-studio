@@ -31,7 +31,8 @@ data class AppSettings(
     val invertLandscapeSides: Boolean = false,
     val ignoreCutout: Boolean = false,
     val showPlatformSpecific: Boolean = false,
-    val landscapeSplitRatio: Float = 0.5f
+    val landscapeSplitRatio: Float = 0.5f,
+    val landscapeOverlay: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -180,6 +181,13 @@ class SettingsRepository(private val storageDir: String) {
     fun setLandscapeSplitRatio(ratio: Float) {
         _settings.value = _settings.value.copy(
             landscapeSplitRatio = ratio.coerceIn(0.30f, 0.70f)
+        )
+        saveToDisk()
+    }
+
+    fun toggleLandscapeOverlay() {
+        _settings.value = _settings.value.copy(
+            landscapeOverlay = !_settings.value.landscapeOverlay
         )
         saveToDisk()
     }

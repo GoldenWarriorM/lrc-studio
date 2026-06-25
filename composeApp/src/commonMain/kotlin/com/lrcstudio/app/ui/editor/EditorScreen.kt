@@ -87,7 +87,8 @@ fun EditorScreen(
     forceLandscapeEditor: Boolean = false,
     landscapeInverted: Boolean = false,
     ignoreCutout: Boolean = false,
-    landscapeSplitRatio: Float = 0.5f
+    landscapeSplitRatio: Float = 0.5f,
+    landscapeOverlay: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -166,55 +167,59 @@ fun EditorScreen(
             val totalWidthDp = maxWidth
             val overlayAnim = remember { Animatable(1f) }
             var overlayProgress by remember { mutableFloatStateOf(1f) }
-            LaunchedEffect(overlayAnim) {
-                snapshotFlow { overlayAnim.value }
-                    .collect { overlayProgress = it }
-            }
-            val nestedScrollConnection = remember {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                        val isNearTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < topBarHeightPx
-                        val isMouseWheel = source == NestedScrollSource.UserInput
-                        val scrollsAwayFromTop = if (isMouseWheel) available.y < 0f else available.y > 0f
-                        val scrollsTowardTop = if (isMouseWheel) available.y > 0f else available.y < 0f
-                        if (scrollsAwayFromTop && overlayProgress > 0.001f) {
-                            val np = (overlayProgress - abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
-                            scope.launch { overlayAnim.snapTo(np) }
-                            return Offset(0f, available.y)
-                        }
-                        if (scrollsTowardTop && overlayProgress < 1f && isAtTop) {
-                            val np = (overlayProgress + abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
-                            scope.launch { overlayAnim.snapTo(np) }
-                            return Offset(0f, available.y)
-                        }
-                        return Offset.Zero
-                    }
-
-                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                        val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                        if (atTop && overlayProgress < 1f) {
-                            val isMouse = source == NestedScrollSource.UserInput
-                            val towardTop = if (isMouse) consumed.y > 0f else consumed.y < 0f
-                            if (towardTop) {
-                                scope.launch { overlayAnim.animateTo(1f, tween(durationMillis = 150)) }
-                            }
-                        }
-                        return Offset.Zero
-                    }
-
-                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                        val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                        if (overlayProgress > 0f && overlayProgress < 1f) {
-                            val target = if (atTop) 1f else if (overlayProgress > 0.5f) 1f else 0f
-                            overlayAnim.animateTo(target, tween(durationMillis = 150))
-                        }
-                        if (overlayProgress <= 0f && atTop) {
-                            overlayAnim.animateTo(1f, tween(durationMillis = 150))
-                        }
-                        return Velocity.Zero
-                    }
+            if (landscapeOverlay) {
+                LaunchedEffect(overlayAnim) {
+                    snapshotFlow { overlayAnim.value }
+                        .collect { overlayProgress = it }
                 }
+            }
+            val nestedScrollConnection = remember(landscapeOverlay) {
+                if (landscapeOverlay) {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                            val isNearTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < topBarHeightPx
+                            val isMouseWheel = source == NestedScrollSource.UserInput
+                            val scrollsAwayFromTop = if (isMouseWheel) available.y < 0f else available.y > 0f
+                            val scrollsTowardTop = if (isMouseWheel) available.y > 0f else available.y < 0f
+                            if (scrollsAwayFromTop && overlayProgress > 0.001f) {
+                                val np = (overlayProgress - abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
+                                scope.launch { overlayAnim.snapTo(np) }
+                                return Offset(0f, available.y)
+                            }
+                            if (scrollsTowardTop && overlayProgress < 1f && isAtTop) {
+                                val np = (overlayProgress + abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
+                                scope.launch { overlayAnim.snapTo(np) }
+                                return Offset(0f, available.y)
+                            }
+                            return Offset.Zero
+                        }
+
+                        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                            val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                            if (atTop && overlayProgress < 1f) {
+                                val isMouse = source == NestedScrollSource.UserInput
+                                val towardTop = if (isMouse) consumed.y > 0f else consumed.y < 0f
+                                if (towardTop) {
+                                    scope.launch { overlayAnim.animateTo(1f, tween(durationMillis = 150)) }
+                                }
+                            }
+                            return Offset.Zero
+                        }
+
+                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                            val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                            if (overlayProgress > 0f && overlayProgress < 1f) {
+                                val target = if (atTop) 1f else if (overlayProgress > 0.5f) 1f else 0f
+                                overlayAnim.animateTo(target, tween(durationMillis = 150))
+                            }
+                            if (overlayProgress <= 0f && atTop) {
+                                overlayAnim.animateTo(1f, tween(durationMillis = 150))
+                            }
+                            return Velocity.Zero
+                        }
+                    }
+                } else null
             }
 
             Box(modifier = Modifier
@@ -627,7 +632,9 @@ fun EditorScreen(
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
+                Row(modifier = Modifier.fillMaxSize().then(
+                    nestedScrollConnection?.let { Modifier.nestedScroll(it) } ?: Modifier
+                )) {
                     if (landscapeInverted) {
                         Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                         Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }

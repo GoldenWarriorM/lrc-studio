@@ -64,6 +64,16 @@ fun DeveloperSettingsScreen(
                         )
                     }
                 )
+                SettingsRow(
+                    title = "Landscape overlay panel",
+                    subtitle = "Scrollable overlay with animated top bar in landscape mode",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.landscapeOverlay,
+                            onCheckedChange = { settingsRepository.toggleLandscapeOverlay() }
+                        )
+                    }
+                )
                 var splitRatio by remember(settings.landscapeSplitRatio) {
                     mutableFloatStateOf(settings.landscapeSplitRatio)
                 }
