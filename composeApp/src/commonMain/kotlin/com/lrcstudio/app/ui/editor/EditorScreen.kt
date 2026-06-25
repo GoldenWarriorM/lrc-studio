@@ -175,13 +175,15 @@ fun EditorScreen(
                     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                         val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
                         val isNearTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < topBarHeightPx
-                        if (available.y > 0f && overlayProgress > 0.001f) {
-                            val np = (overlayProgress - available.y / topBarHeightPx).coerceIn(0f, 1f)
+                        val scrollsAwayFromTop = if (isDesktop()) available.y < 0f else available.y > 0f
+                        val scrollsTowardTop = if (isDesktop()) available.y > 0f else available.y < 0f
+                        if (scrollsAwayFromTop && overlayProgress > 0.001f) {
+                            val np = (overlayProgress - abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
                             scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
                         }
-                        if (available.y < 0f && overlayProgress < 1f && (isAtTop || isNearTop)) {
-                            val np = (overlayProgress - available.y / topBarHeightPx).coerceIn(0f, 1f)
+                        if (scrollsTowardTop && overlayProgress < 1f && (isAtTop || isNearTop)) {
+                            val np = (overlayProgress + abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
                             scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
                         }
