@@ -74,6 +74,16 @@ fun DeveloperSettingsScreen(
                         )
                     }
                 )
+                SettingsRow(
+                    title = "Disable fullscreen",
+                    subtitle = "Prevent app from entering immersive fullscreen mode",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.disableFullscreen,
+                            onCheckedChange = { settingsRepository.toggleDisableFullscreen() }
+                        )
+                    }
+                )
                 var splitRatio by remember(settings.landscapeSplitRatio) {
                     mutableFloatStateOf(settings.landscapeSplitRatio)
                 }

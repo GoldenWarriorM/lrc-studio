@@ -32,7 +32,8 @@ data class AppSettings(
     val ignoreCutout: Boolean = false,
     val showPlatformSpecific: Boolean = false,
     val landscapeSplitRatio: Float = 0.5f,
-    val landscapeOverlay: Boolean = false
+    val landscapeOverlay: Boolean = false,
+    val disableFullscreen: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -188,6 +189,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleLandscapeOverlay() {
         _settings.value = _settings.value.copy(
             landscapeOverlay = !_settings.value.landscapeOverlay
+        )
+        saveToDisk()
+    }
+
+    fun toggleDisableFullscreen() {
+        _settings.value = _settings.value.copy(
+            disableFullscreen = !_settings.value.disableFullscreen
         )
         saveToDisk()
     }

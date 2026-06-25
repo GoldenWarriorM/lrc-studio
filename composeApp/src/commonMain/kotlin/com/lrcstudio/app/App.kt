@@ -210,7 +210,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     landscapeInverted = settings.invertLandscapeSides,
                                     ignoreCutout = settings.ignoreCutout,
                                     landscapeSplitRatio = settings.landscapeSplitRatio,
-                                    landscapeOverlay = settings.landscapeOverlay
+                                    landscapeOverlay = settings.landscapeOverlay,
+                                    disableFullscreen = settings.disableFullscreen
                                 )
                             }
                         }

@@ -88,7 +88,8 @@ fun EditorScreen(
     landscapeInverted: Boolean = false,
     ignoreCutout: Boolean = false,
     landscapeSplitRatio: Float = 0.5f,
-    landscapeOverlay: Boolean = false
+    landscapeOverlay: Boolean = false,
+    disableFullscreen: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -159,7 +160,7 @@ fun EditorScreen(
         val isLandscape = maxWidth > maxHeight
         val useLandscape = forceLandscapeEditor || (isLandscape && !isDesktop())
 
-        SetImmersiveMode(useLandscape)
+        SetImmersiveMode(useLandscape && !disableFullscreen)
 
         if (useLandscape) {
             val topBarHeight = 64.dp
