@@ -183,7 +183,7 @@ fun EditorScreen(
                             scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
                         }
-                        if (scrollsTowardTop && overlayProgress < 1f && (isAtTop || isNearTop)) {
+                        if (scrollsTowardTop && overlayProgress < 1f && isAtTop) {
                             val np = (overlayProgress + abs(available.y) / topBarHeightPx).coerceIn(0f, 1f)
                             scope.launch { overlayAnim.snapTo(np) }
                             return Offset(0f, available.y)
