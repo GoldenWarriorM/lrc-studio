@@ -195,10 +195,10 @@ fun EditorScreen(
                         val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
                         if (overlayProgress > 0f && overlayProgress < 1f) {
                             val target = if (atTop) 1f else if (overlayProgress > 0.5f) 1f else 0f
-                            overlayAnim.animateTo(target, spring(dampingRatio = 0.65f, stiffness = 500f))
+                            overlayAnim.animateTo(target, tween(durationMillis = 150))
                         }
                         if (overlayProgress <= 0f && atTop) {
-                            overlayAnim.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = 500f))
+                            overlayAnim.animateTo(1f, tween(durationMillis = 150))
                         }
                         return Velocity.Zero
                     }
