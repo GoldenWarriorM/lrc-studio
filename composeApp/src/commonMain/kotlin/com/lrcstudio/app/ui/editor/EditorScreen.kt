@@ -591,7 +591,9 @@ fun EditorScreen(
                 val controlsSide = @Composable {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            Spacer(modifier = Modifier.height(topBarHeight * overlayProgress))
+                            Box(modifier = Modifier.alpha(1f - overlayProgress)) {
+                                topBarContent()
+                            }
                             controlsOverlay()
                             Spacer(modifier = Modifier.weight(1f))
                             timeOverlay()
