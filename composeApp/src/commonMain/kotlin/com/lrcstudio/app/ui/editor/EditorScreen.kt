@@ -14,6 +14,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -89,7 +90,8 @@ fun EditorScreen(
     ignoreCutout: Boolean = false,
     landscapeSplitRatio: Float = 0.5f,
     landscapeOverlay: Boolean = false,
-    disableFullscreen: Boolean = false
+    disableFullscreen: Boolean = false,
+    isEnhancedLrcEnabled: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -271,6 +273,9 @@ fun EditorScreen(
                                             swipeInstantDelete = swipeInstantDelete,
                                             showDebugBorders = showDebugBorders,
                                             showVibrationToast = showVibrationToast,
+                                            wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                            wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                            currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
                                             onVibrationToast = onVibrationToast,
                                             onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                             onEditStart = { viewModel.startEditing(i) },
@@ -283,6 +288,14 @@ fun EditorScreen(
                                             onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
                                             onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
                                             onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                            onWordClick = { wi ->
+                                                if (wi in item.lrcLine.words.indices) {
+                                                    viewModel.setWordCursor(i, wi)
+                                                }
+                                            },
+                                            onWordSeek = { wi ->
+                                                viewModel.seekToWord(i, wi)
+                                            },
                                             modifier = Modifier.fillMaxWidth()
                                         )
                                     }
@@ -408,6 +421,30 @@ fun EditorScreen(
                                     )
                                 }
 
+                                if (!isPreviewMode && isEnhancedLrcEnabled) {
+                                    val wordSyncActive = state.wordSyncMode
+                                    FilledTonalIconButton(
+                                        onClick = { viewModel.toggleWordSyncMode() },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = if (wordSyncActive)
+                                                MaterialTheme.colorScheme.primary
+                                            else
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            contentColor = if (wordSyncActive)
+                                                MaterialTheme.colorScheme.onPrimary
+                                            else
+                                                MaterialTheme.colorScheme.onSurface
+                                        )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.ShortText,
+                                            contentDescription = "Word Sync",
+                                        )
+                                    }
+
+                                }
+
                                 if (!isPreviewMode) {
                                     FilledTonalIconButton(
                                         onClick = { showShiftDialog = true },
@@ -448,6 +485,7 @@ fun EditorScreen(
                                 .padding(bottom = 24.dp)
                                 .padding(horizontal = 16.dp)
                         ) {
+                            val wordSyncCaption = state.wordSyncMode && state.wordCursorIndex >= 0
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.Center)
@@ -456,7 +494,13 @@ fun EditorScreen(
                                     .clickable(
                                         interactionSource = timeInteractionSource,
                                         indication = null,
-                                        onClick = { viewModel.captureCurrentLineTimestamp() },
+                                        onClick = {
+                                            if (wordSyncCaption) {
+                                                viewModel.captureWordTimestamp()
+                                            } else {
+                                                viewModel.captureCurrentLineTimestamp()
+                                            }
+                                        },
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -479,7 +523,7 @@ fun EditorScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Time",
+                                        text = if (wordSyncCaption) "Word" else "Time",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
@@ -1303,6 +1347,9 @@ private fun LyricLineCard(
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
     showVibrationToast: Boolean = false,
+    wordSyncMode: Boolean = false,
+    wordCursorIndex: Int = -1,
+    currentWordIndex: Int = -1,
     onVibrationToast: (String) -> Unit = {},
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
@@ -1315,6 +1362,8 @@ private fun LyricLineCard(
     onSnapTimestamp: () -> Unit,
     onTimestampMinus100: () -> Unit,
     onTimestampPlus100: () -> Unit,
+    onWordClick: ((Int) -> Unit)? = null,
+    onWordSeek: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val hasTimestamp = line.timestamp > 0L
@@ -1391,8 +1440,10 @@ private fun LyricLineCard(
     else
         MaterialTheme.colorScheme.surfaceVariant
 
-    LaunchedEffect(isPlaybackLine) {
-        if (isPlaybackLine) {
+    LaunchedEffect(isPlaybackLine, wordSyncMode) {
+        if (wordSyncMode) {
+            flashAnim.snapTo(0f)
+        } else if (isPlaybackLine) {
             flashAnim.snapTo(1f)
             flashAnim.animateTo(0f, animationSpec = tween(700, easing = FastOutSlowInEasing))
         } else {
@@ -1586,7 +1637,7 @@ private fun LyricLineCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
 
-                if (!isPreviewMode) {
+                if (!isPreviewMode && !wordSyncMode) {
                     if (compactControls) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1688,6 +1739,97 @@ private fun LyricLineCard(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                } else if (wordSyncMode && line.words.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        line.words.forEachIndexed { wi, word ->
+                            val isWordCurrent = wi == currentWordIndex
+                            val isWordCursor = wi == wordCursorIndex
+                            val hasWordTime = word.startTime > 0L
+                            val wordBg = when {
+                                isWordCurrent -> MaterialTheme.colorScheme.primaryContainer
+                                isWordCursor -> MaterialTheme.colorScheme.tertiaryContainer
+                                hasWordTime -> Color(0xFFA5D6A7).copy(alpha = 0.3f)
+                                else -> Color.Transparent
+                            }
+                            val wordBorder = if (isWordCursor)
+                                MaterialTheme.colorScheme.tertiary
+                            else
+                                Color.Transparent
+
+                            val wordFlashAnim = remember { Animatable(0f) }
+                            LaunchedEffect(isWordCurrent) {
+                                if (isWordCurrent) {
+                                    wordFlashAnim.snapTo(1f)
+                                    wordFlashAnim.animateTo(0f, animationSpec = tween(500, easing = FastOutSlowInEasing))
+                                } else {
+                                    wordFlashAnim.snapTo(0f)
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 4.dp, bottom = 2.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(wordBg)
+                                    .border(
+                                        width = if (isWordCursor) 1.5.dp else 0.dp,
+                                        color = wordBorder,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable {
+                                        onWordClick?.invoke(wi)
+                                    }
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onLongPress = { onWordSeek?.invoke(wi) }
+                                        )
+                                    }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = wordFlashAnim.value * 0.35f)
+                                        )
+                                )
+                                Text(
+                                    text = word.text,
+                                    modifier = Modifier.padding(horizontal = 2.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = when {
+                                        hasWordTime -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isPreviewMode && showClearDeleteButton) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .combinedClickable(
+                                    onClick = { onWordClick?.invoke(-1) },
+                                    onLongClick = onDelete
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Clear word timestamps",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 } else {
                     Text(
                         text = line.text.ifEmpty { "..." },
@@ -1735,7 +1877,7 @@ private fun LyricLineCard(
                 }
             }
 
-            if (flashAnim.value > 0.001f) {
+            if (!wordSyncMode && flashAnim.value > 0.001f) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()

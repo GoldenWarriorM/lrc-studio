@@ -40,7 +40,7 @@ object LrcParser {
         for (line in sorted) {
             if (line.timestamp == 0L) continue
             val ts = line.timestampLrcFormatted
-            sb.appendLine("[$ts]${line.text}")
+            sb.appendLine("[$ts]${formatLineText(line)}")
         }
         return sb.toString().trimEnd()
     }
@@ -53,8 +53,31 @@ object LrcParser {
         for (line in sorted) {
             if (line.timestamp == 0L) continue
             val ts = line.timestampLrcFormatted
-            sb.appendLine("[$ts]${line.text}")
+            sb.appendLine("[$ts]${formatLineText(line)}")
         }
         return sb.toString().trimEnd()
+    }
+
+    private fun formatLineText(line: LrcLine): String {
+        if (line.words.isEmpty()) return line.text
+        val sb = StringBuilder()
+        for ((i, word) in line.words.withIndex()) {
+            if (i == 0 && word.startTime == line.timestamp) {
+                sb.append(" <${formatWordTime(word.startTime)}>${word.text}")
+            } else {
+                sb.append(" <${formatWordTime(word.startTime)}>${word.text}")
+            }
+        }
+        return sb.toString().trimStart()
+    }
+
+    private fun formatWordTime(ms: Long): String {
+        val minutes = (ms / 60000).toInt()
+        val seconds = ((ms % 60000) / 1000).toInt()
+        val hundredths = ((ms % 1000) / 10).toInt()
+        val minStr = minutes.toString().padStart(2, '0')
+        val secStr = seconds.toString().padStart(2, '0')
+        val fracStr = hundredths.toString().padStart(2, '0')
+        return "$minStr:$secStr.$fracStr"
     }
 }

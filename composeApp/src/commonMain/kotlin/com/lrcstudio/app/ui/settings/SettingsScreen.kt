@@ -331,6 +331,23 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsSection("Enhanced LRC") {
+                SettingsRow(
+                    title = "Word-level sync",
+                    subtitle = "Enable word-by-word timestamp editing and eLRC export",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.isEnhancedLrcEnabled,
+                            onCheckedChange = { settingsRepository.toggleEnhancedLrc() }
+                        )
+                    }
+                )
+                SettingsRow(
+                    title = "About Enhanced LRC",
+                    subtitle = "eLRC extends standard LRC with <mm:ss.xx> tags for each word, enabling karaoke-style word highlighting."
+                )
+            }
+
             SettingsSection("About") {
                 var versionTapCount by remember { mutableIntStateOf(0) }
                 val scope = rememberCoroutineScope()

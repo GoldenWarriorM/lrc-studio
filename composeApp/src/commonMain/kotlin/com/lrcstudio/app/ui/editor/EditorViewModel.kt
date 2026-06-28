@@ -3,6 +3,7 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.runtime.Immutable
 import com.lrcstudio.app.data.model.LrcLine
 import com.lrcstudio.app.data.model.Song
+import com.lrcstudio.app.data.model.WordTimestamp
 import com.lrcstudio.app.data.repository.SongRepository
 import com.lrcstudio.app.domain.usecase.SyncUseCase
 import com.lrcstudio.app.ui.player.AudioPlayer
@@ -18,7 +19,10 @@ data class EditorState(
     val song: Song? = null,
     val lyrics: List<LrcLine> = emptyList(),
     val currentLineIndex: Int = -1,
+    val currentWordIndex: Int = -1,
     val selectedLineIndex: Int = 0,
+    val wordCursorIndex: Int = -1,
+    val wordSyncMode: Boolean = false,
     val isRecording: Boolean = false,
     val newLyricText: String = "",
     val editingLineIndex: Int = -1,
@@ -100,12 +104,19 @@ class EditorViewModel(
             while (isActive) {
                 delay(100)
                 val playerState = audioPlayer.state.value
+                val s = _state.value
                 val index = syncUseCase.getCurrentLineIndex(
-                    _state.value.lyrics,
+                    s.lyrics,
                     playerState.currentPosition
                 )
-                if (index != _state.value.currentLineIndex) {
-                    val s = _state.value
+                var wordIndex = -1
+                if (index >= 0) {
+                    val line = s.lyrics.getOrNull(index)
+                    if (line != null) {
+                        wordIndex = syncUseCase.getCurrentWordIndex(line, playerState.currentPosition)
+                    }
+                }
+                if (index != s.currentLineIndex) {
                     val jumpedBack = index < s.currentLineIndex
                     val selIdx = if (jumpedBack) {
                         val selLine = s.lyrics.getOrNull(s.selectedLineIndex)
@@ -121,8 +132,11 @@ class EditorViewModel(
                     }
                     _state.value = _state.value.copy(
                         currentLineIndex = index,
+                        currentWordIndex = wordIndex,
                         selectedLineIndex = selIdx
                     )
+                } else if (wordIndex != s.currentWordIndex) {
+                    _state.value = _state.value.copy(currentWordIndex = wordIndex)
                 }
             }
         }
@@ -131,8 +145,13 @@ class EditorViewModel(
     fun selectLine(index: Int) {
         val lyrics = _state.value.lyrics
         if (index !in lyrics.indices) return
-        _state.value = _state.value.copy(selectedLineIndex = index)
-        val ts = lyrics[index].timestamp
+        val line = lyrics[index]
+        val wordCursor = if (line.words.isNotEmpty()) 0 else -1
+        _state.value = _state.value.copy(
+            selectedLineIndex = index,
+            wordCursorIndex = wordCursor
+        )
+        val ts = line.timestamp
         if (ts > 0L) {
             audioPlayer.seekTo(ts)
         }
@@ -337,6 +356,131 @@ class EditorViewModel(
                 audioPlayer.load(audioPath)
             }
         }
+    }
+
+    fun toggleWordSyncMode() {
+        val turningOn = !_state.value.wordSyncMode
+        if (turningOn) {
+            val lyrics = _state.value.lyrics
+            val newLyrics = lyrics.map { syncUseCase.splitLineIntoWords(it) }
+            val firstLineWithWords = newLyrics.indexOfFirst { it.words.isNotEmpty() }
+            pushUndo()
+            _state.value = _state.value.copy(
+                lyrics = newLyrics,
+                wordSyncMode = true,
+                selectedLineIndex = firstLineWithWords.coerceAtLeast(0),
+                wordCursorIndex = 0
+            )
+            saveLyrics(newLyrics)
+        } else {
+            _state.value = _state.value.copy(
+                wordSyncMode = false,
+                wordCursorIndex = -1
+            )
+        }
+    }
+
+    fun captureWordTimestamp() {
+        val s = _state.value
+        if (!s.wordSyncMode) return
+        val lineIdx = s.selectedLineIndex
+        val line = s.lyrics.getOrNull(lineIdx) ?: return
+        val cursorIdx = s.wordCursorIndex
+        if (cursorIdx < 0 || cursorIdx >= line.words.size) return
+
+        val position = audioPlayer.state.value.currentPosition
+        val currentWord = line.words[cursorIdx]
+        val newWord = currentWord.copy(startTime = position)
+        val newWords = line.words.toMutableList().apply { set(cursorIdx, newWord) }
+        val newLineTimestamp = if (cursorIdx == 0) position else line.timestamp
+        val newLyrics = s.lyrics.toMutableList()
+        newLyrics[lineIdx] = line.copy(words = newWords, timestamp = newLineTimestamp)
+
+        if (cursorIdx == line.words.size - 1) {
+            val nextLineIdx = findNextLineWithWords(newLyrics, lineIdx)
+            if (nextLineIdx >= 0) {
+                _state.value = _state.value.copy(
+                    lyrics = newLyrics,
+                    selectedLineIndex = nextLineIdx,
+                    wordCursorIndex = 0
+                )
+            } else {
+                _state.value = _state.value.copy(
+                    lyrics = newLyrics,
+                    wordSyncMode = false,
+                    wordCursorIndex = -1
+                )
+            }
+        } else {
+            _state.value = _state.value.copy(
+                lyrics = newLyrics,
+                wordCursorIndex = cursorIdx + 1
+            )
+        }
+        saveLyrics(newLyrics)
+    }
+
+    private fun findNextLineWithWords(lyrics: List<LrcLine>, fromIndex: Int): Int {
+        for (i in (fromIndex + 1) until lyrics.size) {
+            if (lyrics[i].words.isNotEmpty()) return i
+        }
+        return -1
+    }
+
+    fun seekToWord(lineIndex: Int, wordIndex: Int) {
+        val line = _state.value.lyrics.getOrNull(lineIndex) ?: return
+        val word = line.words.getOrNull(wordIndex) ?: return
+        if (word.startTime > 0L) {
+            val seekPos = (word.startTime - 1500L).coerceAtLeast(0L)
+            audioPlayer.seekTo(seekPos)
+        }
+    }
+
+    fun setWordCursor(lineIndex: Int, wordIndex: Int) {
+        _state.value = _state.value.copy(
+            selectedLineIndex = lineIndex,
+            wordCursorIndex = wordIndex
+        )
+    }
+
+    fun clearWordTimestamp(lineIndex: Int, wordIndex: Int) {
+        val lyrics = _state.value.lyrics
+        val line = lyrics.getOrNull(lineIndex) ?: return
+        val word = line.words.getOrNull(wordIndex) ?: return
+        pushUndo()
+        val newWords = line.words.toMutableList()
+        newWords[wordIndex] = word.copy(startTime = 0L)
+        val newLyrics = lyrics.toMutableList()
+        newLyrics[lineIndex] = line.copy(words = newWords)
+        _state.value = _state.value.copy(lyrics = newLyrics)
+        saveLyrics(newLyrics)
+    }
+
+    fun splitLineIntoWords(lineIndex: Int) {
+        val lyrics = _state.value.lyrics
+        val line = lyrics.getOrNull(lineIndex) ?: return
+        if (line.words.isNotEmpty()) return
+        pushUndo()
+        val updated = syncUseCase.splitLineIntoWords(line)
+        val newLyrics = lyrics.toMutableList()
+        newLyrics[lineIndex] = updated
+        _state.value = _state.value.copy(
+            lyrics = newLyrics,
+            wordCursorIndex = 0,
+            wordSyncMode = true
+        )
+        saveLyrics(newLyrics)
+    }
+
+    fun mergeWordsIntoLine(lineIndex: Int) {
+        val lyrics = _state.value.lyrics
+        val line = lyrics.getOrNull(lineIndex) ?: return
+        pushUndo()
+        val updated = syncUseCase.clearAllWordTimestamps(line)
+        val newLyrics = lyrics.toMutableList()
+        newLyrics[lineIndex] = updated
+        _state.value = _state.value.copy(lyrics = newLyrics)
+        saveLyrics(newLyrics)
     }
 
     fun release() {

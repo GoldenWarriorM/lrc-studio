@@ -33,7 +33,8 @@ data class AppSettings(
     val showPlatformSpecific: Boolean = false,
     val landscapeSplitRatio: Float = 0.5f,
     val landscapeOverlay: Boolean = false,
-    val disableFullscreen: Boolean = false
+    val disableFullscreen: Boolean = false,
+    val isEnhancedLrcEnabled: Boolean = false
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -196,6 +197,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleDisableFullscreen() {
         _settings.value = _settings.value.copy(
             disableFullscreen = !_settings.value.disableFullscreen
+        )
+        saveToDisk()
+    }
+
+    fun toggleEnhancedLrc() {
+        _settings.value = _settings.value.copy(
+            isEnhancedLrcEnabled = !_settings.value.isEnhancedLrcEnabled
         )
         saveToDisk()
     }

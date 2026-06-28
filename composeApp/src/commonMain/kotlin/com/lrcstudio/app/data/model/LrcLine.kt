@@ -8,7 +8,8 @@ import kotlinx.serialization.Serializable
 data class LrcLine(
     val timestamp: Long = 0L,
     val text: String = "",
-    val index: Int = 0
+    val index: Int = 0,
+    val words: List<WordTimestamp> = emptyList()
 ) {
     val timestampFormatted: String
         get() {
@@ -40,7 +41,7 @@ data class LrcLine(
         fun fromLrcString(line: String, index: Int = 0): LrcLine? {
             val regex = Regex("""\[(\d{2}):(\d{2})[\.:](\d{2,3})](.*)""")
             val match = regex.find(line.trim()) ?: return null
-            val (minStr, secStr, fracStr, text) = match.destructured
+            val (minStr, secStr, fracStr, rawText) = match.destructured
             val minutes = minStr.toIntOrNull() ?: return null
             val seconds = secStr.toIntOrNull() ?: return null
             val frac = fracStr.toIntOrNull() ?: return null
@@ -49,7 +50,46 @@ data class LrcLine(
                 2 -> minutes * 60000L + seconds * 1000L + frac * 10
                 else -> return null
             }
-            return LrcLine(timestamp = millis, text = text.trim(), index = index)
+
+            val text = rawText.trim()
+            val (cleanText, words) = parseWordTimestamps(text)
+            return LrcLine(timestamp = millis, text = cleanText, index = index, words = words)
+        }
+
+        private fun parseWordTimestamps(text: String): Pair<String, List<WordTimestamp>> {
+            val wordRegex = Regex("""<(\d{2}):(\d{2})[\.:](\d{2,3})>([^<]*)""")
+            val matches = wordRegex.findAll(text).toList()
+            if (matches.isEmpty()) return text to emptyList()
+
+            val words = mutableListOf<WordTimestamp>()
+            val cleanParts = mutableListOf<String>()
+            var lastEnd = 0
+
+            for (match in matches) {
+                val (minStr, secStr, fracStr, wordText) = match.destructured
+                val minutes = minStr.toIntOrNull() ?: continue
+                val seconds = secStr.toIntOrNull() ?: continue
+                val frac = fracStr.toIntOrNull() ?: continue
+                val wordMillis = when (fracStr.length) {
+                    3 -> minutes * 60000L + seconds * 1000L + frac
+                    2 -> minutes * 60000L + seconds * 1000L + frac * 10
+                    else -> continue
+                }
+
+                if (match.range.first > lastEnd) {
+                    cleanParts.add(text.substring(lastEnd, match.range.first).trim())
+                }
+
+                words.add(WordTimestamp(startTime = wordMillis, text = wordText.trim()))
+                cleanParts.add(wordText.trim())
+                lastEnd = match.range.last + 1
+            }
+
+            if (lastEnd < text.length) {
+                cleanParts.add(text.substring(lastEnd).trim())
+            }
+
+            return cleanParts.joinToString(" ").trim() to words
         }
     }
 }
