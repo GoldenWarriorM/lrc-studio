@@ -15,5 +15,6 @@ data class Song(
     val audioPath: String = "",
     val lrcPath: String = "",
     val duration: Long = 0L,
-    val lyrics: List<LrcLine> = emptyList()
+    val lyrics: List<LrcLine> = emptyList(),
+    val wordSyncEnabled: Boolean = false
 )

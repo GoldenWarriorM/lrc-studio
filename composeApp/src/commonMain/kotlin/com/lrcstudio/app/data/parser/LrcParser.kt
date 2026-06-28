@@ -60,13 +60,37 @@ object LrcParser {
 
     private fun formatLineText(line: LrcLine): String {
         if (line.words.isEmpty()) return line.text
+        val punctuation = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
         val sb = StringBuilder()
+
         for ((i, word) in line.words.withIndex()) {
-            if (i == 0 && word.startTime == line.timestamp) {
-                sb.append(" <${formatWordTime(word.startTime)}>${word.text}")
+            val isPunct = punctuation.matches(word.text)
+            val time = if (isPunct && word.startTime == 0L) {
+                var prevTimed = -1
+                for (j in i - 1 downTo 0) {
+                    if (line.words[j].startTime > 0L && !punctuation.matches(line.words[j].text)) {
+                        prevTimed = j
+                        break
+                    }
+                }
+                var nextTimed = -1
+                for (j in i + 1 until line.words.size) {
+                    if (line.words[j].startTime > 0L && !punctuation.matches(line.words[j].text)) {
+                        nextTimed = j
+                        break
+                    }
+                }
+                when {
+                    prevTimed >= 0 && nextTimed >= 0 ->
+                        (line.words[prevTimed].startTime + line.words[nextTimed].startTime) / 2L
+                    prevTimed >= 0 -> line.words[prevTimed].startTime
+                    nextTimed >= 0 -> line.words[nextTimed].startTime
+                    else -> 0L
+                }
             } else {
-                sb.append(" <${formatWordTime(word.startTime)}>${word.text}")
+                word.startTime
             }
+            sb.append(" <${formatWordTime(time)}>${word.text}")
         }
         return sb.toString().trimStart()
     }

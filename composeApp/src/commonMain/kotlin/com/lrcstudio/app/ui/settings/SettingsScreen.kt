@@ -342,6 +342,18 @@ fun SettingsScreen(
                         )
                     }
                 )
+                if (settings.isEnhancedLrcEnabled) {
+                    SettingsRow(
+                        title = "Interpolate punctuation",
+                        subtitle = "Auto-assign timestamps for standalone punctuation marks (.,!?;:) at export",
+                        trailing = {
+                            AccentSwitch(
+                                checked = settings.skipStandalonePunctuation,
+                                onCheckedChange = { settingsRepository.toggleSkipStandalonePunctuation() }
+                            )
+                        }
+                    )
+                }
                 SettingsRow(
                     title = "About Enhanced LRC",
                     subtitle = "eLRC extends standard LRC with <mm:ss.xx> tags for each word, enabling karaoke-style word highlighting."

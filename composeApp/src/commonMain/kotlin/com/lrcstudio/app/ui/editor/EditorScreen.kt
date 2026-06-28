@@ -2,6 +2,7 @@ package com.lrcstudio.app.ui.editor
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -42,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,6 +67,7 @@ import com.lrcstudio.app.util.isDesktop
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -91,7 +95,8 @@ fun EditorScreen(
     landscapeSplitRatio: Float = 0.5f,
     landscapeOverlay: Boolean = false,
     disableFullscreen: Boolean = false,
-    isEnhancedLrcEnabled: Boolean = false
+    isEnhancedLrcEnabled: Boolean = false,
+    skipStandalonePunctuation: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -276,12 +281,17 @@ fun EditorScreen(
                                             wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
                                             wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
                                             currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
+                                            isPlaying = playerState.state == PlaybackState.PLAYING,
+
                                             onVibrationToast = onVibrationToast,
                                             onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                             onEditStart = { viewModel.startEditing(i) },
                                             onEditChange = { viewModel.updateEditingText(it) },
                                             onEditDone = { viewModel.finishEditing() },
-                                            onClearTimestamp = { viewModel.clearTimestamp(i) },
+                                            onClearTimestamp = {
+                                                if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
+                                                else viewModel.clearTimestamp(i)
+                                            },
                                             onDelete = { showDeleteConfirm = i },
                                             onInstantDelete = { viewModel.deleteLine(i) },
                                             onClick = { viewModel.selectLine(i) },
@@ -291,10 +301,11 @@ fun EditorScreen(
                                             onWordClick = { wi ->
                                                 if (wi in item.lrcLine.words.indices) {
                                                     viewModel.setWordCursor(i, wi)
+                                                    viewModel.seekToWord(i, wi, beforeMs = 0L)
                                                 }
                                             },
                                             onWordSeek = { wi ->
-                                                viewModel.seekToWord(i, wi)
+                                                viewModel.seekToWord(i, wi, beforeMs = 1500L)
                                             },
                                             modifier = Modifier.fillMaxWidth()
                                         )
@@ -424,7 +435,7 @@ fun EditorScreen(
                                 if (!isPreviewMode && isEnhancedLrcEnabled) {
                                     val wordSyncActive = state.wordSyncMode
                                     FilledTonalIconButton(
-                                        onClick = { viewModel.toggleWordSyncMode() },
+                                        onClick = { viewModel.toggleWordSyncMode(skipStandalonePunctuation) },
                                         shape = RoundedCornerShape(12.dp),
                                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                                             containerColor = if (wordSyncActive)
@@ -1148,13 +1159,20 @@ fun EditorScreen(
     }
 
     if (showClearAllConfirm) {
+        val clearingWords = state.wordSyncMode
         AlertDialog(
             onDismissRequest = { showClearAllConfirm = false },
-            title = { Text("Clear all timestamps?") },
-            text = { Text("This will remove all timestamps from every line.") },
+            title = { Text(if (clearingWords) "Clear all word timestamps?" else "Clear all timestamps?") },
+            text = {
+                Text(
+                    if (clearingWords) "This will remove all word-level timestamps from every line."
+                    else "This will remove all timestamps from every line."
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.clearAllTimestamps()
+                    if (clearingWords) viewModel.clearAllWordTimestamps()
+                    else viewModel.clearAllTimestamps()
                     showClearAllConfirm = false
                 }) {
                     Text("Clear", color = MaterialTheme.colorScheme.error)
@@ -1350,6 +1368,8 @@ private fun LyricLineCard(
     wordSyncMode: Boolean = false,
     wordCursorIndex: Int = -1,
     currentWordIndex: Int = -1,
+    isPlaying: Boolean = false,
+
     onVibrationToast: (String) -> Unit = {},
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
@@ -1366,7 +1386,14 @@ private fun LyricLineCard(
     onWordSeek: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val hasTimestamp = line.timestamp > 0L
+    val hasTimestamp = if (wordSyncMode) {
+        val punctRegex = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
+        line.words.isNotEmpty() && line.words.all { word ->
+            punctRegex.matches(word.text) || word.startTime > 0L
+        }
+    } else {
+        line.timestamp > 0L
+    }
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
@@ -1746,67 +1773,153 @@ private fun LyricLineCard(
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val punctRegex = remember { Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+") }
                         line.words.forEachIndexed { wi, word ->
-                            val isWordCurrent = wi == currentWordIndex
+                            val isPunct = punctRegex.matches(word.text)
+                            val isWordCurrent = if (!isPunct) {
+                                wi == currentWordIndex
+                            } else {
+                                currentWordIndex >= 0 && run {
+                                    var prevTimedIdx = -1
+                                    for (j in wi - 1 downTo 0) {
+                                        val w = line.words[j]
+                                        if (!punctRegex.matches(w.text) && w.startTime > 0L) {
+                                            prevTimedIdx = j; break
+                                        }
+                                    }
+                                    prevTimedIdx == currentWordIndex
+                                }
+                            }
                             val isWordCursor = wi == wordCursorIndex
                             val hasWordTime = word.startTime > 0L
                             val wordBg = when {
-                                isWordCurrent -> MaterialTheme.colorScheme.primaryContainer
-                                isWordCursor -> MaterialTheme.colorScheme.tertiaryContainer
-                                hasWordTime -> Color(0xFFA5D6A7).copy(alpha = 0.3f)
+                                isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                isWordCursor -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                hasWordTime -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                 else -> Color.Transparent
                             }
-                            val wordBorder = if (isWordCursor)
-                                MaterialTheme.colorScheme.tertiary
+                            val wordBorder = if (isWordCursor && !isPunct)
+                                MaterialTheme.colorScheme.primary
                             else
                                 Color.Transparent
-
-                            val wordFlashAnim = remember { Animatable(0f) }
-                            LaunchedEffect(isWordCurrent) {
-                                if (isWordCurrent) {
-                                    wordFlashAnim.snapTo(1f)
-                                    wordFlashAnim.animateTo(0f, animationSpec = tween(500, easing = FastOutSlowInEasing))
+                            val wordTextColor = when {
+                                isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                hasWordTime -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                            val animDuration = {
+                                if (hasWordTime) {
+                                    var next = word.startTime + 500L
+                                    var n = wi + 1
+                                    while (n < line.words.size) {
+                                        if (!punctRegex.matches(line.words[n].text) && line.words[n].startTime > 0L) {
+                                            next = line.words[n].startTime
+                                            break
+                                        }
+                                        n++
+                                    }
+                                    (next - word.startTime).coerceAtLeast(200L)
+                                } else if (isPunct) {
+                                    var prevTime = word.startTime
+                                    for (j in wi - 1 downTo 0) {
+                                        if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { prevTime = line.words[j].startTime; break }
+                                    }
+                                    var nextTime = prevTime + 500L
+                                    for (j in wi + 1 until line.words.size) {
+                                        if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { nextTime = line.words[j].startTime; break }
+                                    }
+                                    (nextTime - prevTime).coerceAtLeast(200L)
+                                } else 0L
+                            }()
+                            val canAnimate = if (isPunct) false
+                            else hasWordTime && animDuration > 0L
+                            val wordProgress = remember { Animatable(0f) }
+                            val fillAlpha = remember { Animatable(0f) }
+                            LaunchedEffect(isWordCurrent, word.startTime, isPlaying) {
+                                if (isWordCurrent && canAnimate && isPlaying) {
+                                    fillAlpha.snapTo(1f)
+                                    wordProgress.snapTo(0f)
+                                    wordProgress.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = tween(
+                                            durationMillis = animDuration.toInt(),
+                                            easing = LinearEasing
+                                        )
+                                    )
+                                } else if (!isPlaying) {
+                                    fillAlpha.snapTo(0f)
+                                    wordProgress.snapTo(0f)
+                                } else if (wordProgress.value > 0f && wordProgress.value < 0.99f) {
+                                    val remainingMs = (animDuration * (1f - wordProgress.value)).toInt().coerceAtLeast(50)
+                                    coroutineScope {
+                                        launch {
+                                            wordProgress.animateTo(
+                                                targetValue = 1f,
+                                                animationSpec = tween(remainingMs, easing = LinearEasing)
+                                            )
+                                        }
+                                        fillAlpha.animateTo(0f, tween(500))
+                                    }
+                                    wordProgress.snapTo(0f)
+                                } else if (fillAlpha.value > 0f) {
+                                    fillAlpha.animateTo(0f, tween(500))
+                                    wordProgress.snapTo(0f)
                                 } else {
-                                    wordFlashAnim.snapTo(0f)
+                                    wordProgress.snapTo(0f)
+                                    fillAlpha.snapTo(0f)
                                 }
                             }
+                            val karaokeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
 
                             Box(
                                 modifier = Modifier
                                     .padding(end = 4.dp, bottom = 2.dp)
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(wordBg)
+                                    .drawBehind {
+                                        val displayAlpha = fillAlpha.value.coerceAtLeast(0f)
+                                        if (wordProgress.value > 0f && displayAlpha > 0f) {
+                                            val fillWidth = size.width * wordProgress.value
+                                            val gradientWidthPx = 60.dp.toPx()
+                                            val gradientStartX = (fillWidth - gradientWidthPx).coerceAtLeast(0f)
+                                            val overflowRight = size.width * 2f
+                                            clipRect(right = fillWidth) {
+                                                drawRect(
+                                                    brush = Brush.horizontalGradient(
+                                                        colorStops = arrayOf(
+                                                            0.0f to karaokeColor.copy(alpha = 0.2f * displayAlpha),
+                                                            gradientStartX / (fillWidth + overflowRight) to karaokeColor.copy(alpha = 0.2f * displayAlpha),
+                                                            (gradientStartX + gradientWidthPx * 0.5f) / (fillWidth + overflowRight) to karaokeColor.copy(alpha = 0.5f * displayAlpha),
+                                                            1.0f to karaokeColor.copy(alpha = 0.0f)
+                                                        ),
+                                                        startX = 0f,
+                                                        endX = fillWidth + overflowRight
+                                                    ),
+                                                    size = Size(fillWidth + overflowRight, size.height)
+                                                )
+                                            }
+                                        }
+                                    }
                                     .border(
-                                        width = if (isWordCursor) 1.5.dp else 0.dp,
+                                        width = if (isWordCursor && !isPunct) 1.5.dp else 0.dp,
                                         color = wordBorder,
                                         shape = RoundedCornerShape(6.dp)
                                     )
-                                    .clickable {
-                                        onWordClick?.invoke(wi)
-                                    }
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onLongPress = { onWordSeek?.invoke(wi) }
-                                        )
-                                    }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .then(
+                                        if (!isPunct) Modifier.pointerInput(wi) {
+                                            detectTapGestures(
+                                                onTap = { onWordClick?.invoke(wi) },
+                                                onLongPress = { onWordSeek?.invoke(wi) }
+                                            )
+                                        } else Modifier
+                                    )
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = wordFlashAnim.value * 0.35f)
-                                        )
-                                )
                                 Text(
                                     text = word.text,
                                     modifier = Modifier.padding(horizontal = 2.dp),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = when {
-                                        hasWordTime -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.onSurface
-                                    }
+                                    color = wordTextColor
                                 )
                             }
                         }
@@ -1817,7 +1930,7 @@ private fun LyricLineCard(
                             modifier = Modifier
                                 .size(32.dp)
                                 .combinedClickable(
-                                    onClick = { onWordClick?.invoke(-1) },
+                                    onClick = onClearTimestamp,
                                     onLongClick = onDelete
                                 ),
                             contentAlignment = Alignment.Center

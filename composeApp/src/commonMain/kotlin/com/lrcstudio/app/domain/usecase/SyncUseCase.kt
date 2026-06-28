@@ -60,8 +60,12 @@ class SyncUseCase {
 
     fun getCurrentWordIndex(line: LrcLine, positionMs: Long): Int {
         if (line.words.isEmpty() || line.timestamp == 0L) return -1
+        val punctRegex = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
         for (i in line.words.indices.reversed()) {
-            if (positionMs >= line.words[i].startTime) return i
+            if (line.words[i].startTime > 0L && positionMs >= line.words[i].startTime) return i
+        }
+        for (i in line.words.indices.reversed()) {
+            if (!punctRegex.matches(line.words[i].text)) return i
         }
         return -1
     }
@@ -77,13 +81,18 @@ class SyncUseCase {
         )
     }
 
-    fun splitLineIntoWords(line: LrcLine): LrcLine {
+    fun splitLineIntoWords(line: LrcLine, skipPunctuation: Boolean = true): LrcLine {
         if (line.words.isNotEmpty()) return line
         val words = line.text.split(Regex("\\s+")).filter { it.isNotBlank() }
         if (words.isEmpty()) return line
         return line.copy(
             words = words.map { WordTimestamp(startTime = 0L, text = it) }
         )
+    }
+
+    fun isPunctuationOnly(text: String): Boolean {
+        val punctuation = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
+        return text.isNotBlank() && punctuation.matches(text)
     }
 
     fun removeWordTimestamp(line: LrcLine, wordIndex: Int): LrcLine {
@@ -95,5 +104,12 @@ class SyncUseCase {
 
     fun clearAllWordTimestamps(line: LrcLine): LrcLine {
         return line.copy(words = emptyList())
+    }
+
+    fun clearWordTimestamp(line: LrcLine, wordIndex: Int): LrcLine {
+        if (wordIndex !in line.words.indices) return line
+        val newWords = line.words.toMutableList()
+        newWords[wordIndex] = newWords[wordIndex].copy(startTime = 0L)
+        return line.copy(words = newWords)
     }
 }

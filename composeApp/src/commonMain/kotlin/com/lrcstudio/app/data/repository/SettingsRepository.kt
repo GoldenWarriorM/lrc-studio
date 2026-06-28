@@ -34,7 +34,8 @@ data class AppSettings(
     val landscapeSplitRatio: Float = 0.5f,
     val landscapeOverlay: Boolean = false,
     val disableFullscreen: Boolean = false,
-    val isEnhancedLrcEnabled: Boolean = false
+    val isEnhancedLrcEnabled: Boolean = false,
+    val skipStandalonePunctuation: Boolean = true
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -204,6 +205,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleEnhancedLrc() {
         _settings.value = _settings.value.copy(
             isEnhancedLrcEnabled = !_settings.value.isEnhancedLrcEnabled
+        )
+        saveToDisk()
+    }
+
+    fun toggleSkipStandalonePunctuation() {
+        _settings.value = _settings.value.copy(
+            skipStandalonePunctuation = !_settings.value.skipStandalonePunctuation
         )
         saveToDisk()
     }
