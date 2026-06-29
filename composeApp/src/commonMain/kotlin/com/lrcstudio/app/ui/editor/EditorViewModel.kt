@@ -498,9 +498,7 @@ class EditorViewModel(
             skipPunctuationForward(line.words, wordIndex).coerceAtLeast(0)
         _state.value = _state.value.copy(
             selectedLineIndex = lineIndex,
-            wordCursorIndex = idx,
-            currentLineIndex = lineIndex,
-            currentWordIndex = idx
+            wordCursorIndex = idx
         )
     }
 
