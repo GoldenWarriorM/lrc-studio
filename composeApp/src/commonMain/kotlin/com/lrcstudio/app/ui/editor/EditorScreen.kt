@@ -378,7 +378,12 @@ fun EditorScreen(
                         }
 
                         val toolbarScrollState = rememberScrollState()
+                        val toolbarAtStart = toolbarScrollState.value <= 0
                         val toolbarAtEnd = toolbarScrollState.value >= toolbarScrollState.maxValue
+                        val leftOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtStart) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
                         val rightOpaqueAlpha by animateFloatAsState(
                             targetValue = if (toolbarAtEnd) 1f else 0f,
                             animationSpec = tween(250)
@@ -400,7 +405,8 @@ fun EditorScreen(
                                         val ratio = fadeWidth / width
                                         drawRect(
                                             brush = Brush.horizontalGradient(
-                                                0f to Color.Black,
+                                                0f to Color.Black.copy(alpha = leftOpaqueAlpha),
+                                                ratio to Color.Black,
                                                 (1f - ratio).coerceAtLeast(ratio) to Color.Black,
                                                 1f to Color.Black.copy(alpha = rightOpaqueAlpha)
                                             ),
@@ -844,7 +850,61 @@ fun EditorScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val toolbarScrollState = rememberScrollState()
+                        val toolbarAtStart = toolbarScrollState.value <= 0
+                        val toolbarAtEnd = toolbarScrollState.value >= toolbarScrollState.maxValue
+                        val leftOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtStart) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+                        val rightOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtEnd) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clipToBounds()
+                                .graphicsLayer {
+                                    compositingStrategy = CompositingStrategy.Offscreen
+                                }
+                                .drawWithContent {
+                                    drawContent()
+                                    val fadeWidth = 12.dp.toPx()
+                                    val width = size.width
+                                    if (width > 0f) {
+                                        val ratio = fadeWidth / width
+                                        drawRect(
+                                            brush = Brush.horizontalGradient(
+                                                0f to Color.Black.copy(alpha = leftOpaqueAlpha),
+                                                ratio to Color.Black,
+                                                (1f - ratio).coerceAtLeast(ratio) to Color.Black,
+                                                1f to Color.Black.copy(alpha = rightOpaqueAlpha)
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(toolbarScrollState)
+                                    .pointerInput(toolbarScrollState) {
+                                        awaitEachGesture {
+                                            val event = awaitPointerEvent(PointerEventPass.Main)
+                                            if (event.type == PointerEventType.Scroll) {
+                                                val delta = event.changes.firstOrNull()?.scrollDelta
+                                                    ?: return@awaitEachGesture
+                                                if (delta.y != 0f) {
+                                                    toolbarScrollState.dispatchRawDelta(-delta.y * 10f)
+                                                }
+                                            }
+                                        }
+                                    },
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                             if (!isPreviewMode) {
                                 FilledTonalIconButton(
                                     onClick = { showAddDialog = true },
@@ -925,6 +985,7 @@ fun EditorScreen(
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                 }
+                            }
                             }
                         }
                     }
