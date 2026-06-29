@@ -548,18 +548,23 @@ fun EditorScreen(
 
                 val timeOverlay = @Composable {
                     if (canCapture) {
-                        Row(
+                        BoxWithConstraints(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .navigationBarsPadding()
                                 .padding(bottom = 24.dp)
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                                .padding(horizontal = 16.dp)
                         ) {
                             val wordSyncCaption = state.wordSyncMode && state.wordCursorIndex >= 0
+                            val undoRedoW = 48.dp + 8.dp + 48.dp
+                            val captureRight = maxWidth / 2 + 80.dp
+                            val overlap = showUndoRedo && !landscapeInverted &&
+                                captureRight + undoRedoW + 8.dp > maxWidth
+                            val shift = if (overlap) undoRedoW + 8.dp else 0.dp
                             Box(
                                 modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .offset(x = -shift)
                                     .width(160.dp)
                                     .height(56.dp)
                                     .clickable(
@@ -602,8 +607,8 @@ fun EditorScreen(
                             }
 
                             if (showUndoRedo) {
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Row(
+                                    modifier = Modifier.align(if (landscapeInverted) Alignment.CenterStart else Alignment.CenterEnd),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
