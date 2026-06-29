@@ -1968,7 +1968,7 @@ private fun LyricLineCard(
                                 } else if (!isPlaying) {
                                     fillAlpha.snapTo(0f)
                                     wordProgress.snapTo(0f)
-                                } else if (wordProgress.value > 0f && wordProgress.value < 0.99f) {
+                                } else if (isWordCurrent && wordProgress.value > 0f && wordProgress.value < 0.99f) {
                                     val remainingMs = (animDuration * (1f - wordProgress.value)).toInt().coerceAtLeast(50)
                                     coroutineScope {
                                         launch {
