@@ -113,7 +113,7 @@ class EditorViewModel(
         positionUpdateJob?.cancel()
         positionUpdateJob = scope.launch {
             while (isActive) {
-                delay(100)
+                delay(10)
                 val playerState = audioPlayer.state.value
                 val s = _state.value
                 val index = syncUseCase.getCurrentLineIndex(

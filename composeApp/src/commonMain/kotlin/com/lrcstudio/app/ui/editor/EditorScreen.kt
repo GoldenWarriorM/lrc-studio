@@ -1934,7 +1934,7 @@ private fun LyricLineCard(
                                         }
                                         n++
                                     }
-                                    (next - word.startTime).coerceAtLeast(200L)
+                                    (next - word.startTime).coerceAtLeast(30L)
                                 } else if (isPunct) {
                                     var prevTime = word.startTime
                                     for (j in wi - 1 downTo 0) {
@@ -1944,7 +1944,7 @@ private fun LyricLineCard(
                                     for (j in wi + 1 until line.words.size) {
                                         if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { nextTime = line.words[j].startTime; break }
                                     }
-                                    (nextTime - prevTime).coerceAtLeast(200L)
+                                    (nextTime - prevTime).coerceAtLeast(30L)
                                 } else 0L
                             }()
                             val canAnimate = if (isPunct) false
