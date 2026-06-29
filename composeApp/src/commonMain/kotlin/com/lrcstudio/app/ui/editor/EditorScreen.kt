@@ -14,8 +14,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,12 +45,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -369,14 +377,57 @@ fun EditorScreen(
                             )
                         }
 
-                        Row(
+                        val toolbarScrollState = rememberScrollState()
+                        val toolbarAtEnd = toolbarScrollState.value >= toolbarScrollState.maxValue
+                        val rightOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtEnd) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End
+                                .padding(horizontal = 16.dp)
+                                .clipToBounds()
+                                .graphicsLayer {
+                                    compositingStrategy = CompositingStrategy.Offscreen
+                                }
+                                .drawWithContent {
+                                    drawContent()
+                                    val fadeWidth = 12.dp.toPx()
+                                    val width = size.width
+                                    if (width > 0f) {
+                                        val ratio = fadeWidth / width
+                                        drawRect(
+                                            brush = Brush.horizontalGradient(
+                                                0f to Color.Black,
+                                                (1f - ratio).coerceAtLeast(ratio) to Color.Black,
+                                                1f to Color.Black.copy(alpha = rightOpaqueAlpha)
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                    }
+                                }
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(toolbarScrollState)
+                                    .pointerInput(toolbarScrollState) {
+                                        awaitEachGesture {
+                                            val event = awaitPointerEvent(PointerEventPass.Main)
+                                            if (event.type == PointerEventType.Scroll) {
+                                                val delta = event.changes.firstOrNull()?.scrollDelta
+                                                    ?: return@awaitEachGesture
+                                                if (delta.y != 0f) {
+                                                    toolbarScrollState.dispatchRawDelta(-delta.y * 10f)
+                                                }
+                                            }
+                                        }
+                                    },
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 if (!isPreviewMode) {
                                     FilledTonalIconButton(
                                         onClick = { showAddDialog = true },
