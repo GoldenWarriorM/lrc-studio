@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -1460,7 +1461,7 @@ private sealed class DisplayItem {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun LyricLineCard(
     line: com.lrcstudio.app.data.model.LrcLine,
@@ -1881,11 +1882,12 @@ private fun LyricLineCard(
                         )
                     }
                 } else if (wordSyncMode && line.words.isNotEmpty()) {
-                    Row(
+                    FlowRow(
                         modifier = Modifier
                             .weight(1f)
                             .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         val punctRegex = remember { Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+") }
                         line.words.forEachIndexed { wi, word ->
