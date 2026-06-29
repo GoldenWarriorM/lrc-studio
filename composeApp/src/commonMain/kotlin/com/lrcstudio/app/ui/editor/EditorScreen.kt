@@ -1962,6 +1962,7 @@ private fun LyricLineCard(
                                             animationSpec = tween(remainingMs, easing = LinearEasing)
                                         )
                                     }
+                                    fillAlpha.animateTo(0f, tween(500))
                                 } else if (!isPlaying) {
                                     fillAlpha.snapTo(0f)
                                     wordProgress.snapTo(0f)
