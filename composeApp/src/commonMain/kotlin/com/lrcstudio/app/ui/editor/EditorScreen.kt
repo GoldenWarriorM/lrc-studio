@@ -556,15 +556,10 @@ fun EditorScreen(
                                 .padding(horizontal = 16.dp)
                         ) {
                             val wordSyncCaption = state.wordSyncMode && state.wordCursorIndex >= 0
-                            val undoRedoW = 48.dp + 8.dp + 48.dp
-                            val captureRight = maxWidth / 2 + 80.dp
-                            val overlap = showUndoRedo && !landscapeInverted &&
-                                captureRight + undoRedoW + 8.dp > maxWidth
-                            val shift = if (overlap) undoRedoW + 8.dp else 0.dp
+                            val shift = if (showUndoRedo && !landscapeInverted) 50.dp else 0.dp
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .offset(x = -shift)
+                                    .align(if (shift > 0.dp) Alignment.CenterStart else Alignment.Center)
                                     .width(160.dp)
                                     .height(56.dp)
                                     .clickable(
@@ -1118,7 +1113,7 @@ fun EditorScreen(
                     else
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
@@ -1126,9 +1121,11 @@ fun EditorScreen(
                             .padding(bottom = 24.dp)
                             .padding(horizontal = 16.dp)
                     ) {
+                        val undoW = 48.dp + 8.dp + 48.dp
+                        val shift = if (showUndoRedo) undoW + 8.dp else 0.dp
                         Box(
                             modifier = Modifier
-                                .align(Alignment.Center)
+                                .align(if (shift > 0.dp) Alignment.CenterStart else Alignment.Center)
                                 .width(160.dp)
                                 .height(56.dp)
                                 .clickable(
