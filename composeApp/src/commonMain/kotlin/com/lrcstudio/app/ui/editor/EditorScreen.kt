@@ -556,10 +556,15 @@ fun EditorScreen(
                                 .padding(horizontal = 16.dp)
                         ) {
                             val wordSyncCaption = state.wordSyncMode && state.wordCursorIndex >= 0
-                            val shift = if (showUndoRedo && !landscapeInverted) 50.dp else 0.dp
+                            val undoW = 48.dp + 8.dp + 48.dp
+                            val rightEdge = maxWidth / 2 + 80.dp
+                            val undoLeft = maxWidth - undoW - 8.dp
+                            val shift = if (showUndoRedo && !landscapeInverted && rightEdge > undoLeft)
+                                rightEdge - undoLeft else 0.dp
                             Box(
                                 modifier = Modifier
-                                    .align(if (shift > 0.dp) Alignment.CenterStart else Alignment.Center)
+                                    .align(Alignment.Center)
+                                    .graphicsLayer { translationX = -shift.toPx() }
                                     .width(160.dp)
                                     .height(56.dp)
                                     .clickable(
@@ -1122,10 +1127,14 @@ fun EditorScreen(
                             .padding(horizontal = 16.dp)
                     ) {
                         val undoW = 48.dp + 8.dp + 48.dp
-                        val shift = if (showUndoRedo) undoW + 8.dp else 0.dp
+                        val rightEdge = maxWidth / 2 + 80.dp
+                        val undoLeft = maxWidth - undoW - 8.dp
+                        val shift = if (showUndoRedo && rightEdge > undoLeft)
+                            rightEdge - undoLeft else 0.dp
                         Box(
                             modifier = Modifier
-                                .align(if (shift > 0.dp) Alignment.CenterStart else Alignment.Center)
+                                .align(Alignment.Center)
+                                .graphicsLayer { translationX = -shift.toPx() }
                                 .width(160.dp)
                                 .height(56.dp)
                                 .clickable(
