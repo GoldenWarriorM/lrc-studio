@@ -504,7 +504,7 @@ fun EditorScreen(
                                             contentColor = if (wordSyncActive)
                                                 MaterialTheme.colorScheme.onPrimary
                                             else
-                                                MaterialTheme.colorScheme.onSurface
+                                                MaterialTheme.colorScheme.primary
                                         )
                                     ) {
                                         Icon(
