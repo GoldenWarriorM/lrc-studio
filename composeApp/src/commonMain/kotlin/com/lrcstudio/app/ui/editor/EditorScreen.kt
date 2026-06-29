@@ -290,6 +290,7 @@ fun EditorScreen(
                                             wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
                                             currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
                                             isPlaying = playerState.state == PlaybackState.PLAYING,
+                                            currentPositionMs = playerState.currentPosition,
 
                                             onVibrationToast = onVibrationToast,
                                             onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
@@ -1481,6 +1482,7 @@ private fun LyricLineCard(
     wordCursorIndex: Int = -1,
     currentWordIndex: Int = -1,
     isPlaying: Boolean = false,
+    currentPositionMs: Long = 0L,
 
     onVibrationToast: (String) -> Unit = {},
     onTimestampSet: (Long) -> Unit,
@@ -1950,14 +1952,16 @@ private fun LyricLineCard(
                             LaunchedEffect(isWordCurrent, word.startTime, isPlaying) {
                                 if (isWordCurrent && canAnimate && isPlaying) {
                                     fillAlpha.snapTo(1f)
-                                    wordProgress.snapTo(0f)
-                                    wordProgress.animateTo(
-                                        targetValue = 1f,
-                                        animationSpec = tween(
-                                            durationMillis = animDuration.toInt(),
-                                            easing = LinearEasing
+                                    val elapsed = (currentPositionMs - word.startTime).coerceAtLeast(0L)
+                                    val initialProgress = if (animDuration > 0L) (elapsed.toFloat() / animDuration).coerceIn(0f, 1f) else 0f
+                                    wordProgress.snapTo(initialProgress)
+                                    if (initialProgress < 1f) {
+                                        val remainingMs = (animDuration * (1f - initialProgress)).toInt().coerceAtLeast(50)
+                                        wordProgress.animateTo(
+                                            targetValue = 1f,
+                                            animationSpec = tween(remainingMs, easing = LinearEasing)
                                         )
-                                    )
+                                    }
                                 } else if (!isPlaying) {
                                     fillAlpha.snapTo(0f)
                                     wordProgress.snapTo(0f)
