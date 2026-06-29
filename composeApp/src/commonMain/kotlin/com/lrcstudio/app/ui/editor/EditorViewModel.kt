@@ -400,7 +400,6 @@ class EditorViewModel(
             val firstWordIdx = if (firstLineWithWords >= 0)
                 skipPunctuationForward(newLyrics[firstLineWithWords].words, 0).coerceAtLeast(0)
             else 0
-            pushUndo()
             _state.value = _state.value.copy(
                 lyrics = newLyrics,
                 wordSyncMode = true,
