@@ -127,7 +127,9 @@ class EditorViewModel(
                         wordIndex = syncUseCase.getCurrentWordIndex(line, playerState.currentPosition)
                     }
                 }
-                if (index != s.currentLineIndex) {
+                val skipUntimed = s.wordSyncMode && index >= 0 && s.lyrics.getOrNull(index)
+                    ?.words?.none { it.startTime > 0L } == true
+                if (!skipUntimed && index != s.currentLineIndex) {
                     val jumpedBack = index < s.currentLineIndex
                     val selIdx = if (jumpedBack) {
                         val selLine = s.lyrics.getOrNull(s.selectedLineIndex)
@@ -146,7 +148,7 @@ class EditorViewModel(
                         currentWordIndex = wordIndex,
                         selectedLineIndex = selIdx
                     )
-                } else if (wordIndex != s.currentWordIndex) {
+                } else if (!skipUntimed && wordIndex != s.currentWordIndex) {
                     _state.value = _state.value.copy(currentWordIndex = wordIndex)
                 }
             }
