@@ -162,7 +162,7 @@ class EditorViewModel(
                     }
                 }
                 val skipUntimed = s.wordSyncMode && index >= 0 && s.lyrics.getOrNull(index)
-                    ?.words?.none { it.startTime > 0L } == true
+                    ?.let { it.words.isNotEmpty() && it.words.none { w -> w.startTime > 0L } } == true
                 if (!skipUntimed && index != s.currentLineIndex) {
                     val jumpedBack = index < s.currentLineIndex
                     val selIdx = if (jumpedBack) {
