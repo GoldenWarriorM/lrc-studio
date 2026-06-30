@@ -913,7 +913,8 @@ fun EditorScreen(
                                     },
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                            if (!isPreviewMode) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                if (!isPreviewMode) {
                                 FilledTonalIconButton(
                                     onClick = { showAddDialog = true },
                                     shape = RoundedCornerShape(12.dp),
