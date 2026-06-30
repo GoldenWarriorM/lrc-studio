@@ -43,6 +43,7 @@ fun SettingsScreen(
     val settings by settingsRepository.settings.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val topBarSurface = LocalSnapSurface.current
+    var showElrcBetaWarning by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
@@ -331,14 +332,20 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSection("Enhanced LRC") {
+            SettingsSection("Enhanced LRC (Beta)") {
                 SettingsRow(
                     title = "Word-level sync",
                     subtitle = "Enable word-by-word timestamp editing and eLRC export",
                     trailing = {
                         AccentSwitch(
                             checked = settings.isEnhancedLrcEnabled,
-                            onCheckedChange = { settingsRepository.toggleEnhancedLrc() }
+                            onCheckedChange = { enabled ->
+                                if (enabled) {
+                                    showElrcBetaWarning = true
+                                } else {
+                                    settingsRepository.toggleEnhancedLrc()
+                                }
+                            }
                         )
                     }
                 )
@@ -423,6 +430,38 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showElrcBetaWarning) {
+        AlertDialog(
+            onDismissRequest = { showElrcBetaWarning = false },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Enhanced LRC (Beta)", style = MaterialTheme.typography.headlineSmall) },
+            text = {
+                Text(
+                    "Word-level sync is a beta feature. " +
+                    "Before publishing your lyrics on public repositories, " +
+                    "please verify that the platform supports ELRC format " +
+                    "and check the sync quality."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showElrcBetaWarning = false
+                        settingsRepository.toggleEnhancedLrc()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showElrcBetaWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
