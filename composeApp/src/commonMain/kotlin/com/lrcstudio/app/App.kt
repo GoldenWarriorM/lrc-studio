@@ -211,7 +211,9 @@ fun App(audioPlayer: AudioPlayer) {
                                     ignoreCutout = settings.ignoreCutout,
                                     landscapeSplitRatio = settings.landscapeSplitRatio,
                                     landscapeOverlay = settings.landscapeOverlay,
-                                    disableFullscreen = settings.disableFullscreen
+                                    disableFullscreen = settings.disableFullscreen,
+                                    isEnhancedLrcEnabled = settings.isEnhancedLrcEnabled,
+                                    skipStandalonePunctuation = settings.skipStandalonePunctuation
                                 )
                             }
                         }

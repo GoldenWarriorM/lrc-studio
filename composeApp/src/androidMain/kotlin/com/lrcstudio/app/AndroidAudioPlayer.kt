@@ -59,7 +59,7 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
                     _state.value = _state.value.copy(
                         currentPosition = exoPlayer.currentPosition.coerceAtLeast(0)
                     )
-                    delay(100)
+                    delay(10)
                 }
             }
         }

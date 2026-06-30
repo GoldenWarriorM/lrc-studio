@@ -16,8 +16,8 @@ data class AppSettings(
     val swipeDeleteThresholdDp: Int = 60,
     val swipeActivationThresholdDp: Int = 90,
     val swipeGesturesEnabled: Boolean = true,
-    val showSnapButton: Boolean = true,
-    val showClearDeleteButton: Boolean = true,
+    val showSnapButton: Boolean = false,
+    val showClearDeleteButton: Boolean = false,
     val swipeInstantDelete: Boolean = false,
     val devSettingsUnlocked: Boolean = false,
     val showDebugBorders: Boolean = false,
@@ -33,7 +33,9 @@ data class AppSettings(
     val showPlatformSpecific: Boolean = false,
     val landscapeSplitRatio: Float = 0.5f,
     val landscapeOverlay: Boolean = false,
-    val disableFullscreen: Boolean = false
+    val disableFullscreen: Boolean = false,
+    val isEnhancedLrcEnabled: Boolean = false,
+    val skipStandalonePunctuation: Boolean = true
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -196,6 +198,20 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleDisableFullscreen() {
         _settings.value = _settings.value.copy(
             disableFullscreen = !_settings.value.disableFullscreen
+        )
+        saveToDisk()
+    }
+
+    fun toggleEnhancedLrc() {
+        _settings.value = _settings.value.copy(
+            isEnhancedLrcEnabled = !_settings.value.isEnhancedLrcEnabled
+        )
+        saveToDisk()
+    }
+
+    fun toggleSkipStandalonePunctuation() {
+        _settings.value = _settings.value.copy(
+            skipStandalonePunctuation = !_settings.value.skipStandalonePunctuation
         )
         saveToDisk()
     }

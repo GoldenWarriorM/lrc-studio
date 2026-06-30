@@ -43,6 +43,7 @@ fun SettingsScreen(
     val settings by settingsRepository.settings.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val topBarSurface = LocalSnapSurface.current
+    var showElrcBetaWarning by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
@@ -331,6 +332,41 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsSection("Enhanced LRC (Beta)") {
+                SettingsRow(
+                    title = "Word-level sync",
+                    subtitle = "Enable word-by-word timestamp editing and eLRC export",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.isEnhancedLrcEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled) {
+                                    showElrcBetaWarning = true
+                                } else {
+                                    settingsRepository.toggleEnhancedLrc()
+                                }
+                            }
+                        )
+                    }
+                )
+                if (settings.isEnhancedLrcEnabled) {
+                    SettingsRow(
+                        title = "Interpolate punctuation",
+                        subtitle = "Auto-assign timestamps for standalone punctuation marks (.,!?;:) at export",
+                        trailing = {
+                            AccentSwitch(
+                                checked = settings.skipStandalonePunctuation,
+                                onCheckedChange = { settingsRepository.toggleSkipStandalonePunctuation() }
+                            )
+                        }
+                    )
+                }
+                SettingsRow(
+                    title = "About Enhanced LRC",
+                    subtitle = "eLRC extends standard LRC with <mm:ss.xx> tags for each word, enabling karaoke-style word highlighting."
+                )
+            }
+
             SettingsSection("About") {
                 var versionTapCount by remember { mutableIntStateOf(0) }
                 val scope = rememberCoroutineScope()
@@ -394,6 +430,38 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showElrcBetaWarning) {
+        AlertDialog(
+            onDismissRequest = { showElrcBetaWarning = false },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Enhanced LRC (Beta)", style = MaterialTheme.typography.headlineSmall) },
+            text = {
+                Text(
+                    "Word-level sync is a beta feature. " +
+                    "Before publishing your lyrics on public repositories, " +
+                    "please verify that the platform supports ELRC format " +
+                    "and check the sync quality."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showElrcBetaWarning = false
+                        settingsRepository.toggleEnhancedLrc()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showElrcBetaWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

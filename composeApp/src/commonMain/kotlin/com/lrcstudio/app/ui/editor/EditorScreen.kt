@@ -2,6 +2,7 @@ package com.lrcstudio.app.ui.editor
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -13,8 +14,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +30,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -40,11 +46,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -63,6 +76,7 @@ import com.lrcstudio.app.util.isDesktop
 import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -77,8 +91,8 @@ fun EditorScreen(
     swipeDeleteThresholdDp: Int = 130,
     swipeActivationThresholdDp: Int = 20,
     swipeGesturesEnabled: Boolean = true,
-    showSnapButton: Boolean = true,
-    showClearDeleteButton: Boolean = true,
+    showSnapButton: Boolean = false,
+    showClearDeleteButton: Boolean = false,
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
     showUndoRedo: Boolean = true,
@@ -89,7 +103,9 @@ fun EditorScreen(
     ignoreCutout: Boolean = false,
     landscapeSplitRatio: Float = 0.5f,
     landscapeOverlay: Boolean = false,
-    disableFullscreen: Boolean = false
+    disableFullscreen: Boolean = false,
+    isEnhancedLrcEnabled: Boolean = false,
+    skipStandalonePunctuation: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -271,18 +287,36 @@ fun EditorScreen(
                                             swipeInstantDelete = swipeInstantDelete,
                                             showDebugBorders = showDebugBorders,
                                             showVibrationToast = showVibrationToast,
+                                            wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                            wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                            currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
+                                            isPlaying = playerState.state == PlaybackState.PLAYING,
+                                            currentPositionMs = playerState.currentPosition,
+
                                             onVibrationToast = onVibrationToast,
                                             onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                             onEditStart = { viewModel.startEditing(i) },
                                             onEditChange = { viewModel.updateEditingText(it) },
                                             onEditDone = { viewModel.finishEditing() },
-                                            onClearTimestamp = { viewModel.clearTimestamp(i) },
+                                            onClearTimestamp = {
+                                                if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
+                                                else viewModel.clearTimestamp(i)
+                                            },
                                             onDelete = { showDeleteConfirm = i },
                                             onInstantDelete = { viewModel.deleteLine(i) },
                                             onClick = { viewModel.selectLine(i) },
                                             onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
                                             onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
                                             onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                            onWordClick = { wi ->
+                                                if (wi in item.lrcLine.words.indices) {
+                                                    viewModel.setWordCursor(i, wi)
+                                                    viewModel.seekToWord(i, wi, beforeMs = 0L)
+                                                }
+                                            },
+                                            onWordSeek = { wi ->
+                                                viewModel.seekToWord(i, wi, beforeMs = 1500L)
+                                            },
                                             modifier = Modifier.fillMaxWidth()
                                         )
                                     }
@@ -345,14 +379,63 @@ fun EditorScreen(
                             )
                         }
 
-                        Row(
+                        val toolbarScrollState = rememberScrollState()
+                        val toolbarAtStart = toolbarScrollState.value <= 0
+                        val toolbarAtEnd = toolbarScrollState.value >= toolbarScrollState.maxValue
+                        val leftOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtStart) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+                        val rightOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtEnd) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End
+                                .padding(horizontal = 16.dp)
+                                .clipToBounds()
+                                .graphicsLayer {
+                                    compositingStrategy = CompositingStrategy.Offscreen
+                                }
+                                .drawWithContent {
+                                    drawContent()
+                                    val fadeWidth = 12.dp.toPx()
+                                    val width = size.width
+                                    if (width > 0f) {
+                                        val ratio = fadeWidth / width
+                                        drawRect(
+                                            brush = Brush.horizontalGradient(
+                                                0f to Color.Black.copy(alpha = leftOpaqueAlpha),
+                                                ratio to Color.Black,
+                                                (1f - ratio).coerceAtLeast(ratio) to Color.Black,
+                                                1f to Color.Black.copy(alpha = rightOpaqueAlpha)
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                    }
+                                }
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(toolbarScrollState)
+                                    .pointerInput(toolbarScrollState) {
+                                        awaitEachGesture {
+                                            val event = awaitPointerEvent(PointerEventPass.Main)
+                                            if (event.type == PointerEventType.Scroll) {
+                                                val delta = event.changes.firstOrNull()?.scrollDelta
+                                                    ?: return@awaitEachGesture
+                                                if (delta.y != 0f) {
+                                                    toolbarScrollState.dispatchRawDelta(-delta.y * 10f)
+                                                }
+                                            }
+                                        }
+                                    },
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 if (!isPreviewMode) {
                                     FilledTonalIconButton(
                                         onClick = { showAddDialog = true },
@@ -408,6 +491,30 @@ fun EditorScreen(
                                     )
                                 }
 
+                                if (!isPreviewMode && isEnhancedLrcEnabled) {
+                                    val wordSyncActive = state.wordSyncMode
+                                    FilledTonalIconButton(
+                                        onClick = { viewModel.toggleWordSyncMode(skipStandalonePunctuation) },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = if (wordSyncActive)
+                                                MaterialTheme.colorScheme.primary
+                                            else
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            contentColor = if (wordSyncActive)
+                                                MaterialTheme.colorScheme.onPrimary
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.ShortText,
+                                            contentDescription = "Word Sync",
+                                        )
+                                    }
+
+                                }
+
                                 if (!isPreviewMode) {
                                     FilledTonalIconButton(
                                         onClick = { showShiftDialog = true },
@@ -441,22 +548,34 @@ fun EditorScreen(
 
                 val timeOverlay = @Composable {
                     if (canCapture) {
-                        Box(
+                        BoxWithConstraints(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .navigationBarsPadding()
                                 .padding(bottom = 24.dp)
                                 .padding(horizontal = 16.dp)
                         ) {
+                            val undoW = 48.dp + 8.dp + 48.dp
+                            val rightEdge = maxWidth / 2 + 80.dp
+                            val undoLeft = maxWidth - undoW - 8.dp
+                            val shift = if (showUndoRedo && landscapeInverted && rightEdge > undoLeft)
+                                rightEdge - undoLeft else 0.dp
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.Center)
+                                    .graphicsLayer { translationX = -shift.toPx() }
                                     .width(160.dp)
                                     .height(56.dp)
                                     .clickable(
                                         interactionSource = timeInteractionSource,
                                         indication = null,
-                                        onClick = { viewModel.captureCurrentLineTimestamp() },
+                                        onClick = {
+                                            if (state.wordSyncMode && state.wordCursorIndex >= 0) {
+                                                viewModel.captureWordTimestamp()
+                                            } else {
+                                                viewModel.captureCurrentLineTimestamp()
+                                            }
+                                        },
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -488,7 +607,7 @@ fun EditorScreen(
 
                             if (showUndoRedo) {
                                 Row(
-                                    modifier = Modifier.align(if (landscapeInverted) Alignment.CenterStart else Alignment.CenterEnd),
+                                    modifier = Modifier.align(if (!landscapeInverted) Alignment.CenterStart else Alignment.CenterEnd),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -638,7 +757,7 @@ fun EditorScreen(
                 Row(modifier = Modifier.fillMaxSize().then(
                     nestedScrollConnection?.let { Modifier.nestedScroll(it) } ?: Modifier
                 )) {
-                    if (landscapeInverted) {
+                    if (!landscapeInverted) {
                         Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                         Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }
                     } else {
@@ -738,8 +857,63 @@ fun EditorScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (!isPreviewMode) {
+                        val toolbarScrollState = rememberScrollState()
+                        val toolbarAtStart = toolbarScrollState.value <= 0
+                        val toolbarAtEnd = toolbarScrollState.value >= toolbarScrollState.maxValue
+                        val leftOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtStart) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+                        val rightOpaqueAlpha by animateFloatAsState(
+                            targetValue = if (toolbarAtEnd) 1f else 0f,
+                            animationSpec = tween(250)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clipToBounds()
+                                .graphicsLayer {
+                                    compositingStrategy = CompositingStrategy.Offscreen
+                                }
+                                .drawWithContent {
+                                    drawContent()
+                                    val fadeWidth = 12.dp.toPx()
+                                    val width = size.width
+                                    if (width > 0f) {
+                                        val ratio = fadeWidth / width
+                                        drawRect(
+                                            brush = Brush.horizontalGradient(
+                                                0f to Color.Black.copy(alpha = leftOpaqueAlpha),
+                                                ratio to Color.Black,
+                                                (1f - ratio).coerceAtLeast(ratio) to Color.Black,
+                                                1f to Color.Black.copy(alpha = rightOpaqueAlpha)
+                                            ),
+                                            blendMode = BlendMode.DstIn
+                                        )
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(toolbarScrollState)
+                                    .pointerInput(toolbarScrollState) {
+                                        awaitEachGesture {
+                                            val event = awaitPointerEvent(PointerEventPass.Main)
+                                            if (event.type == PointerEventType.Scroll) {
+                                                val delta = event.changes.firstOrNull()?.scrollDelta
+                                                    ?: return@awaitEachGesture
+                                                if (delta.y != 0f) {
+                                                    toolbarScrollState.dispatchRawDelta(-delta.y * 10f)
+                                                }
+                                            }
+                                        }
+                                    },
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                if (!isPreviewMode) {
                                 FilledTonalIconButton(
                                     onClick = { showAddDialog = true },
                                     shape = RoundedCornerShape(12.dp),
@@ -794,6 +968,29 @@ fun EditorScreen(
                                 )
                             }
 
+                            if (!isPreviewMode && isEnhancedLrcEnabled) {
+                                val wordSyncActive = state.wordSyncMode
+                                FilledTonalIconButton(
+                                    onClick = { viewModel.toggleWordSyncMode(skipStandalonePunctuation) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = if (wordSyncActive)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        contentColor = if (wordSyncActive)
+                                            MaterialTheme.colorScheme.onPrimary
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.Default.ShortText,
+                                        contentDescription = "Word Sync",
+                                    )
+                                }
+                            }
+
                             if (!isPreviewMode) {
                                 FilledTonalIconButton(
                                     onClick = { showShiftDialog = true },
@@ -819,6 +1016,7 @@ fun EditorScreen(
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                 }
+                            }
                             }
                         }
                     }
@@ -855,18 +1053,36 @@ fun EditorScreen(
                                         swipeInstantDelete = swipeInstantDelete,
                                         showDebugBorders = showDebugBorders,
                                         showVibrationToast = showVibrationToast,
+                                        wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                        wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                        currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
+                                        isPlaying = playerState.state == PlaybackState.PLAYING,
+                                        currentPositionMs = playerState.currentPosition,
+
                                         onVibrationToast = onVibrationToast,
                                         onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                         onEditStart = { viewModel.startEditing(i) },
                                         onEditChange = { viewModel.updateEditingText(it) },
                                         onEditDone = { viewModel.finishEditing() },
-                                        onClearTimestamp = { viewModel.clearTimestamp(i) },
+                                        onClearTimestamp = {
+                                            if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
+                                            else viewModel.clearTimestamp(i)
+                                        },
                                         onDelete = { showDeleteConfirm = i },
                                         onInstantDelete = { viewModel.deleteLine(i) },
                                         onClick = { viewModel.selectLine(i) },
                                         onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
                                         onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
                                         onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                        onWordClick = { wi ->
+                                            if (wi in item.lrcLine.words.indices) {
+                                                viewModel.setWordCursor(i, wi)
+                                                viewModel.seekToWord(i, wi, beforeMs = 0L)
+                                            }
+                                        },
+                                        onWordSeek = { wi ->
+                                            viewModel.seekToWord(i, wi, beforeMs = 1500L)
+                                        },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                 }
@@ -943,7 +1159,7 @@ fun EditorScreen(
                     else
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
@@ -951,9 +1167,15 @@ fun EditorScreen(
                             .padding(bottom = 24.dp)
                             .padding(horizontal = 16.dp)
                     ) {
+                        val undoW = 48.dp + 8.dp + 48.dp
+                        val rightEdge = maxWidth / 2 + 80.dp
+                        val undoLeft = maxWidth - undoW - 8.dp
+                        val shift = if (showUndoRedo && rightEdge > undoLeft)
+                            rightEdge - undoLeft else 0.dp
                         Box(
                             modifier = Modifier
                                 .align(Alignment.Center)
+                                .graphicsLayer { translationX = -shift.toPx() }
                                 .width(160.dp)
                                 .height(56.dp)
                                 .clickable(
@@ -1104,13 +1326,20 @@ fun EditorScreen(
     }
 
     if (showClearAllConfirm) {
+        val clearingWords = state.wordSyncMode
         AlertDialog(
             onDismissRequest = { showClearAllConfirm = false },
-            title = { Text("Clear all timestamps?") },
-            text = { Text("This will remove all timestamps from every line.") },
+            title = { Text(if (clearingWords) "Clear all word timestamps?" else "Clear all timestamps?") },
+            text = {
+                Text(
+                    if (clearingWords) "This will remove all word-level timestamps from every line."
+                    else "This will remove all timestamps from every line."
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.clearAllTimestamps()
+                    if (clearingWords) viewModel.clearAllWordTimestamps()
+                    else viewModel.clearAllTimestamps()
                     showClearAllConfirm = false
                 }) {
                     Text("Clear", color = MaterialTheme.colorScheme.error)
@@ -1127,7 +1356,9 @@ fun EditorScreen(
     if (showSaveDialog) {
         val song = state.song
         val clipboardManager = LocalClipboardManager.current
+        val isEnhanced = state.wordSyncMode
         SaveLrcDialog(
+            isEnhanced = isEnhanced,
             initialTitle = song?.title ?: "",
             initialArtist = song?.artist ?: "",
             initialAlbum = song?.album ?: "",
@@ -1136,8 +1367,10 @@ fun EditorScreen(
             onConfirm = { title, artist, album, composer, creator ->
                 showSaveDialog = false
                 if (state.lyrics.isNotEmpty()) {
+                    val lyricsForExport = if (isEnhanced) state.lyrics
+                        else state.lyrics.map { it.copy(words = emptyList()) }
                     val lrc = LrcParser.generate(
-                        lyrics = state.lyrics,
+                        lyrics = lyricsForExport,
                         title = title,
                         artist = artist,
                         album = album,
@@ -1156,7 +1389,10 @@ fun EditorScreen(
             },
             onCopyPlain = {
                 if (state.lyrics.isNotEmpty()) {
-                    val plain = LrcParser.generatePlain(state.lyrics)
+                    val plain = LrcParser.generatePlain(
+                        if (isEnhanced) state.lyrics
+                        else state.lyrics.map { it.copy(words = emptyList()) }
+                    )
                     clipboardManager.setText(AnnotatedString(plain))
                 }
             },
@@ -1285,7 +1521,7 @@ private sealed class DisplayItem {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun LyricLineCard(
     line: com.lrcstudio.app.data.model.LrcLine,
@@ -1298,11 +1534,17 @@ private fun LyricLineCard(
     swipeDeleteThresholdDp: Int = 130,
     swipeActivationThresholdDp: Int = 20,
     swipeGesturesEnabled: Boolean = true,
-    showSnapButton: Boolean = true,
-    showClearDeleteButton: Boolean = true,
+    showSnapButton: Boolean = false,
+    showClearDeleteButton: Boolean = false,
     swipeInstantDelete: Boolean = false,
     showDebugBorders: Boolean = false,
     showVibrationToast: Boolean = false,
+    wordSyncMode: Boolean = false,
+    wordCursorIndex: Int = -1,
+    currentWordIndex: Int = -1,
+    isPlaying: Boolean = false,
+    currentPositionMs: Long = 0L,
+
     onVibrationToast: (String) -> Unit = {},
     onTimestampSet: (Long) -> Unit,
     onEditStart: () -> Unit,
@@ -1315,9 +1557,18 @@ private fun LyricLineCard(
     onSnapTimestamp: () -> Unit,
     onTimestampMinus100: () -> Unit,
     onTimestampPlus100: () -> Unit,
+    onWordClick: ((Int) -> Unit)? = null,
+    onWordSeek: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val hasTimestamp = line.timestamp > 0L
+    val hasTimestamp = if (wordSyncMode) {
+        val punctRegex = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
+        line.words.isNotEmpty() && line.words.all { word ->
+            punctRegex.matches(word.text) || word.startTime > 0L
+        }
+    } else {
+        line.timestamp > 0L
+    }
     val indicatorColor = if (hasTimestamp) Color(0xFFA5D6A7) else Color.Transparent
 
     val flashAnim = remember { Animatable(0f) }
@@ -1391,8 +1642,10 @@ private fun LyricLineCard(
     else
         MaterialTheme.colorScheme.surfaceVariant
 
-    LaunchedEffect(isPlaybackLine) {
-        if (isPlaybackLine) {
+    LaunchedEffect(isPlaybackLine, wordSyncMode) {
+        if (wordSyncMode && line.words.isNotEmpty()) {
+            flashAnim.snapTo(0f)
+        } else if (isPlaybackLine) {
             flashAnim.snapTo(1f)
             flashAnim.animateTo(0f, animationSpec = tween(700, easing = FastOutSlowInEasing))
         } else {
@@ -1586,7 +1839,7 @@ private fun LyricLineCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
 
-                if (!isPreviewMode) {
+                if (!isPreviewMode && !wordSyncMode) {
                     if (compactControls) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1688,6 +1941,187 @@ private fun LyricLineCard(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                } else if (wordSyncMode && line.words.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        val punctRegex = remember { Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+") }
+                        line.words.forEachIndexed { wi, word ->
+                            val isPunct = punctRegex.matches(word.text)
+                            val isWordCurrent = if (!isPunct) {
+                                wi == currentWordIndex
+                            } else {
+                                currentWordIndex >= 0 && run {
+                                    var prevTimedIdx = -1
+                                    for (j in wi - 1 downTo 0) {
+                                        val w = line.words[j]
+                                        if (!punctRegex.matches(w.text) && w.startTime > 0L) {
+                                            prevTimedIdx = j; break
+                                        }
+                                    }
+                                    prevTimedIdx == currentWordIndex
+                                }
+                            }
+                            val isWordCursor = wi == wordCursorIndex
+                            val hasWordTime = word.startTime > 0L
+                            val wordBg = when {
+                                isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                isWordCursor -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                hasWordTime -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                else -> Color.Transparent
+                            }
+                            val wordBorder = if (isWordCursor && !isPunct)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                Color.Transparent
+                            val wordTextColor = when {
+                                isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                hasWordTime -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                            val animDuration = {
+                                if (hasWordTime) {
+                                    var next = word.startTime + 500L
+                                    var n = wi + 1
+                                    while (n < line.words.size) {
+                                        if (!punctRegex.matches(line.words[n].text) && line.words[n].startTime > 0L) {
+                                            next = line.words[n].startTime
+                                            break
+                                        }
+                                        n++
+                                    }
+                                    (next - word.startTime).coerceAtLeast(30L)
+                                } else if (isPunct) {
+                                    var prevTime = word.startTime
+                                    for (j in wi - 1 downTo 0) {
+                                        if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { prevTime = line.words[j].startTime; break }
+                                    }
+                                    var nextTime = prevTime + 500L
+                                    for (j in wi + 1 until line.words.size) {
+                                        if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { nextTime = line.words[j].startTime; break }
+                                    }
+                                    (nextTime - prevTime).coerceAtLeast(30L)
+                                } else 0L
+                            }()
+                            val canAnimate = if (isPunct) false
+                            else hasWordTime && animDuration > 0L
+                            val wordProgress = remember { Animatable(0f) }
+                            val fillAlpha = remember { Animatable(0f) }
+                            LaunchedEffect(isWordCurrent, word.startTime, isPlaying) {
+                                if (isWordCurrent && canAnimate && isPlaying) {
+                                    fillAlpha.snapTo(1f)
+                                    val elapsed = (currentPositionMs - word.startTime).coerceAtLeast(0L)
+                                    val initialProgress = if (animDuration > 0L) (elapsed.toFloat() / animDuration).coerceIn(0f, 1f) else 0f
+                                    wordProgress.snapTo(initialProgress)
+                                    if (initialProgress < 1f) {
+                                        val remainingMs = (animDuration * (1f - initialProgress)).toInt().coerceAtLeast(50)
+                                        wordProgress.animateTo(
+                                            targetValue = 1f,
+                                            animationSpec = tween(remainingMs, easing = LinearEasing)
+                                        )
+                                    }
+                                    fillAlpha.animateTo(0f, tween(500))
+                                } else if (!isPlaying) {
+                                    fillAlpha.snapTo(0f)
+                                    wordProgress.snapTo(0f)
+                                } else if (isWordCurrent && wordProgress.value > 0f && wordProgress.value < 0.99f) {
+                                    val remainingMs = (animDuration * (1f - wordProgress.value)).toInt().coerceAtLeast(50)
+                                    coroutineScope {
+                                        launch {
+                                            wordProgress.animateTo(
+                                                targetValue = 1f,
+                                                animationSpec = tween(remainingMs, easing = LinearEasing)
+                                            )
+                                        }
+                                        fillAlpha.animateTo(0f, tween(500))
+                                    }
+                                    wordProgress.snapTo(0f)
+                                } else if (fillAlpha.value > 0f) {
+                                    fillAlpha.animateTo(0f, tween(500))
+                                    wordProgress.snapTo(0f)
+                                } else {
+                                    wordProgress.snapTo(0f)
+                                    fillAlpha.snapTo(0f)
+                                }
+                            }
+                            val karaokeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 4.dp, bottom = 2.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(wordBg)
+                                    .drawBehind {
+                                        val displayAlpha = fillAlpha.value.coerceAtLeast(0f)
+                                        if (wordProgress.value > 0f && displayAlpha > 0f) {
+                                            val fillWidth = size.width * wordProgress.value
+                                            val gradientWidthPx = 60.dp.toPx()
+                                            val gradientStartX = (fillWidth - gradientWidthPx).coerceAtLeast(0f)
+                                            val overflowRight = size.width * 2f
+                                            clipRect(right = fillWidth) {
+                                                drawRect(
+                                                    brush = Brush.horizontalGradient(
+                                                        colorStops = arrayOf(
+                                                            0.0f to karaokeColor.copy(alpha = 0.2f * displayAlpha),
+                                                            gradientStartX / (fillWidth + overflowRight) to karaokeColor.copy(alpha = 0.2f * displayAlpha),
+                                                            (gradientStartX + gradientWidthPx * 0.5f) / (fillWidth + overflowRight) to karaokeColor.copy(alpha = 0.5f * displayAlpha),
+                                                            1.0f to karaokeColor.copy(alpha = 0.0f)
+                                                        ),
+                                                        startX = 0f,
+                                                        endX = fillWidth + overflowRight
+                                                    ),
+                                                    size = Size(fillWidth + overflowRight, size.height)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    .border(
+                                        width = if (isWordCursor && !isPunct) 1.5.dp else 0.dp,
+                                        color = wordBorder,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .then(
+                                        if (!isPunct) Modifier.pointerInput(wi) {
+                                            detectTapGestures(
+                                                onTap = { onWordClick?.invoke(wi) },
+                                                onLongPress = { onWordSeek?.invoke(wi) }
+                                            )
+                                        } else Modifier
+                                    )
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = word.text,
+                                    modifier = Modifier.padding(horizontal = 2.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = wordTextColor
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isPreviewMode && showClearDeleteButton) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .combinedClickable(
+                                    onClick = onClearTimestamp,
+                                    onLongClick = onDelete
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Clear word timestamps",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 } else {
                     Text(
                         text = line.text.ifEmpty { "..." },
@@ -1735,7 +2169,7 @@ private fun LyricLineCard(
                 }
             }
 
-            if (flashAnim.value > 0.001f) {
+            if ((!wordSyncMode || line.words.isEmpty()) && flashAnim.value > 0.001f) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -1972,6 +2406,7 @@ private fun AddLineDialog(
 
 @Composable
 private fun SaveLrcDialog(
+    isEnhanced: Boolean,
     initialTitle: String,
     initialArtist: String,
     initialAlbum: String,
@@ -1990,7 +2425,7 @@ private fun SaveLrcDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        title = { Text("Save LRC", style = MaterialTheme.typography.headlineSmall) },
+        title = { Text(if (isEnhanced) "Save Enhanced LRC" else "Save LRC", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column(
                 modifier = Modifier
