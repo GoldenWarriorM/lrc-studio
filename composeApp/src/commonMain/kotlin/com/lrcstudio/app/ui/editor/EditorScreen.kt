@@ -1356,7 +1356,9 @@ fun EditorScreen(
     if (showSaveDialog) {
         val song = state.song
         val clipboardManager = LocalClipboardManager.current
+        val isEnhanced = state.wordSyncMode
         SaveLrcDialog(
+            isEnhanced = isEnhanced,
             initialTitle = song?.title ?: "",
             initialArtist = song?.artist ?: "",
             initialAlbum = song?.album ?: "",
@@ -1365,8 +1367,10 @@ fun EditorScreen(
             onConfirm = { title, artist, album, composer, creator ->
                 showSaveDialog = false
                 if (state.lyrics.isNotEmpty()) {
+                    val lyricsForExport = if (isEnhanced) state.lyrics
+                        else state.lyrics.map { it.copy(words = emptyList()) }
                     val lrc = LrcParser.generate(
-                        lyrics = state.lyrics,
+                        lyrics = lyricsForExport,
                         title = title,
                         artist = artist,
                         album = album,
@@ -1385,7 +1389,10 @@ fun EditorScreen(
             },
             onCopyPlain = {
                 if (state.lyrics.isNotEmpty()) {
-                    val plain = LrcParser.generatePlain(state.lyrics)
+                    val plain = LrcParser.generatePlain(
+                        if (isEnhanced) state.lyrics
+                        else state.lyrics.map { it.copy(words = emptyList()) }
+                    )
                     clipboardManager.setText(AnnotatedString(plain))
                 }
             },
@@ -1636,7 +1643,7 @@ private fun LyricLineCard(
         MaterialTheme.colorScheme.surfaceVariant
 
     LaunchedEffect(isPlaybackLine, wordSyncMode) {
-        if (wordSyncMode) {
+        if (wordSyncMode && line.words.isNotEmpty()) {
             flashAnim.snapTo(0f)
         } else if (isPlaybackLine) {
             flashAnim.snapTo(1f)
@@ -2162,7 +2169,7 @@ private fun LyricLineCard(
                 }
             }
 
-            if (!wordSyncMode && flashAnim.value > 0.001f) {
+            if ((!wordSyncMode || line.words.isEmpty()) && flashAnim.value > 0.001f) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -2399,6 +2406,7 @@ private fun AddLineDialog(
 
 @Composable
 private fun SaveLrcDialog(
+    isEnhanced: Boolean,
     initialTitle: String,
     initialArtist: String,
     initialAlbum: String,
@@ -2417,7 +2425,7 @@ private fun SaveLrcDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        title = { Text("Save LRC", style = MaterialTheme.typography.headlineSmall) },
+        title = { Text(if (isEnhanced) "Save Enhanced LRC" else "Save LRC", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column(
                 modifier = Modifier
