@@ -555,7 +555,6 @@ fun EditorScreen(
                                 .padding(bottom = 24.dp)
                                 .padding(horizontal = 16.dp)
                         ) {
-                            val wordSyncCaption = state.wordSyncMode && state.wordCursorIndex >= 0
                             val undoW = 48.dp + 8.dp + 48.dp
                             val rightEdge = maxWidth / 2 + 80.dp
                             val undoLeft = maxWidth - undoW - 8.dp
@@ -571,11 +570,7 @@ fun EditorScreen(
                                         interactionSource = timeInteractionSource,
                                         indication = null,
                                         onClick = {
-                                            if (wordSyncCaption) {
-                                                viewModel.captureWordTimestamp()
-                                            } else {
-                                                viewModel.captureCurrentLineTimestamp()
-                                            }
+                                            viewModel.captureCurrentLineTimestamp()
                                         },
                                     ),
                                 contentAlignment = Alignment.Center
@@ -599,7 +594,7 @@ fun EditorScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = if (wordSyncCaption) "Word" else "Time",
+                                        text = "Time",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
