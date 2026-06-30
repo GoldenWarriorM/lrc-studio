@@ -56,8 +56,13 @@ class EditorViewModel(
         val current = _state.value.lyrics
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.add(current)
-        _state.value = _state.value.copy(lyrics = previous)
+        val changedIdx = changedLineIndex(current, previous)
+        _state.value = _state.value.copy(lyrics = previous, selectedLineIndex = changedIdx)
         saveLyrics(previous)
+        if (changedIdx >= 0) {
+            val ts = nearestTimestamp(previous, changedIdx)
+            audioPlayer.seekTo(ts)
+        }
         _state.value = _state.value.copy(
             canUndo = undoStack.isNotEmpty(),
             canRedo = true
@@ -68,12 +73,41 @@ class EditorViewModel(
         val current = _state.value.lyrics
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.add(current)
-        _state.value = _state.value.copy(lyrics = next)
+        val changedIdx = changedLineIndex(current, next)
+        _state.value = _state.value.copy(lyrics = next, selectedLineIndex = changedIdx)
         saveLyrics(next)
+        if (changedIdx >= 0) {
+            val ts = nearestTimestamp(next, changedIdx)
+            audioPlayer.seekTo(ts)
+        }
         _state.value = _state.value.copy(
             canUndo = true,
             canRedo = redoStack.isNotEmpty()
         )
+    }
+
+    private fun changedLineIndex(before: List<LrcLine>, after: List<LrcLine>): Int {
+        val maxLen = maxOf(before.size, after.size)
+        for (i in 0 until maxLen) {
+            if (i >= before.size || i >= after.size || before[i] != after[i]) return i
+        }
+        return -1
+    }
+
+    private fun nearestTimestamp(lyrics: List<LrcLine>, at: Int): Long {
+        if (at in lyrics.indices) {
+            val ts = lyrics[at].timestamp
+            if (ts > 0L) return ts
+        }
+        for (i in (at - 1) downTo 0) {
+            val ts = lyrics[i].timestamp
+            if (ts > 0L) return ts
+        }
+        for (i in at until lyrics.size) {
+            val ts = lyrics[i].timestamp
+            if (ts > 0L) return ts
+        }
+        return 0L
     }
 
     fun loadSong(songId: String) {
@@ -274,8 +308,9 @@ class EditorViewModel(
     fun clearAllTimestamps() {
         pushUndo()
         val newLyrics = syncUseCase.clearAllTimestamps(_state.value.lyrics)
-        _state.value = _state.value.copy(lyrics = newLyrics)
+        _state.value = _state.value.copy(lyrics = newLyrics, selectedLineIndex = 0)
         saveLyrics(newLyrics)
+        audioPlayer.seekTo(0)
     }
 
     fun clearWordTimestamps(lineIndex: Int) {
@@ -285,15 +320,18 @@ class EditorViewModel(
         val newLyrics = lyrics.toMutableList()
         val cleared = syncUseCase.clearAllWordTimestamps(line)
         newLyrics[lineIndex] = syncUseCase.splitLineIntoWords(cleared)
-        _state.value = _state.value.copy(lyrics = newLyrics)
+        _state.value = _state.value.copy(lyrics = newLyrics, selectedLineIndex = lineIndex)
         saveLyrics(newLyrics)
+        val ts = newLyrics.getOrNull(lineIndex)?.timestamp ?: 0L
+        audioPlayer.seekTo(ts)
     }
 
     fun clearAllWordTimestamps() {
         pushUndo()
         val newLyrics = _state.value.lyrics.map { syncUseCase.splitLineIntoWords(syncUseCase.clearAllWordTimestamps(it)) }
-        _state.value = _state.value.copy(lyrics = newLyrics)
+        _state.value = _state.value.copy(lyrics = newLyrics, selectedLineIndex = 0)
         saveLyrics(newLyrics)
+        audioPlayer.seekTo(0)
     }
 
     fun togglePlaybackOptions() {
@@ -356,6 +394,8 @@ class EditorViewModel(
         if (lineIndex !in lyrics.indices) return
         pushUndo()
         updateTimestamp(lineIndex, 0L)
+        _state.value = _state.value.copy(selectedLineIndex = lineIndex)
+        audioPlayer.seekTo(0)
     }
 
     fun captureCurrentLineTimestamp() {
@@ -430,6 +470,7 @@ class EditorViewModel(
         cursorIdx = skipPunctuationForward(line.words, cursorIdx)
         if (cursorIdx < 0) return
 
+        pushUndo()
         val position = audioPlayer.state.value.currentPosition
         val currentWord = line.words[cursorIdx]
         val newWord = currentWord.copy(startTime = position)
