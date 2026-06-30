@@ -969,6 +969,29 @@ fun EditorScreen(
                                 )
                             }
 
+                            if (!isPreviewMode && isEnhancedLrcEnabled) {
+                                val wordSyncActive = state.wordSyncMode
+                                FilledTonalIconButton(
+                                    onClick = { viewModel.toggleWordSyncMode(skipStandalonePunctuation) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = if (wordSyncActive)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        contentColor = if (wordSyncActive)
+                                            MaterialTheme.colorScheme.onPrimary
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.Default.ShortText,
+                                        contentDescription = "Word Sync",
+                                    )
+                                }
+                            }
+
                             if (!isPreviewMode) {
                                 FilledTonalIconButton(
                                     onClick = { showShiftDialog = true },
