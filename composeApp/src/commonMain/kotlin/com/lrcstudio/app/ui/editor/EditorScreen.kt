@@ -558,7 +558,7 @@ fun EditorScreen(
                             val undoW = 48.dp + 8.dp + 48.dp
                             val rightEdge = maxWidth / 2 + 80.dp
                             val undoLeft = maxWidth - undoW - 8.dp
-                            val shift = if (showUndoRedo && !landscapeInverted && rightEdge > undoLeft)
+                            val shift = if (showUndoRedo && landscapeInverted && rightEdge > undoLeft)
                                 rightEdge - undoLeft else 0.dp
                             Box(
                                 modifier = Modifier
@@ -607,7 +607,7 @@ fun EditorScreen(
 
                             if (showUndoRedo) {
                                 Row(
-                                    modifier = Modifier.align(if (landscapeInverted) Alignment.CenterStart else Alignment.CenterEnd),
+                                    modifier = Modifier.align(if (!landscapeInverted) Alignment.CenterStart else Alignment.CenterEnd),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -757,7 +757,7 @@ fun EditorScreen(
                 Row(modifier = Modifier.fillMaxSize().then(
                     nestedScrollConnection?.let { Modifier.nestedScroll(it) } ?: Modifier
                 )) {
-                    if (landscapeInverted) {
+                    if (!landscapeInverted) {
                         Box(modifier = Modifier.weight(controlsWeight)) { controlsSide() }
                         Box(modifier = Modifier.weight(lyricsWeight)) { lyricsSideWrapper() }
                     } else {
