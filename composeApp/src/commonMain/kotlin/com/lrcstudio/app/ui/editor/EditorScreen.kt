@@ -1356,7 +1356,7 @@ fun EditorScreen(
     if (showSaveDialog) {
         val song = state.song
         val clipboardManager = LocalClipboardManager.current
-        val isEnhanced = state.wordSyncMode
+        val isEnhanced = isEnhancedLrcEnabled && state.wordSyncMode
         SaveLrcDialog(
             isEnhanced = isEnhanced,
             initialTitle = song?.title ?: "",
