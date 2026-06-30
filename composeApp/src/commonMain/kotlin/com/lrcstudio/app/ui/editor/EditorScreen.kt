@@ -1054,18 +1054,36 @@ fun EditorScreen(
                                         swipeInstantDelete = swipeInstantDelete,
                                         showDebugBorders = showDebugBorders,
                                         showVibrationToast = showVibrationToast,
+                                        wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                        wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                        currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
+                                        isPlaying = playerState.state == PlaybackState.PLAYING,
+                                        currentPositionMs = playerState.currentPosition,
+
                                         onVibrationToast = onVibrationToast,
                                         onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
                                         onEditStart = { viewModel.startEditing(i) },
                                         onEditChange = { viewModel.updateEditingText(it) },
                                         onEditDone = { viewModel.finishEditing() },
-                                        onClearTimestamp = { viewModel.clearTimestamp(i) },
+                                        onClearTimestamp = {
+                                            if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
+                                            else viewModel.clearTimestamp(i)
+                                        },
                                         onDelete = { showDeleteConfirm = i },
                                         onInstantDelete = { viewModel.deleteLine(i) },
                                         onClick = { viewModel.selectLine(i) },
                                         onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
                                         onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
                                         onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                        onWordClick = { wi ->
+                                            if (wi in item.lrcLine.words.indices) {
+                                                viewModel.setWordCursor(i, wi)
+                                                viewModel.seekToWord(i, wi, beforeMs = 0L)
+                                            }
+                                        },
+                                        onWordSeek = { wi ->
+                                            viewModel.seekToWord(i, wi, beforeMs = 1500L)
+                                        },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                 }
