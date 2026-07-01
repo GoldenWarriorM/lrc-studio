@@ -87,6 +87,35 @@ jobs:
 
           ./squashfs-root/AppRun AppDir "$APP_NAME-$VERSION-x86_64.AppImage"
 
+      - name: Analyze size breakdown
+        run: |
+          echo "═══════════════════════════════════════"
+          echo "         SIZE BREAKDOWN"
+          echo "═══════════════════════════════════════"
+
+          JAR_FILE=$(ls composeApp/build/compose/jars/*.jar 2>/dev/null | head -1)
+          JAR_SIZE=$(du -h "$JAR_FILE" 2>/dev/null | cut -f1)
+          echo "• Uber JAR:           $JAR_SIZE  ($JAR_FILE)"
+
+          JRE_SIZE=$(du -sh AppDir/usr/lib/jvm 2>/dev/null | cut -f1)
+          echo "• jlink JRE:          $JRE_SIZE  (AppDir/usr/lib/jvm)"
+
+          echo ""
+          echo "  ── JRE modules breakdown ──"
+          du -sh AppDir/usr/lib/jvm/lib/modules 2>/dev/null | awk '{printf "  • modules:     %s\n", $1}'
+          du -sh AppDir/usr/lib/jvm/lib/ 2>/dev/null | awk '{printf "  • lib/:        %s\n", $1}'
+          du -sh AppDir/usr/lib/jvm/bin/ 2>/dev/null | awk '{printf "  • bin/:        %s\n", $1}'
+
+          echo ""
+          echo "  ── AppDir breakdown ──"
+          du -sh AppDir/usr/bin/ 2>/dev/null | awk '{printf "  • usr/bin/:    %s (JAR)\n", $1}'
+          du -sh AppDir/usr/lib/ 2>/dev/null | awk '{printf "  • usr/lib/:    %s (JRE)\n", $1}'
+
+          APPIMAGE_SIZE=$(du -h *.AppImage 2>/dev/null | cut -f1)
+          echo ""
+          echo "• AppImage total:     $APPIMAGE_SIZE"
+          echo "═══════════════════════════════════════"
+
       - name: Verify AppImage dependencies
         run: |
           APPIMAGE=$(ls *.AppImage | head -1)
