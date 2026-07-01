@@ -1181,7 +1181,13 @@ fun EditorScreen(
                                 .clickable(
                                     interactionSource = timeInteractionSource,
                                     indication = null,
-                                    onClick = { viewModel.captureCurrentLineTimestamp() },
+                                    onClick = {
+                                        if (state.wordSyncMode && state.wordCursorIndex >= 0) {
+                                            viewModel.captureWordTimestamp()
+                                        } else {
+                                            viewModel.captureCurrentLineTimestamp()
+                                        }
+                                    },
                                 ),
                             contentAlignment = Alignment.Center
                         ) {

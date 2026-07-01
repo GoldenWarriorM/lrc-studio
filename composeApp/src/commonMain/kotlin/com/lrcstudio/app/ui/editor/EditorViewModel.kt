@@ -164,23 +164,9 @@ class EditorViewModel(
                 val skipUntimed = s.wordSyncMode && index >= 0 && s.lyrics.getOrNull(index)
                     ?.let { it.words.isNotEmpty() && it.words.none { w -> w.startTime > 0L } } == true
                 if (!skipUntimed && index != s.currentLineIndex) {
-                    val jumpedBack = index < s.currentLineIndex
-                    val selIdx = if (jumpedBack) {
-                        val selLine = s.lyrics.getOrNull(s.selectedLineIndex)
-                        val selTs = selLine?.timestamp ?: 0L
-                        if (selTs > 0L && abs(selTs - playerState.currentPosition) <= 500L) {
-                            s.selectedLineIndex
-                        } else {
-                            val firstUntimed = s.lyrics.indexOfFirst { it.timestamp == 0L }
-                            if (firstUntimed >= 0) firstUntimed else index.coerceAtLeast(0)
-                        }
-                    } else {
-                        s.selectedLineIndex
-                    }
                     _state.value = _state.value.copy(
                         currentLineIndex = index,
-                        currentWordIndex = wordIndex,
-                        selectedLineIndex = selIdx
+                        currentWordIndex = wordIndex
                     )
                 } else if (!skipUntimed && wordIndex != s.currentWordIndex) {
                     _state.value = _state.value.copy(currentWordIndex = wordIndex)
