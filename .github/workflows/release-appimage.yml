@@ -1,0 +1,98 @@
+name: Release AppImage
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  appimage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Build uber JAR
+        run: ./gradlew :composeApp:packageReleaseUberJarForCurrentOS
+
+      - name: Create minimal JRE with jlink
+        run: |
+          JAR_FILE=$(ls composeApp/build/compose/binaries/main-release/uberJar/*.jar | head -1)
+          echo "JAR: $JAR_FILE"
+
+          MODULES=$("$JAVA_HOME/bin/jdeps" \
+            --multi-release 21 \
+            --ignore-missing-deps \
+            --print-module-deps \
+            "$JAR_FILE" 2>/dev/null)
+          echo "Required modules: $MODULES"
+
+          "$JAVA_HOME/bin/jlink" \
+            --add-modules "$MODULES" \
+            --strip-debug \
+            --no-man-pages \
+            --no-header-files \
+            --compress=2 \
+            --output AppDir/usr/lib/jvm
+
+      - name: Package AppImage
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP_NAME="LRC_Studio"
+
+          JAR_FILE=$(ls composeApp/build/compose/binaries/main-release/uberJar/*.jar | head -1)
+          cp "$JAR_FILE" AppDir/usr/bin/"$APP_NAME.jar"
+
+          cp composeApp/src/jvmMain/resources/icon.png AppDir/"$APP_NAME.png"
+
+          cat > AppDir/"$APP_NAME.desktop" <<EOF
+          [Desktop Entry]
+          Name=LRC Studio
+          Exec=$APP_NAME
+          Icon=$APP_NAME
+          Type=Application
+          Categories=AudioVideo;Audio;Video;
+          Terminal=false
+          EOF
+
+          cat > AppDir/AppRun <<'SCRIPT'
+          #!/bin/bash
+          APPDIR="$(dirname "$(readlink -f "$0")")"
+          exec "$APPDIR/usr/lib/jvm/bin/java" -jar "$APPDIR/usr/bin/LRC_Studio.jar" "$@"
+          SCRIPT
+          chmod +x AppDir/AppRun
+
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+          chmod +x appimagetool
+
+          ./appimagetool AppDir "$APP_NAME-$VERSION-x86_64.AppImage"
+
+      - name: Upload AppImage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lrc-studio-appimage
+          path: "*.AppImage"
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.AppImage"
