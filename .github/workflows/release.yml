@@ -115,7 +115,7 @@ jobs:
             --print-module-deps \
             "$JAR_FILE" 2>/dev/null)
 
-          mkdir -p AppDir/usr/bin AppDir/usr/lib/jvm
+          mkdir -p AppDir/usr/bin
 
           "$JAVA_HOME/bin/jlink" \
             --add-modules "$MODULES" \
@@ -203,7 +203,7 @@ jobs:
             --print-module-deps \
             "$JAR_FILE" 2>/dev/null)
 
-          mkdir -p AppDir/usr/bin AppDir/usr/lib/jvm
+          mkdir -p AppDir/usr/bin
 
           "$JAVA_HOME/bin/jlink" \
             --add-modules "$MODULES" \
