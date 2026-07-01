@@ -102,5 +102,12 @@ android {
 compose.desktop {
     application {
         mainClass = "com.lrcstudio.app.MainKt"
+        buildTypes {
+            release {
+                proguard {
+                    version.set("7.6.1")
+                }
+            }
+        }
     }
 }
