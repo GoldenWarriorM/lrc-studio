@@ -75,11 +75,19 @@ jobs:
             "${SIGN_ARGS[@]}" \
             "$APK_FILE"
 
+      - name: Rename APK
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd composeApp/build/outputs/apk/release
+          for f in *.apk; do
+            mv "$f" "LRC_Studio-$VERSION.apk"
+          done
+
       - name: Upload APK to Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: composeApp/build/outputs/apk/release/*.apk
+          files: composeApp/build/outputs/apk/release/LRC_Studio-*.apk
 
   linux-x86-64:
     name: Linux x86_64 AppImage
