@@ -31,7 +31,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
 
       - name: Build uber JAR
-        run: ./gradlew :composeApp:packageReleaseUberJarForCurrentOS --refresh-dependencies
+        run: ./gradlew :composeApp:packageReleaseUberJarForCurrentOS
 
       - name: Create minimal JRE with jlink
         run: |
@@ -86,6 +86,12 @@ jobs:
           ./appimagetool --appimage-extract > /dev/null 2>&1
 
           ./squashfs-root/AppRun AppDir "$APP_NAME-$VERSION-x86_64.AppImage"
+
+      - name: Compress with UPX
+        run: |
+          sudo apt-get -qq install -y upx-ucl > /dev/null 2>&1 || sudo apt-get -qq install -y upx > /dev/null 2>&1
+          APPIMAGE=$(ls *.AppImage | head -1)
+          upx --best --no-color "$APPIMAGE" 2>&1 || true
 
       - name: Analyze size breakdown
         run: |
