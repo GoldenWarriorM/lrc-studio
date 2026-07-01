@@ -87,6 +87,18 @@ jobs:
 
           ./squashfs-root/AppRun AppDir "$APP_NAME-$VERSION-x86_64.AppImage"
 
+      - name: Verify AppImage dependencies
+        run: |
+          APPIMAGE=$(ls *.AppImage | head -1)
+          echo "Extracting $APPIMAGE ..."
+          ./"$APPIMAGE" --appimage-extract > /dev/null 2>&1
+          echo "=== Checking linked libraries ==="
+          ldd squashfs-root/usr/lib/jvm/bin/java | grep "not found" && {
+            echo "FAIL: Some libraries are missing!"
+            exit 1
+          } || echo "All libraries resolved ✓"
+          rm -rf squashfs-root
+
       - name: Upload AppImage as artifact
         uses: actions/upload-artifact@v4
         with:
