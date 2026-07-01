@@ -106,7 +106,7 @@ compose.desktop {
             release {
                 proguard {
                     isEnabled.set(true)
-                    version.set("7.5.0")
+                    version.set("7.6.1")
                     optimize.set(false)
                     obfuscate.set(false)
                     configurationFiles.from(project.file("proguard-rules.pro"))
