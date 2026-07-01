@@ -86,7 +86,8 @@ jobs:
       - name: Compress with UPX
         run: |
           sudo apt-get -qq install -y upx-ucl > /dev/null 2>&1 || sudo apt-get -qq install -y upx > /dev/null 2>&1
-          upx --best --no-color "$APP_NAME-x86_64.AppImage" 2>&1 || true
+          APPIMAGE=$(ls *.AppImage | head -1)
+          upx --best --no-color "$APPIMAGE" 2>&1 || true
 
       - name: Analyze size breakdown
         run: |
