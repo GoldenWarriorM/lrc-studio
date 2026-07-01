@@ -105,7 +105,8 @@ compose.desktop {
         buildTypes {
             release {
                 proguard {
-                    isEnabled.set(false)
+                    isEnabled.set(true)
+                    version.set("7.5.0")
                 }
             }
         }

@@ -28,7 +28,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
 
       - name: Build uber JAR
-        run: ./gradlew :composeApp:packageReleaseUberJarForCurrentOS
+        run: ./gradlew :composeApp:packageReleaseUberJarForCurrentOS --refresh-dependencies
 
       - name: Create minimal JRE with jlink
         run: |
