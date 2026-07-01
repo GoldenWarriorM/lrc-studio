@@ -32,7 +32,7 @@ jobs:
 
       - name: Create minimal JRE with jlink
         run: |
-          JAR_FILE=$(ls composeApp/build/compose/binaries/main-release/uberJar/*.jar | head -1)
+          JAR_FILE=$(ls composeApp/build/compose/jars/*.jar | head -1)
           echo "JAR: $JAR_FILE"
 
           MODULES=$("$JAVA_HOME/bin/jdeps" \
@@ -54,7 +54,8 @@ jobs:
         run: |
           APP_NAME="LRC_Studio"
 
-          JAR_FILE=$(ls composeApp/build/compose/binaries/main-release/uberJar/*.jar | head -1)
+          JAR_FILE=$(ls composeApp/build/compose/jars/*.jar | head -1)
+          mkdir -p AppDir/usr/bin
           cp "$JAR_FILE" AppDir/usr/bin/"$APP_NAME.jar"
 
           cp composeApp/src/jvmMain/resources/icon.png AppDir/"$APP_NAME.png"
