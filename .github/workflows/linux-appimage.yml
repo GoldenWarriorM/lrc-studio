@@ -88,3 +88,4 @@ jobs:
         with:
           name: lrc-studio-appimage
           path: "*.AppImage"
+          compression-level: 0
