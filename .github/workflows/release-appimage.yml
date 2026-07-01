@@ -50,7 +50,7 @@ jobs:
             --strip-debug \
             --no-man-pages \
             --no-header-files \
-            --compress=2 \
+            --compress=zip-6 \
             --output AppDir/usr/lib/jvm
 
       - name: Package AppImage
@@ -83,8 +83,9 @@ jobs:
 
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
           chmod +x appimagetool
+          ./appimagetool --appimage-extract > /dev/null 2>&1
 
-          ./appimagetool AppDir "$APP_NAME-$VERSION-x86_64.AppImage"
+          ./squashfs-root/AppRun AppDir "$APP_NAME-$VERSION-x86_64.AppImage"
 
       - name: Upload AppImage as artifact
         uses: actions/upload-artifact@v4
