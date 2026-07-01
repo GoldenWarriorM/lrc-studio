@@ -23,7 +23,6 @@
 -keep class com.sun.jna.** { *; }
 -keepclassmembers class com.sun.jna.** { *; }
 -dontwarn com.sun.jna.**
--dontoptimize com.sun.jna.**
 
 # Compose
 -dontwarn androidx.compose.**
