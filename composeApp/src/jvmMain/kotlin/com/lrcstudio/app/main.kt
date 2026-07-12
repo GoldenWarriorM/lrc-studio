@@ -1,9 +1,11 @@
 package com.lrcstudio.app
 
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.lrcstudio.app.ui.player.AudioPlayer
+import lrc_studio.composeapp.generated.resources.Res
+import lrc_studio.composeapp.generated.resources.icon
+import org.jetbrains.compose.resources.painterResource
 
 fun main() = application {
     val audioPlayer: AudioPlayer = run {
@@ -20,7 +22,7 @@ fun main() = application {
             exitApplication()
         },
         title = "LRC Studio",
-        icon = painterResource("icon.png")
+        icon = painterResource(Res.drawable.icon)
     ) {
         App(audioPlayer = audioPlayer)
     }

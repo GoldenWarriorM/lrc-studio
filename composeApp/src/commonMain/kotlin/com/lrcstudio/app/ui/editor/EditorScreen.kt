@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.ShortText
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -508,7 +509,7 @@ fun EditorScreen(
                                         )
                                     ) {
                                         Icon(
-                                            Icons.Default.ShortText,
+                                            Icons.AutoMirrored.Filled.ShortText,
                                             contentDescription = "Word Sync",
                                         )
                                     }
@@ -985,7 +986,7 @@ fun EditorScreen(
                                     )
                                 ) {
                                     Icon(
-                                        Icons.Default.ShortText,
+                                        Icons.AutoMirrored.Filled.ShortText,
                                         contentDescription = "Word Sync",
                                     )
                                 }

@@ -79,7 +79,7 @@ class MpvAudioPlayer : AudioPlayer {
         CLib.forceCNumeric()
         val lib = MpvLib.get() ?: return null
         val ctx = lib.mpv_create()
-        if (ctx == null || ctx == Pointer.NULL) {
+        if (ctx == Pointer.NULL) {
             System.err.println("MpvAudioPlayer: mpv_create failed")
             return null
         }
@@ -178,7 +178,7 @@ class MpvAudioPlayer : AudioPlayer {
 
                 val posPtr = lib.mpv_get_property_string(ctx, "time-pos")
                 var pos = _state.value.currentPosition
-                if (posPtr != null && posPtr != Pointer.NULL) {
+                if (posPtr != Pointer.NULL) {
                     try {
                         pos = (posPtr.getString(0).toDouble() * 1000).toLong().coerceAtLeast(0)
                     } catch (_: Exception) {}
@@ -192,7 +192,7 @@ class MpvAudioPlayer : AudioPlayer {
 
                 if (s.duration == 0L) {
                     val durPtr = lib.mpv_get_property_string(ctx, "duration")
-                    if (durPtr != null && durPtr != Pointer.NULL) {
+                    if (durPtr != Pointer.NULL) {
                         try {
                             val dur = (durPtr.getString(0).toDouble() * 1000).toLong().coerceAtLeast(0)
                             if (dur > 0) {
@@ -206,7 +206,7 @@ class MpvAudioPlayer : AudioPlayer {
                 if (s.state == PlaybackState.PLAYING) {
                     val pausePtr = lib.mpv_get_property_string(ctx, "pause")
                     var isPaused = true
-                    if (pausePtr != null && pausePtr != Pointer.NULL) {
+                    if (pausePtr != Pointer.NULL) {
                         try {
                             isPaused = pausePtr.getString(0) == "yes"
                         } catch (_: Exception) {}
@@ -232,7 +232,7 @@ class MpvAudioPlayer : AudioPlayer {
 
             while (running && mpv != null) {
                 val eventPtr = lib.mpv_wait_event(ctx, 0.3)
-                if (eventPtr == null || eventPtr == Pointer.NULL) continue
+                if (eventPtr == Pointer.NULL) continue
 
                 val eventId = eventPtr.getInt(0)
 
@@ -244,7 +244,7 @@ class MpvAudioPlayer : AudioPlayer {
                     }
                     8 -> {
                         val durPtr = lib.mpv_get_property_string(ctx, "duration")
-                        if (durPtr != null && durPtr != Pointer.NULL) {
+                        if (durPtr != Pointer.NULL) {
                             try {
                                 val dur = (durPtr.getString(0).toDouble() * 1000).toLong().coerceAtLeast(0)
                                 if (dur > 0) {

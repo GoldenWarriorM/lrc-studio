@@ -294,7 +294,7 @@ private fun getVolumePath(volumeId: String?, context: Context): String? {
         val getPath = storageVolumeClass.getMethod("getPath")
         val isPrimary = storageVolumeClass.getMethod("isPrimary")
 
-        val result = getVolumeList.invoke(storageManager)
+        val result = getVolumeList.invoke(storageManager)!!
         val length = java.lang.reflect.Array.getLength(result)
 
         for (i in 0 until length) {
