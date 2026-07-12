@@ -1848,82 +1848,86 @@ private fun LyricLineCard(
 
                 if (!isPreviewMode && !wordSyncMode) {
                     if (compactControls) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = line.timestampFormatted,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                                    .clickable { showTimestampDialog = true }
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        if (!isEditing) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                    .padding(vertical = 4.dp)
                             ) {
-                                IconButton(
-                                    onClick = onTimestampMinus100,
-                                    modifier = Modifier.size(28.dp)
+                                Text(
+                                    text = line.timestampFormatted,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                        .clickable { showTimestampDialog = true }
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Icon(Icons.Default.Remove, contentDescription = "-100ms",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.primary)
-                                }
-                                IconButton(
-                                    onClick = onTimestampPlus100,
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = "+100ms",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.primary)
+                                    IconButton(
+                                        onClick = onTimestampMinus100,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(Icons.Default.Remove, contentDescription = "-100ms",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    IconButton(
+                                        onClick = onTimestampPlus100,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "+100ms",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    }
                                 }
                             }
                         }
                     } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                        ) {
+                        if (!isEditing) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                            ) {
                             IconButton(
                                 onClick = onTimestampMinus100,
                                 modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.Remove, contentDescription = "-100ms",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Default.Remove, contentDescription = "-100ms",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .wrapContentWidth()
+                                    .clickable { showTimestampDialog = true }
+                                    .padding(horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = line.timestampFormatted,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            IconButton(
+                                onClick = onTimestampPlus100,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "+100ms",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary)
+                            }
+                            }
                         }
-                        Box(
-                            modifier = Modifier
-                                .height(32.dp)
-                                .wrapContentWidth()
-                                .clickable { showTimestampDialog = true }
-                                .padding(horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = line.timestampFormatted,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        IconButton(
-                            onClick = onTimestampPlus100,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "+100ms",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
