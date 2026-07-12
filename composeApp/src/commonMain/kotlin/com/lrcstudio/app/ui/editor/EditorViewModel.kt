@@ -479,8 +479,7 @@ class EditorViewModel(
             } else {
                 _state.value = _state.value.copy(
                     lyrics = newLyrics,
-                    wordSyncMode = false,
-                    wordCursorIndex = -1
+                    wordCursorIndex = cursorIdx
                 )
             }
         } else {
