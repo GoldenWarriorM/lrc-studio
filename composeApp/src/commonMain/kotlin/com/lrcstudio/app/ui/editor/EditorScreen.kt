@@ -1,6 +1,5 @@
 package com.lrcstudio.app.ui.editor
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -9,8 +8,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -321,14 +318,14 @@ fun EditorScreen(
                                         )
                                     }
                                     is DisplayItem.InsertAbove -> {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth()
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .animateContentSize(
+                                                    animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                                )
                                         ) {
-                                            AnimatedVisibility(
-                                                visible = !isPreviewMode && state.editingLineIndex == item.index,
-                                                enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                                exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
-                                            ) {
+                                            if (!isPreviewMode && state.editingLineIndex == item.index) {
                                                 InsertLineButton(
                                                     text = "Insert line above",
                                                     onClick = { viewModel.insertLineBefore(item.index) },
@@ -338,14 +335,14 @@ fun EditorScreen(
                                         }
                                     }
                                     is DisplayItem.InsertBelow -> {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth()
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .animateContentSize(
+                                                    animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                                )
                                         ) {
-                                            AnimatedVisibility(
-                                                visible = !isPreviewMode && state.editingLineIndex == item.index,
-                                                enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                                exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
-                                            ) {
+                                            if (!isPreviewMode && state.editingLineIndex == item.index) {
                                                 InsertLineButton(
                                                     text = "Insert line below",
                                                     onClick = { viewModel.insertLineAfter(item.index) },
@@ -1101,14 +1098,14 @@ fun EditorScreen(
                                     )
                                 }
                                 is DisplayItem.InsertAbove -> {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth()
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .animateContentSize(
+                                                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                            )
                                     ) {
-                                        AnimatedVisibility(
-                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
-                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
-                                        ) {
+                                        if (!isPreviewMode && state.editingLineIndex == item.index) {
                                             InsertLineButton(
                                                 text = "Insert line above",
                                                 onClick = { viewModel.insertLineBefore(item.index) },
@@ -1118,14 +1115,14 @@ fun EditorScreen(
                                     }
                                 }
                                 is DisplayItem.InsertBelow -> {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth()
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .animateContentSize(
+                                                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                            )
                                     ) {
-                                        AnimatedVisibility(
-                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
-                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
-                                        ) {
+                                        if (!isPreviewMode && state.editingLineIndex == item.index) {
                                             InsertLineButton(
                                                 text = "Insert line below",
                                                 onClick = { viewModel.insertLineAfter(item.index) },
