@@ -269,24 +269,12 @@ fun EditorScreen(
                             items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
                                 when (item) {
                                     is DisplayItem.Line -> {
-                                        val i = item.index
-                                        val isNewLine = item.lrcLine.uid == state.justInsertedUid
-                                        var showAnimation by remember(isNewLine) { mutableStateOf(!isNewLine) }
-                                        LaunchedEffect(isNewLine) {
-                                            if (isNewLine) showAnimation = true
-                                        }
-                                        AnimatedVisibility(
-                                            visible = showAnimation,
-                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                            modifier = Modifier.fillMaxWidth()
-                                                .then(if (!isNewLine) Modifier.animateItem() else Modifier)
-                                        ) {
                                         LyricLineCard(
                                             line = item.lrcLine,
-                                            isCurrentLine = i == state.selectedLineIndex,
-                                            isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
-                                            isEditing = state.editingLineIndex == i && !isPreviewMode,
-                                            editingText = if (state.editingLineIndex == i) state.editingText else "",
+                                            isCurrentLine = item.index == state.selectedLineIndex,
+                                            isPlaybackLine = item.index == state.currentLineIndex && state.currentLineIndex >= 0,
+                                            isEditing = state.editingLineIndex == item.index && !isPreviewMode,
+                                            editingText = if (state.editingLineIndex == item.index) state.editingText else "",
                                             isPreviewMode = isPreviewMode,
                                             compactControls = compactControls,
                                             swipeDeleteThresholdDp = swipeDeleteThresholdDp,
@@ -298,38 +286,37 @@ fun EditorScreen(
                                             showDebugBorders = showDebugBorders,
                                             showVibrationToast = showVibrationToast,
                                             wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
-                                            wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
-                                            currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
+                                            wordCursorIndex = if (item.index == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                            currentWordIndex = if (item.index == state.currentLineIndex) state.currentWordIndex else -1,
                                             isPlaying = playerState.state == PlaybackState.PLAYING,
                                             currentPositionMs = playerState.currentPosition,
 
                                             onVibrationToast = onVibrationToast,
-                                            onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
-                                            onEditStart = { viewModel.startEditing(i) },
+                                            onTimestampSet = { ms -> viewModel.setTimestamp(item.index, ms) },
+                                            onEditStart = { viewModel.startEditing(item.index) },
                                             onEditChange = { viewModel.updateEditingText(it) },
                                             onEditDone = { viewModel.finishEditing() },
                                             onClearTimestamp = {
-                                                if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
-                                                else viewModel.clearTimestamp(i)
+                                                if (state.wordSyncMode) viewModel.clearWordTimestamps(item.index)
+                                                else viewModel.clearTimestamp(item.index)
                                             },
-                                            onDelete = { showDeleteConfirm = i },
-                                            onInstantDelete = { viewModel.deleteLine(i) },
-                                            onClick = { viewModel.selectLine(i) },
-                                            onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
-                                            onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
-                                            onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                            onDelete = { showDeleteConfirm = item.index },
+                                            onInstantDelete = { viewModel.deleteLine(item.index) },
+                                            onClick = { viewModel.selectLine(item.index) },
+                                            onSnapTimestamp = { viewModel.snapToCurrentPosition(item.index) },
+                                            onTimestampMinus100 = { viewModel.shiftSingleTimestamp(item.index, -100L) },
+                                            onTimestampPlus100 = { viewModel.shiftSingleTimestamp(item.index, 100L) },
                                             onWordClick = { wi ->
                                                 if (wi in item.lrcLine.words.indices) {
-                                                    viewModel.setWordCursor(i, wi)
-                                                    viewModel.seekToWord(i, wi, beforeMs = 0L)
+                                                    viewModel.setWordCursor(item.index, wi)
+                                                    viewModel.seekToWord(item.index, wi, beforeMs = 0L)
                                                 }
                                             },
                                             onWordSeek = { wi ->
-                                                viewModel.seekToWord(i, wi, beforeMs = 1500L)
+                                                viewModel.seekToWord(item.index, wi, beforeMs = 1500L)
                                             },
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier.fillMaxWidth().animateItem()
                                         )
-                                        }
                                     }
                                     is DisplayItem.InsertAbove -> {
                                         AnimatedVisibility(
@@ -1056,67 +1043,54 @@ fun EditorScreen(
                         items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
                             when (item) {
                                 is DisplayItem.Line -> {
-                                    val i = item.index
-                                    val isNewLine = item.lrcLine.uid == state.justInsertedUid
-                                    var showAnimation by remember(isNewLine) { mutableStateOf(!isNewLine) }
-                                    LaunchedEffect(isNewLine) {
-                                        if (isNewLine) showAnimation = true
-                                    }
-                                    AnimatedVisibility(
-                                        visible = showAnimation,
-                                        enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                        modifier = Modifier.fillMaxWidth()
-                                            .then(if (!isNewLine) Modifier.animateItem() else Modifier)
-                                    ) {
-                                        LyricLineCard(
-                                            line = item.lrcLine,
-                                            isCurrentLine = i == state.selectedLineIndex,
-                                            isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
-                                            isEditing = state.editingLineIndex == i && !isPreviewMode,
-                                            editingText = if (state.editingLineIndex == i) state.editingText else "",
-                                            isPreviewMode = isPreviewMode,
-                                            compactControls = compactControls,
-                                            swipeDeleteThresholdDp = swipeDeleteThresholdDp,
-                                            swipeActivationThresholdDp = swipeActivationThresholdDp,
-                                            swipeGesturesEnabled = swipeGesturesEnabled,
-                                            showSnapButton = showSnapButton,
-                                            showClearDeleteButton = showClearDeleteButton,
-                                            swipeInstantDelete = swipeInstantDelete,
-                                            showDebugBorders = showDebugBorders,
-                                            showVibrationToast = showVibrationToast,
-                                            wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
-                                            wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
-                                            currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
-                                            isPlaying = playerState.state == PlaybackState.PLAYING,
-                                            currentPositionMs = playerState.currentPosition,
+                                    LyricLineCard(
+                                        line = item.lrcLine,
+                                        isCurrentLine = item.index == state.selectedLineIndex,
+                                        isPlaybackLine = item.index == state.currentLineIndex && state.currentLineIndex >= 0,
+                                        isEditing = state.editingLineIndex == item.index && !isPreviewMode,
+                                        editingText = if (state.editingLineIndex == item.index) state.editingText else "",
+                                        isPreviewMode = isPreviewMode,
+                                        compactControls = compactControls,
+                                        swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                        swipeActivationThresholdDp = swipeActivationThresholdDp,
+                                        swipeGesturesEnabled = swipeGesturesEnabled,
+                                        showSnapButton = showSnapButton,
+                                        showClearDeleteButton = showClearDeleteButton,
+                                        swipeInstantDelete = swipeInstantDelete,
+                                        showDebugBorders = showDebugBorders,
+                                        showVibrationToast = showVibrationToast,
+                                        wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                        wordCursorIndex = if (item.index == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                        currentWordIndex = if (item.index == state.currentLineIndex) state.currentWordIndex else -1,
+                                        isPlaying = playerState.state == PlaybackState.PLAYING,
+                                        currentPositionMs = playerState.currentPosition,
 
-                                            onVibrationToast = onVibrationToast,
-                                            onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
-                                            onEditStart = { viewModel.startEditing(i) },
-                                            onEditChange = { viewModel.updateEditingText(it) },
-                                            onEditDone = { viewModel.finishEditing() },
-                                            onClearTimestamp = {
-                                                if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
-                                                else viewModel.clearTimestamp(i)
-                                            },
-                                            onDelete = { showDeleteConfirm = i },
-                                            onInstantDelete = { viewModel.deleteLine(i) },
-                                            onClick = { viewModel.selectLine(i) },
-                                            onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
-                                            onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
-                                            onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
-                                            onWordClick = { wi ->
-                                                if (wi in item.lrcLine.words.indices) {
-                                                    viewModel.setWordCursor(i, wi)
-                                                    viewModel.seekToWord(i, wi, beforeMs = 0L)
-                                                }
-                                            },
-                                            onWordSeek = { wi ->
-                                                viewModel.seekToWord(i, wi, beforeMs = 1500L)
-                                            },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
+                                        onVibrationToast = onVibrationToast,
+                                        onTimestampSet = { ms -> viewModel.setTimestamp(item.index, ms) },
+                                        onEditStart = { viewModel.startEditing(item.index) },
+                                        onEditChange = { viewModel.updateEditingText(it) },
+                                        onEditDone = { viewModel.finishEditing() },
+                                        onClearTimestamp = {
+                                            if (state.wordSyncMode) viewModel.clearWordTimestamps(item.index)
+                                            else viewModel.clearTimestamp(item.index)
+                                        },
+                                        onDelete = { showDeleteConfirm = item.index },
+                                        onInstantDelete = { viewModel.deleteLine(item.index) },
+                                        onClick = { viewModel.selectLine(item.index) },
+                                        onSnapTimestamp = { viewModel.snapToCurrentPosition(item.index) },
+                                        onTimestampMinus100 = { viewModel.shiftSingleTimestamp(item.index, -100L) },
+                                        onTimestampPlus100 = { viewModel.shiftSingleTimestamp(item.index, 100L) },
+                                        onWordClick = { wi ->
+                                            if (wi in item.lrcLine.words.indices) {
+                                                viewModel.setWordCursor(item.index, wi)
+                                                viewModel.seekToWord(item.index, wi, beforeMs = 0L)
+                                            }
+                                        },
+                                        onWordSeek = { wi ->
+                                            viewModel.seekToWord(item.index, wi, beforeMs = 1500L)
+                                        },
+                                        modifier = Modifier.fillMaxWidth().animateItem()
+                                    )
                                 }
                                 is DisplayItem.InsertAbove -> {
                                     AnimatedVisibility(
