@@ -1676,12 +1676,14 @@ private fun LyricLineCard(
     else
         MaterialTheme.colorScheme.surfaceVariant
 
-    LaunchedEffect(isPlaybackLine, wordSyncMode) {
-        if (wordSyncMode && line.words.isNotEmpty()) {
-            flashAnim.snapTo(0f)
-        } else if (isPlaybackLine) {
-            flashAnim.snapTo(1f)
-            flashAnim.animateTo(0f, animationSpec = tween(700, easing = FastOutSlowInEasing))
+    LaunchedEffect(isPlaybackLine, wordSyncMode, isPlaying) {
+        if (isPlaybackLine && isPlaying) {
+            if (wordSyncMode && line.words.isNotEmpty()) {
+                flashAnim.snapTo(0f)
+            } else {
+                flashAnim.snapTo(1f)
+                flashAnim.animateTo(0f, animationSpec = tween(700, easing = FastOutSlowInEasing))
+            }
         } else {
             flashAnim.snapTo(0f)
         }
