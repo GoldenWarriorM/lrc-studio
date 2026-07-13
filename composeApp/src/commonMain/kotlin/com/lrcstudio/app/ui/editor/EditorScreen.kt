@@ -1511,6 +1511,8 @@ private suspend fun centerItem(index: Int, listState: LazyListState) {
     val targetOffset: Int
     val currentOffset: Int
     if (itemInfo != null) {
+        val itemCenter = itemInfo.offset + itemInfo.size / 2
+        if (itemCenter < anchorY) return
         targetOffset = (anchorY - itemInfo.size / 2).coerceAtLeast(0)
         currentOffset = itemInfo.offset
     } else {
