@@ -1693,6 +1693,9 @@ private fun LyricLineCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
+            .animateContentSize(
+                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+            )
             .onGloballyPositioned { coords ->
                 val w = coords.size.width.toFloat()
                 if (w != itemWidthPx) itemWidthPx = w
