@@ -158,7 +158,7 @@ fun EditorScreen(
     }
 
     LaunchedEffect(state.currentLineIndex) {
-        if (state.currentLineIndex >= 0 && playerState.state == PlaybackState.PLAYING && autoScrollEnabled) {
+        if (state.currentLineIndex >= 0 && playerState.state == PlaybackState.PLAYING) {
             centerItem(state.currentLineIndex, listState)
         }
     }
