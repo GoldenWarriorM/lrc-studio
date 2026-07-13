@@ -322,9 +322,7 @@ fun EditorScreen(
                                     }
                                     is DisplayItem.InsertAbove -> {
                                         Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             AnimatedVisibility(
                                                 visible = !isPreviewMode && state.editingLineIndex == item.index,
@@ -341,9 +339,7 @@ fun EditorScreen(
                                     }
                                     is DisplayItem.InsertBelow -> {
                                         Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             AnimatedVisibility(
                                                 visible = !isPreviewMode && state.editingLineIndex == item.index,
@@ -1106,9 +1102,7 @@ fun EditorScreen(
                                 }
                                 is DisplayItem.InsertAbove -> {
                                     Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateItem()
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         AnimatedVisibility(
                                             visible = !isPreviewMode && state.editingLineIndex == item.index,
@@ -1125,9 +1119,7 @@ fun EditorScreen(
                                 }
                                 is DisplayItem.InsertBelow -> {
                                     Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateItem()
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         AnimatedVisibility(
                                             visible = !isPreviewMode && state.editingLineIndex == item.index,
