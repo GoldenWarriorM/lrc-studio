@@ -271,14 +271,15 @@ fun EditorScreen(
                                     is DisplayItem.Line -> {
                                         val i = item.index
                                         val isNewLine = item.lrcLine.uid == state.justInsertedUid
-                                        key(if (isNewLine) item.key else 0) {
-                                        var showAnimation by remember { mutableStateOf(!isNewLine) }
+                                        var showAnimation by remember(isNewLine) { mutableStateOf(!isNewLine) }
                                         LaunchedEffect(isNewLine) {
                                             if (isNewLine) showAnimation = true
                                         }
                                         AnimatedVisibility(
                                             visible = showAnimation,
-                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            modifier = Modifier.fillMaxWidth()
+                                                .then(if (!isNewLine) Modifier.animateItem() else Modifier)
                                         ) {
                                         LyricLineCard(
                                             line = item.lrcLine,
@@ -326,21 +327,21 @@ fun EditorScreen(
                                             onWordSeek = { wi ->
                                                 viewModel.seekToWord(i, wi, beforeMs = 1500L)
                                             },
-                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         )
-                                        }
                                         }
                                     }
                                     is DisplayItem.InsertAbove -> {
                                         AnimatedVisibility(
                                             visible = !isPreviewMode && state.editingLineIndex == item.index,
                                             enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             InsertLineButton(
                                                 text = "Insert line above",
                                                 onClick = { viewModel.insertLineBefore(item.index) },
-                                                modifier = Modifier.fillMaxWidth().animateItem()
+                                                modifier = Modifier.fillMaxWidth()
                                             )
                                         }
                                     }
@@ -348,12 +349,13 @@ fun EditorScreen(
                                         AnimatedVisibility(
                                             visible = !isPreviewMode && state.editingLineIndex == item.index,
                                             enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             InsertLineButton(
                                                 text = "Insert line below",
                                                 onClick = { viewModel.insertLineAfter(item.index) },
-                                                modifier = Modifier.fillMaxWidth().animateItem()
+                                                modifier = Modifier.fillMaxWidth()
                                             )
                                         }
                                     }
@@ -1056,8 +1058,7 @@ fun EditorScreen(
                                 is DisplayItem.Line -> {
                                     val i = item.index
                                     val isNewLine = item.lrcLine.uid == state.justInsertedUid
-                                    key(if (isNewLine) item.key else 0) {
-                                    var showAnimation by remember { mutableStateOf(!isNewLine) }
+                                    var showAnimation by remember(isNewLine) { mutableStateOf(!isNewLine) }
                                     LaunchedEffect(isNewLine) {
                                         if (isNewLine) showAnimation = true
                                     }
@@ -1115,7 +1116,6 @@ fun EditorScreen(
                                             },
                                             modifier = Modifier.fillMaxWidth()
                                         )
-                                    }
                                     }
                                 }
                                 is DisplayItem.InsertAbove -> {
