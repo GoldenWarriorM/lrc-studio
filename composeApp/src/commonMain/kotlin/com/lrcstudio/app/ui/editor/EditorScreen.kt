@@ -1063,7 +1063,8 @@ fun EditorScreen(
                                     }
                                     AnimatedVisibility(
                                         visible = showAnimation,
-                                        enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                        enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        modifier = Modifier.animateItem().fillMaxWidth()
                                     ) {
                                         LyricLineCard(
                                             line = item.lrcLine,
@@ -1111,7 +1112,7 @@ fun EditorScreen(
                                             onWordSeek = { wi ->
                                                 viewModel.seekToWord(i, wi, beforeMs = 1500L)
                                             },
-                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                     }
@@ -1120,12 +1121,13 @@ fun EditorScreen(
                                     AnimatedVisibility(
                                         visible = !isPreviewMode && state.editingLineIndex == item.index,
                                         enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                        exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                        exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        modifier = Modifier.animateItem().fillMaxWidth()
                                     ) {
                                         InsertLineButton(
                                             text = "Insert line above",
                                             onClick = { viewModel.insertLineBefore(item.index) },
-                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                 }
@@ -1133,12 +1135,13 @@ fun EditorScreen(
                                     AnimatedVisibility(
                                         visible = !isPreviewMode && state.editingLineIndex == item.index,
                                         enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                        exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                        exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        modifier = Modifier.animateItem().fillMaxWidth()
                                     ) {
                                         InsertLineButton(
                                             text = "Insert line below",
                                             onClick = { viewModel.insertLineAfter(item.index) },
-                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                 }
