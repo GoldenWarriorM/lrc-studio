@@ -163,12 +163,6 @@ fun EditorScreen(
         }
     }
 
-    LaunchedEffect(state.selectedLineIndex) {
-        if (playerState.state != PlaybackState.PLAYING && state.selectedLineIndex >= 0 && autoScrollEnabled) {
-            centerItem(state.selectedLineIndex, listState)
-        }
-    }
-
     val canCapture = state.lyrics.isNotEmpty() && !isPreviewMode
     val onVibrationToast: (String) -> Unit = { msg ->
         scope.launch { snackbarHostState.showSnackbar(msg) }
