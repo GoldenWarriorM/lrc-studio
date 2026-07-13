@@ -270,9 +270,14 @@ fun EditorScreen(
                                 when (item) {
                                     is DisplayItem.Line -> {
                                         val i = item.index
-                                        key(item.key) {
+                                        val isNewLine = item.lrcLine.uid == state.justInsertedUid
+                                        key(if (isNewLine) item.key else 0) {
+                                        var showAnimation by remember { mutableStateOf(!isNewLine) }
+                                        LaunchedEffect(isNewLine) {
+                                            if (isNewLine) showAnimation = true
+                                        }
                                         AnimatedVisibility(
-                                            visible = true,
+                                            visible = showAnimation,
                                             enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
                                         ) {
                                         LyricLineCard(
@@ -1050,9 +1055,14 @@ fun EditorScreen(
                             when (item) {
                                 is DisplayItem.Line -> {
                                     val i = item.index
-                                    key(item.key) {
+                                    val isNewLine = item.lrcLine.uid == state.justInsertedUid
+                                    key(if (isNewLine) item.key else 0) {
+                                    var showAnimation by remember { mutableStateOf(!isNewLine) }
+                                    LaunchedEffect(isNewLine) {
+                                        if (isNewLine) showAnimation = true
+                                    }
                                     AnimatedVisibility(
-                                        visible = true,
+                                        visible = showAnimation,
                                         enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
                                     ) {
                                         LyricLineCard(
