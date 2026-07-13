@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.editor
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -7,6 +8,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -142,16 +145,12 @@ fun EditorScreen(
         onError = { msg -> scope.launch { snackbarHostState.showSnackbar("Save failed: $msg") } }
     )
 
-    val displayItems = remember(state.lyrics, state.editingLineIndex) {
+    val displayItems = remember(state.lyrics) {
         buildList {
             state.lyrics.forEachIndexed { i, line ->
-                if (i == state.editingLineIndex) {
-                    add(DisplayItem.InsertAbove(i))
-                }
+                add(DisplayItem.InsertAbove(i))
                 add(DisplayItem.Line(line, i))
-                if (i == state.editingLineIndex) {
-                    add(DisplayItem.InsertBelow(i))
-                }
+                add(DisplayItem.InsertBelow(i))
             }
         }
     }
@@ -265,13 +264,17 @@ fun EditorScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
                                 .navigationBarsPadding(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
                             contentPadding = PaddingValues(bottom = 88.dp)
                         ) {
                             items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
                                 when (item) {
                                     is DisplayItem.Line -> {
                                         val i = item.index
+                                        key(item.key) {
+                                        AnimatedVisibility(
+                                            visible = true,
+                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                        ) {
                                         LyricLineCard(
                                             line = item.lrcLine,
                                             isCurrentLine = i == state.selectedLineIndex,
@@ -318,24 +321,34 @@ fun EditorScreen(
                                             onWordSeek = { wi ->
                                                 viewModel.seekToWord(i, wi, beforeMs = 1500L)
                                             },
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier.fillMaxWidth().animateItem()
                                         )
+                                        }
+                                        }
                                     }
                                     is DisplayItem.InsertAbove -> {
-                                        if (!isPreviewMode) {
+                                        AnimatedVisibility(
+                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                        ) {
                                             InsertLineButton(
                                                 text = "Insert line above",
                                                 onClick = { viewModel.insertLineBefore(item.index) },
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth().animateItem()
                                             )
                                         }
                                     }
                                     is DisplayItem.InsertBelow -> {
-                                        if (!isPreviewMode) {
+                                        AnimatedVisibility(
+                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                        ) {
                                             InsertLineButton(
                                                 text = "Insert line below",
                                                 onClick = { viewModel.insertLineAfter(item.index) },
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth().animateItem()
                                             )
                                         }
                                     }
@@ -1031,77 +1044,91 @@ fun EditorScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                             .navigationBarsPadding(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
                         contentPadding = PaddingValues(bottom = 88.dp)
                     ) {
                         items(displayItems, key = { it.key }, contentType = { it::class }) { item ->
                             when (item) {
                                 is DisplayItem.Line -> {
                                     val i = item.index
-                                    LyricLineCard(
-                                        line = item.lrcLine,
-                                        isCurrentLine = i == state.selectedLineIndex,
-                                        isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
-                                        isEditing = state.editingLineIndex == i && !isPreviewMode,
-                                        editingText = if (state.editingLineIndex == i) state.editingText else "",
-                                        isPreviewMode = isPreviewMode,
-                                        compactControls = compactControls,
-                                        swipeDeleteThresholdDp = swipeDeleteThresholdDp,
-                                        swipeActivationThresholdDp = swipeActivationThresholdDp,
-                                        swipeGesturesEnabled = swipeGesturesEnabled,
-                                        showSnapButton = showSnapButton,
-                                        showClearDeleteButton = showClearDeleteButton,
-                                        swipeInstantDelete = swipeInstantDelete,
-                                        showDebugBorders = showDebugBorders,
-                                        showVibrationToast = showVibrationToast,
-                                        wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
-                                        wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
-                                        currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
-                                        isPlaying = playerState.state == PlaybackState.PLAYING,
-                                        currentPositionMs = playerState.currentPosition,
+                                    key(item.key) {
+                                    AnimatedVisibility(
+                                        visible = true,
+                                        enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                    ) {
+                                        LyricLineCard(
+                                            line = item.lrcLine,
+                                            isCurrentLine = i == state.selectedLineIndex,
+                                            isPlaybackLine = i == state.currentLineIndex && state.currentLineIndex >= 0,
+                                            isEditing = state.editingLineIndex == i && !isPreviewMode,
+                                            editingText = if (state.editingLineIndex == i) state.editingText else "",
+                                            isPreviewMode = isPreviewMode,
+                                            compactControls = compactControls,
+                                            swipeDeleteThresholdDp = swipeDeleteThresholdDp,
+                                            swipeActivationThresholdDp = swipeActivationThresholdDp,
+                                            swipeGesturesEnabled = swipeGesturesEnabled,
+                                            showSnapButton = showSnapButton,
+                                            showClearDeleteButton = showClearDeleteButton,
+                                            swipeInstantDelete = swipeInstantDelete,
+                                            showDebugBorders = showDebugBorders,
+                                            showVibrationToast = showVibrationToast,
+                                            wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                            wordCursorIndex = if (i == state.selectedLineIndex) state.wordCursorIndex else -1,
+                                            currentWordIndex = if (i == state.currentLineIndex) state.currentWordIndex else -1,
+                                            isPlaying = playerState.state == PlaybackState.PLAYING,
+                                            currentPositionMs = playerState.currentPosition,
 
-                                        onVibrationToast = onVibrationToast,
-                                        onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
-                                        onEditStart = { viewModel.startEditing(i) },
-                                        onEditChange = { viewModel.updateEditingText(it) },
-                                        onEditDone = { viewModel.finishEditing() },
-                                        onClearTimestamp = {
-                                            if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
-                                            else viewModel.clearTimestamp(i)
-                                        },
-                                        onDelete = { showDeleteConfirm = i },
-                                        onInstantDelete = { viewModel.deleteLine(i) },
-                                        onClick = { viewModel.selectLine(i) },
-                                        onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
-                                        onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
-                                        onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
-                                        onWordClick = { wi ->
-                                            if (wi in item.lrcLine.words.indices) {
-                                                viewModel.setWordCursor(i, wi)
-                                                viewModel.seekToWord(i, wi, beforeMs = 0L)
-                                            }
-                                        },
-                                        onWordSeek = { wi ->
-                                            viewModel.seekToWord(i, wi, beforeMs = 1500L)
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                                            onVibrationToast = onVibrationToast,
+                                            onTimestampSet = { ms -> viewModel.setTimestamp(i, ms) },
+                                            onEditStart = { viewModel.startEditing(i) },
+                                            onEditChange = { viewModel.updateEditingText(it) },
+                                            onEditDone = { viewModel.finishEditing() },
+                                            onClearTimestamp = {
+                                                if (state.wordSyncMode) viewModel.clearWordTimestamps(i)
+                                                else viewModel.clearTimestamp(i)
+                                            },
+                                            onDelete = { showDeleteConfirm = i },
+                                            onInstantDelete = { viewModel.deleteLine(i) },
+                                            onClick = { viewModel.selectLine(i) },
+                                            onSnapTimestamp = { viewModel.snapToCurrentPosition(i) },
+                                            onTimestampMinus100 = { viewModel.shiftSingleTimestamp(i, -100L) },
+                                            onTimestampPlus100 = { viewModel.shiftSingleTimestamp(i, 100L) },
+                                            onWordClick = { wi ->
+                                                if (wi in item.lrcLine.words.indices) {
+                                                    viewModel.setWordCursor(i, wi)
+                                                    viewModel.seekToWord(i, wi, beforeMs = 0L)
+                                                }
+                                            },
+                                            onWordSeek = { wi ->
+                                                viewModel.seekToWord(i, wi, beforeMs = 1500L)
+                                            },
+                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                        )
+                                    }
+                                    }
                                 }
                                 is DisplayItem.InsertAbove -> {
-                                    if (!isPreviewMode) {
+                                    AnimatedVisibility(
+                                        visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                        enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                    ) {
                                         InsertLineButton(
                                             text = "Insert line above",
                                             onClick = { viewModel.insertLineBefore(item.index) },
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier.fillMaxWidth().animateItem()
                                         )
                                     }
                                 }
                                 is DisplayItem.InsertBelow -> {
-                                    if (!isPreviewMode) {
+                                    AnimatedVisibility(
+                                        visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                        enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
+                                    ) {
                                         InsertLineButton(
                                             text = "Insert line below",
                                             onClick = { viewModel.insertLineAfter(item.index) },
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier.fillMaxWidth().animateItem()
                                         )
                                     }
                                 }
@@ -1518,7 +1545,7 @@ private suspend fun centerItem(index: Int, listState: LazyListState) {
 private sealed class DisplayItem {
     abstract val key: String
     data class Line(val lrcLine: com.lrcstudio.app.data.model.LrcLine, val index: Int) : DisplayItem() {
-        override val key get() = "line_$index"
+        override val key get() = if (lrcLine.uid >= 0) "line_${lrcLine.uid}" else "line_idx_$index"
     }
     data class InsertAbove(val index: Int) : DisplayItem() {
         override val key get() = "insert_above_$index"
@@ -1661,8 +1688,9 @@ private fun LyricLineCard(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .padding(vertical = 3.dp)
             .onGloballyPositioned { coords ->
                 val w = coords.size.width.toFloat()
                 if (w != itemWidthPx) itemWidthPx = w

@@ -9,7 +9,8 @@ data class LrcLine(
     val timestamp: Long = 0L,
     val text: String = "",
     val index: Int = 0,
-    val words: List<WordTimestamp> = emptyList()
+    val words: List<WordTimestamp> = emptyList(),
+    val uid: Int = -1
 ) {
     val timestampFormatted: String
         get() {
