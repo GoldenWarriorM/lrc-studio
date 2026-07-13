@@ -1064,7 +1064,8 @@ fun EditorScreen(
                                     AnimatedVisibility(
                                         visible = showAnimation,
                                         enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                        modifier = Modifier.animateItem().fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth()
+                                            .then(if (!isNewLine) Modifier.animateItem() else Modifier)
                                     ) {
                                         LyricLineCard(
                                             line = item.lrcLine,
@@ -1122,7 +1123,7 @@ fun EditorScreen(
                                         visible = !isPreviewMode && state.editingLineIndex == item.index,
                                         enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
                                         exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                        modifier = Modifier.animateItem().fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         InsertLineButton(
                                             text = "Insert line above",
@@ -1136,7 +1137,7 @@ fun EditorScreen(
                                         visible = !isPreviewMode && state.editingLineIndex == item.index,
                                         enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
                                         exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
-                                        modifier = Modifier.animateItem().fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         InsertLineButton(
                                             text = "Insert line below",
