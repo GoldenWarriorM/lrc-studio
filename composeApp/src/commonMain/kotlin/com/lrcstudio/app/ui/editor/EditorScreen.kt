@@ -343,7 +343,7 @@ fun EditorScreen(
                                             animScale = animScale,
                                             animDurationMs = insertButtonAnimDurationMs,
                                             onClick = { viewModel.insertLineBefore(item.index) },
-                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                     is DisplayItem.InsertBelow -> {
@@ -353,7 +353,7 @@ fun EditorScreen(
                                             animScale = animScale,
                                             animDurationMs = insertButtonAnimDurationMs,
                                             onClick = { viewModel.insertLineAfter(item.index) },
-                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                 }
@@ -1116,7 +1116,7 @@ fun EditorScreen(
                                         animScale = animScale,
                                         animDurationMs = insertButtonAnimDurationMs,
                                         onClick = { viewModel.insertLineBefore(item.index) },
-                                        modifier = Modifier.fillMaxWidth().animateItem()
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                                 is DisplayItem.InsertBelow -> {
@@ -1126,7 +1126,7 @@ fun EditorScreen(
                                         animScale = animScale,
                                         animDurationMs = insertButtonAnimDurationMs,
                                         onClick = { viewModel.insertLineAfter(item.index) },
-                                        modifier = Modifier.fillMaxWidth().animateItem()
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }
