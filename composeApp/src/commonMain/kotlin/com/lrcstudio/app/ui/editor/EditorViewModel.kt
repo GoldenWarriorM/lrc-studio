@@ -266,10 +266,20 @@ class EditorViewModel(
         val idx = _state.value.editingLineIndex
         val text = _state.value.editingText
         if (idx >= 0 && text.isNotBlank()) {
-            pushUndo()
-            val newLyrics = syncUseCase.updateText(_state.value.lyrics, idx, text)
-            _state.value = _state.value.copy(lyrics = newLyrics)
-            saveLyrics(newLyrics)
+            val line = _state.value.lyrics.getOrNull(idx)
+            val sameText = line != null && line.text == text
+            val noTimedWords = line == null || line.words.none { it.startTime > 0L }
+            if (!sameText || !noTimedWords) {
+                pushUndo()
+                var newLyrics = syncUseCase.updateText(_state.value.lyrics, idx, text)
+                val updatedLine = newLyrics.getOrNull(idx)
+                if (updatedLine != null && updatedLine.words.any { it.startTime > 0L }) {
+                    val cleared = updatedLine.copy(words = emptyList<com.lrcstudio.app.data.model.WordTimestamp>(), timestamp = 0L)
+                    newLyrics = newLyrics.toMutableList().apply { set(idx, syncUseCase.splitLineIntoWords(cleared)) }
+                }
+                _state.value = _state.value.copy(lyrics = newLyrics)
+                saveLyrics(newLyrics)
+            }
         }
         _state.value = _state.value.copy(editingLineIndex = -1, editingText = "")
     }

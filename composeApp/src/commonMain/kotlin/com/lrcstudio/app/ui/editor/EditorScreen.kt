@@ -131,6 +131,7 @@ fun EditorScreen(
     var showShiftDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<Int?>(null) }
+    var showWordWarningLineIndex by remember { mutableStateOf<Int?>(null) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
@@ -303,7 +304,13 @@ fun EditorScreen(
 
                                             onVibrationToast = onVibrationToast,
                                             onTimestampSet = { ms -> viewModel.setTimestamp(item.index, ms) },
-                                            onEditStart = { viewModel.startEditing(item.index) },
+                                            onEditStart = {
+                                                if (item.lrcLine.words.any { it.startTime > 0L }) {
+                                                    showWordWarningLineIndex = item.index
+                                                } else {
+                                                    viewModel.startEditing(item.index)
+                                                }
+                                            },
                                             onEditChange = { viewModel.updateEditingText(it) },
                                             onEditDone = { viewModel.finishEditing() },
                                             onClearTimestamp = {
@@ -1070,7 +1077,13 @@ fun EditorScreen(
 
                                         onVibrationToast = onVibrationToast,
                                         onTimestampSet = { ms -> viewModel.setTimestamp(item.index, ms) },
-                                        onEditStart = { viewModel.startEditing(item.index) },
+                                        onEditStart = {
+                                            if (item.lrcLine.words.any { it.startTime > 0L }) {
+                                                showWordWarningLineIndex = item.index
+                                            } else {
+                                                viewModel.startEditing(item.index)
+                                            }
+                                        },
                                         onEditChange = { viewModel.updateEditingText(it) },
                                         onEditDone = { viewModel.finishEditing() },
                                         onClearTimestamp = {
@@ -1337,6 +1350,29 @@ fun EditorScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    showWordWarningLineIndex?.let { index ->
+        AlertDialog(
+            onDismissRequest = { showWordWarningLineIndex = null },
+            title = { Text("Editing will clear word timestamps") },
+            text = {
+                Text("This line has word-level timestamps. Editing the text will clear all word timestamps and the line timestamp.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.startEditing(index)
+                    showWordWarningLineIndex = null
+                }) {
+                    Text("Edit anyway")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWordWarningLineIndex = null }) {
                     Text("Cancel")
                 }
             }

@@ -12,7 +12,9 @@ actual fun readTextFile(path: String): String? {
 
 actual fun writeTextFile(path: String, content: String) {
     File(path).parentFile?.mkdirs()
-    File(path).writeText(content)
+    val tmp = File(path + ".tmp")
+    tmp.writeText(content)
+    tmp.renameTo(File(path))
 }
 
 actual fun lrcFileInDirectoryExists(directory: String, fileName: String): Boolean {

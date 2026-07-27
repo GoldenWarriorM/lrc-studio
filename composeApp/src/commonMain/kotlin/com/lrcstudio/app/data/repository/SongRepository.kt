@@ -77,6 +77,32 @@ class SongRepository(private val storageDir: String) {
             nextId = (songs.maxOfOrNull { it.id.toIntOrNull() ?: 0 } ?: 0) + 1
         } catch (e: Exception) {
             println("SongRepository: failed to load — ${e.message}")
+            try {
+                val json = readTextFile(songsFile()) ?: return
+                var depth = 0
+                var inString = false
+                var escape = false
+                val endIdx = json.indexOfFirst { c ->
+                    when {
+                        escape -> { escape = false; false }
+                        c == '\\' && inString -> { escape = true; false }
+                        c == '"' -> { inString = !inString; false }
+                        !inString && c == '[' -> { depth++; false }
+                        !inString && c == ']' -> { depth--; depth == 0 }
+                        else -> false
+                    }
+                }
+                if (endIdx < 0) throw Exception("no matching root bracket")
+                val trimmed = json.substring(0, endIdx + 1)
+                val loaded: List<Song> = jsonLibrary.decodeFromString(trimmed)
+                songs.clear()
+                songs.addAll(loaded)
+                nextId = (songs.maxOfOrNull { it.id.toIntOrNull() ?: 0 } ?: 0) + 1
+                writeTextFile(songsFile(), jsonLibrary.encodeToString(songs))
+                println("SongRepository: recovered by truncating corrupted content")
+            } catch (_: Exception) {
+                println("SongRepository: recovery failed, starting fresh")
+            }
         }
     }
 }
