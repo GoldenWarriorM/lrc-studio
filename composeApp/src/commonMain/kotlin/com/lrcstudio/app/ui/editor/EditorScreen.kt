@@ -2128,7 +2128,10 @@ private fun LyricLineCard(
                                         if (!isPunct) Modifier.pointerInput(wi) {
                                             detectTapGestures(
                                                 onTap = { onWordClick?.invoke(wi) },
-                                                onLongPress = { onWordSeek?.invoke(wi) }
+                                                    onLongPress = {
+                                                        onWordSeek?.invoke(wi)
+                                                        onEditStart()
+                                                    }
                                             )
                                         } else Modifier
                                     )
