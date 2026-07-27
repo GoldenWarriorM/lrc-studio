@@ -85,7 +85,6 @@ import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -175,24 +174,6 @@ fun EditorScreen(
     LaunchedEffect(state.selectedLineIndex) {
         if (playerState.state != PlaybackState.PLAYING && state.selectedLineIndex >= 0 && autoScrollEnabled) {
             centerItem(state.selectedLineIndex * 3 + 1, listState)
-        }
-    }
-
-    var measuredButtonHeight by remember { mutableStateOf(0) }
-
-    LaunchedEffect(state.editingLineIndex) {
-        if (state.editingLineIndex < 0) return@LaunchedEffect
-        withFrameNanos { }
-        val itemIndex = state.editingLineIndex * 3 + 1
-        val beforeItem = listState.layoutInfo.visibleItemsInfo.find { it.index == itemIndex }
-        val beforeHeight = beforeItem?.size ?: return@LaunchedEffect
-        delay(350)
-        val afterItem = listState.layoutInfo.visibleItemsInfo.find { it.index == itemIndex }
-        val afterHeight = afterItem?.size ?: beforeHeight
-        val cardDelta = afterHeight - beforeHeight
-        val totalPx = (measuredButtonHeight + cardDelta / 2).toFloat()
-        if (totalPx > 0.5f) {
-            listState.easedScrollBy(-totalPx)
         }
     }
 
@@ -355,7 +336,6 @@ fun EditorScreen(
                                             animScale = animScale,
                                             animDurationMs = insertButtonAnimDurationMs,
                                             onClick = { viewModel.insertLineBefore(item.index) },
-                                            onHeightKnown = { measuredButtonHeight = it },
                                             modifier = Modifier.fillMaxWidth().animateItem()
                                         )
                                     }
@@ -1548,24 +1528,6 @@ private suspend fun centerItem(index: Int, listState: LazyListState) {
     }
 }
 
-private suspend fun LazyListState.easedScrollBy(px: Float, durationMs: Long = 200L) {
-    if (abs(px) <= 0.5f) return
-    val startMs = withFrameMillis { it }
-    var lastScrolled = 0f
-    while (true) {
-        val nowMs = withFrameMillis { it }
-        val elapsed = nowMs - startMs
-        val fraction = (elapsed.toFloat() / durationMs).coerceAtMost(1f)
-        val eased = FastOutSlowInEasing.transform(fraction)
-        val current = eased * px
-        val step = current - lastScrolled
-        if (abs(step) > 0.5f) {
-            scroll { scrollBy(step) }
-        }
-        lastScrolled = current
-        if (fraction >= 1f) break
-    }
-}
 
 private sealed class DisplayItem {
     abstract val key: String
