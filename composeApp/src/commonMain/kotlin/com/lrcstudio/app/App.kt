@@ -188,6 +188,8 @@ fun App(audioPlayer: AudioPlayer) {
                                 }
                                 EditorScreen(
                                     viewModel = vm,
+                                    slowAnimations = settings.slowAnimations,
+                                    insertButtonAnimDurationMs = settings.insertButtonAnimDurationMs,
                                     onBack = {
                                         editorSongId = null
                                         navDirection = if (navDirection == NavDirection.Forward) NavDirection.Immediate else NavDirection.Back

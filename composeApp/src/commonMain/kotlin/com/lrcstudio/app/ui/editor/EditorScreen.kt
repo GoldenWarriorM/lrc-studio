@@ -2,12 +2,15 @@ package com.lrcstudio.app.ui.editor
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,6 +68,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -80,8 +85,11 @@ import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+
+private val EaseOutCubic = CubicBezierEasing(0.215f, 0.610f, 0.355f, 1.000f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +98,8 @@ fun EditorScreen(
     onBack: () -> Unit,
     onSave: () -> Unit,
     onImportAudioFile: () -> Unit,
+    slowAnimations: Boolean = false,
+    insertButtonAnimDurationMs: Int = 250,
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
     swipeActivationThresholdDp: Int = 20,
@@ -110,6 +120,8 @@ fun EditorScreen(
     isEnhancedLrcEnabled: Boolean = false,
     skipStandalonePunctuation: Boolean = true
 ) {
+    val animScale = if (slowAnimations) 3f else 1f
+
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
     val listState = rememberLazyListState()
@@ -147,9 +159,9 @@ fun EditorScreen(
     val displayItems = remember(state.lyrics) {
         buildList {
             state.lyrics.forEachIndexed { i, line ->
-                add(DisplayItem.InsertAbove(i))
+                add(DisplayItem.InsertAbove(line, i))
                 add(DisplayItem.Line(line, i))
-                add(DisplayItem.InsertBelow(i))
+                add(DisplayItem.InsertBelow(line, i))
             }
         }
     }
@@ -163,6 +175,24 @@ fun EditorScreen(
     LaunchedEffect(state.selectedLineIndex) {
         if (playerState.state != PlaybackState.PLAYING && state.selectedLineIndex >= 0 && autoScrollEnabled) {
             centerItem(state.selectedLineIndex * 3 + 1, listState)
+        }
+    }
+
+    var measuredButtonHeight by remember { mutableStateOf(0) }
+
+    LaunchedEffect(state.editingLineIndex) {
+        if (state.editingLineIndex < 0) return@LaunchedEffect
+        withFrameNanos { }
+        val itemIndex = state.editingLineIndex * 3 + 1
+        val beforeItem = listState.layoutInfo.visibleItemsInfo.find { it.index == itemIndex }
+        val beforeHeight = beforeItem?.size ?: return@LaunchedEffect
+        delay(350)
+        val afterItem = listState.layoutInfo.visibleItemsInfo.find { it.index == itemIndex }
+        val afterHeight = afterItem?.size ?: beforeHeight
+        val cardDelta = afterHeight - beforeHeight
+        val totalPx = (measuredButtonHeight + cardDelta / 2).toFloat()
+        if (totalPx > 0.5f) {
+            listState.easedScrollBy(-totalPx)
         }
     }
 
@@ -314,42 +344,30 @@ fun EditorScreen(
                                             onWordSeek = { wi ->
                                                 viewModel.seekToWord(item.index, wi, beforeMs = 1500L)
                                             },
+                                            animScale = animScale,
                                             modifier = Modifier.fillMaxWidth().animateItem()
                                         )
                                     }
                                     is DisplayItem.InsertAbove -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .animateContentSize(
-                                                    animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                                )
-                                        ) {
-                                            if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                                InsertLineButton(
-                                                    text = "Insert line above",
-                                                    onClick = { viewModel.insertLineBefore(item.index) },
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                            }
-                                        }
+                                        InsertLineButton(
+                                            text = "Insert line above",
+                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                            animScale = animScale,
+                                            animDurationMs = insertButtonAnimDurationMs,
+                                            onClick = { viewModel.insertLineBefore(item.index) },
+                                            onHeightKnown = { measuredButtonHeight = it },
+                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                        )
                                     }
                                     is DisplayItem.InsertBelow -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .animateContentSize(
-                                                    animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                                )
-                                        ) {
-                                            if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                                InsertLineButton(
-                                                    text = "Insert line below",
-                                                    onClick = { viewModel.insertLineAfter(item.index) },
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                            }
-                                        }
+                                        InsertLineButton(
+                                            text = "Insert line below",
+                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                            animScale = animScale,
+                                            animDurationMs = insertButtonAnimDurationMs,
+                                            onClick = { viewModel.insertLineAfter(item.index) },
+                                            modifier = Modifier.fillMaxWidth().animateItem()
+                                        )
                                     }
                                 }
                             }
@@ -1094,42 +1112,29 @@ fun EditorScreen(
                                         onWordSeek = { wi ->
                                             viewModel.seekToWord(item.index, wi, beforeMs = 1500L)
                                         },
+                                        animScale = animScale,
                                         modifier = Modifier.fillMaxWidth().animateItem()
                                     )
                                 }
                                 is DisplayItem.InsertAbove -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateContentSize(
-                                                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            )
-                                    ) {
-                                        if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                            InsertLineButton(
-                                                text = "Insert line above",
-                                                onClick = { viewModel.insertLineBefore(item.index) },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                    }
+                                    InsertLineButton(
+                                        text = "Insert line above",
+                                        visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                        animScale = animScale,
+                                        animDurationMs = insertButtonAnimDurationMs,
+                                        onClick = { viewModel.insertLineBefore(item.index) },
+                                        modifier = Modifier.fillMaxWidth().animateItem()
+                                    )
                                 }
                                 is DisplayItem.InsertBelow -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateContentSize(
-                                                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            )
-                                    ) {
-                                        if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                            InsertLineButton(
-                                                text = "Insert line below",
-                                                onClick = { viewModel.insertLineAfter(item.index) },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                    }
+                                    InsertLineButton(
+                                        text = "Insert line below",
+                                        visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                        animScale = animScale,
+                                        animDurationMs = insertButtonAnimDurationMs,
+                                        onClick = { viewModel.insertLineAfter(item.index) },
+                                        modifier = Modifier.fillMaxWidth().animateItem()
+                                    )
                                 }
                             }
                         }
@@ -1543,16 +1548,35 @@ private suspend fun centerItem(index: Int, listState: LazyListState) {
     }
 }
 
+private suspend fun LazyListState.easedScrollBy(px: Float, durationMs: Long = 200L) {
+    if (abs(px) <= 0.5f) return
+    val startMs = withFrameMillis { it }
+    var lastScrolled = 0f
+    while (true) {
+        val nowMs = withFrameMillis { it }
+        val elapsed = nowMs - startMs
+        val fraction = (elapsed.toFloat() / durationMs).coerceAtMost(1f)
+        val eased = FastOutSlowInEasing.transform(fraction)
+        val current = eased * px
+        val step = current - lastScrolled
+        if (abs(step) > 0.5f) {
+            scroll { scrollBy(step) }
+        }
+        lastScrolled = current
+        if (fraction >= 1f) break
+    }
+}
+
 private sealed class DisplayItem {
     abstract val key: String
     data class Line(val lrcLine: com.lrcstudio.app.data.model.LrcLine, val index: Int) : DisplayItem() {
         override val key get() = if (lrcLine.uid >= 0) "line_${lrcLine.uid}" else "line_idx_$index"
     }
-    data class InsertAbove(val index: Int) : DisplayItem() {
-        override val key get() = "insert_above_$index"
+    data class InsertAbove(val lrcLine: com.lrcstudio.app.data.model.LrcLine, val index: Int) : DisplayItem() {
+        override val key get() = "insert_above_${lrcLine.uid}"
     }
-    data class InsertBelow(val index: Int) : DisplayItem() {
-        override val key get() = "insert_below_$index"
+    data class InsertBelow(val lrcLine: com.lrcstudio.app.data.model.LrcLine, val index: Int) : DisplayItem() {
+        override val key get() = "insert_below_${lrcLine.uid}"
     }
 }
 
@@ -1565,6 +1589,7 @@ private fun LyricLineCard(
     isEditing: Boolean,
     editingText: String,
     isPreviewMode: Boolean = false,
+    animScale: Float = 1f,
     compactControls: Boolean = false,
     swipeDeleteThresholdDp: Int = 130,
     swipeActivationThresholdDp: Int = 20,
@@ -1616,6 +1641,12 @@ private fun LyricLineCard(
     var itemWidthPx by remember { mutableStateOf(0f) }
     var surfaceHeightPx by remember { mutableStateOf(0f) }
     var accumulatedDrag by remember { mutableStateOf(0f) }
+
+    val currentOnDelete by rememberUpdatedState(onDelete)
+    val currentOnInstantDelete by rememberUpdatedState(onInstantDelete)
+    val currentOnClearTimestamp by rememberUpdatedState(onClearTimestamp)
+    val currentOnSnapTimestamp by rememberUpdatedState(onSnapTimestamp)
+    val currentSwipeInstantDelete by rememberUpdatedState(swipeInstantDelete)
 
     val currentOffsetPx = offsetAnimatable.value
     val revealRightPx = currentOffsetPx.coerceAtLeast(0f)
@@ -1695,7 +1726,7 @@ private fun LyricLineCard(
             .fillMaxWidth()
             .padding(vertical = 3.dp)
             .animateContentSize(
-                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                animationSpec = tween<IntSize>(durationMillis = (300 * animScale).toInt(), easing = EaseOutCubic)
             )
             .onGloballyPositioned { coords ->
                 val w = coords.size.width.toFloat()
@@ -1828,10 +1859,10 @@ private fun LyricLineCard(
                                 if (abs(accumulatedDrag) > actionThresholdPx) {
                                     if (accumulatedDrag > 0f) {
                                         if (abs(accumulatedDrag) >= totalDeleteThresholdPx) {
-                                            if (swipeInstantDelete) onInstantDelete() else onDelete()
-                                        } else onClearTimestamp()
+                                            if (currentSwipeInstantDelete) currentOnInstantDelete() else currentOnDelete()
+                                        } else currentOnClearTimestamp()
                                     } else {
-                                        onSnapTimestamp()
+                                        currentOnSnapTimestamp()
                                     }
                                 }
                                 accumulatedDrag = 0f
@@ -2280,26 +2311,71 @@ private fun parseTimestampMs(input: String): Long? {
 }
 
 @Composable
-private fun InsertLineButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
-        )
+private fun InsertLineButton(
+    text: String,
+    onClick: () -> Unit,
+    animScale: Float = 1f,
+    animDurationMs: Int = 250,
+    visible: Boolean = true,
+    onHeightKnown: (Int) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    var contentHeight by remember { mutableIntStateOf(0) }
+    val animDuration = (animDurationMs * animScale).toInt()
+
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = animDuration, easing = EaseOutCubic),
+        label = "buttonAlpha"
+    )
+
+    val animatedHeight by animateDpAsState(
+        targetValue = with(density) { (if (visible) contentHeight.toDp() else 0.dp) },
+        animationSpec = tween(durationMillis = animDuration, easing = EaseOutCubic),
+        label = "buttonHeight"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(animatedHeight)
+            .clipToBounds(),
+        contentAlignment = Alignment.TopCenter
     ) {
-        Box(
+        Card(
+            onClick = onClick,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(
+                        constraints.copy(minHeight = 0, maxHeight = Int.MAX_VALUE)
+                    )
+                    if (placeable.height > contentHeight) {
+                        contentHeight = placeable.height
+                        onHeightKnown(placeable.height)
+                    }
+                    layout(placeable.width, placeable.height) {
+                        placeable.place(0, 0)
+                    }
+                }
+                .graphicsLayer { alpha = animatedAlpha },
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
             )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
         }
     }
 }

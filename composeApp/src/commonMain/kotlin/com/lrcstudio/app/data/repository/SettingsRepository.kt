@@ -22,6 +22,7 @@ data class AppSettings(
     val devSettingsUnlocked: Boolean = false,
     val showDebugBorders: Boolean = false,
     val slowAnimations: Boolean = false,
+    val insertButtonAnimDurationMs: Int = 250,
     val showUndoRedo: Boolean = true,
     val showVibrationToast: Boolean = false,
     val accentColorName: String = "Purple",
@@ -120,6 +121,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleSlowAnimations() {
         _settings.value = _settings.value.copy(
             slowAnimations = !_settings.value.slowAnimations
+        )
+        saveToDisk()
+    }
+
+    fun setInsertButtonAnimDurationMs(value: Int) {
+        _settings.value = _settings.value.copy(
+            insertButtonAnimDurationMs = value.coerceIn(50, 2000)
         )
         saveToDisk()
     }

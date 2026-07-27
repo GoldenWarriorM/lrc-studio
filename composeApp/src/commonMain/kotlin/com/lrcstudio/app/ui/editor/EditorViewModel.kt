@@ -277,7 +277,26 @@ class EditorViewModel(
     fun deleteLine(lineIndex: Int) {
         pushUndo()
         val newLyrics = syncUseCase.removeLine(_state.value.lyrics, lineIndex)
-        _state.value = _state.value.copy(lyrics = newLyrics)
+        val prev = _state.value
+        val newEditingIdx = when {
+            prev.editingLineIndex < 0 -> -1
+            prev.editingLineIndex < lineIndex -> prev.editingLineIndex
+            prev.editingLineIndex > lineIndex -> prev.editingLineIndex - 1
+            else -> lineIndex.coerceAtMost(newLyrics.lastIndex)
+        }
+        val newSelectedIdx = when {
+            prev.selectedLineIndex < 0 -> 0
+            prev.selectedLineIndex < lineIndex -> prev.selectedLineIndex
+            prev.selectedLineIndex > lineIndex -> prev.selectedLineIndex - 1
+            else -> lineIndex.coerceAtMost(newLyrics.lastIndex)
+        }
+        _state.value = _state.value.copy(
+            lyrics = newLyrics,
+            editingLineIndex = newEditingIdx,
+            selectedLineIndex = newSelectedIdx,
+            justInsertedUid = -1,
+            editingText = if (newEditingIdx >= 0) newLyrics.getOrNull(newEditingIdx)?.text ?: "" else ""
+        )
         saveLyrics(newLyrics)
     }
 
@@ -354,11 +373,13 @@ class EditorViewModel(
         val newLine = LrcLine(text = text, uid = uid)
         val newLyrics = (_state.value.lyrics.take(index) + newLine + _state.value.lyrics.drop(index))
             .mapIndexed { i, line -> line.copy(index = i) }
+        val prev = _state.value
         _state.value = _state.value.copy(
             lyrics = newLyrics,
             editingLineIndex = index,
             editingText = text,
-            justInsertedUid = uid
+            justInsertedUid = uid,
+            selectedLineIndex = if (prev.selectedLineIndex >= index) prev.selectedLineIndex + 1 else prev.selectedLineIndex
         )
         saveLyrics(newLyrics)
     }
@@ -370,11 +391,13 @@ class EditorViewModel(
         val newLine = LrcLine(text = text, uid = uid)
         val newLyrics = (_state.value.lyrics.take(insertAt) + newLine + _state.value.lyrics.drop(insertAt))
             .mapIndexed { i, line -> line.copy(index = i) }
+        val prev = _state.value
         _state.value = _state.value.copy(
             lyrics = newLyrics,
             editingLineIndex = insertAt,
             editingText = text,
-            justInsertedUid = uid
+            justInsertedUid = uid,
+            selectedLineIndex = if (prev.selectedLineIndex > index) prev.selectedLineIndex + 1 else prev.selectedLineIndex
         )
         saveLyrics(newLyrics)
     }

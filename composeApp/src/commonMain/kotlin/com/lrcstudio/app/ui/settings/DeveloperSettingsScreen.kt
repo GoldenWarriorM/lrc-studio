@@ -123,6 +123,25 @@ fun DeveloperSettingsScreen(
                         )
                     }
                 )
+                var animDurationText by remember(settings.insertButtonAnimDurationMs) {
+                    mutableStateOf(settings.insertButtonAnimDurationMs.toString())
+                }
+                SettingsRow(
+                    title = "Insert button expand speed (ms)",
+                    subtitle = "Duration of the expand animation for Insert line buttons",
+                    trailing = {
+                        OutlinedTextField(
+                            value = animDurationText,
+                            onValueChange = { value ->
+                                animDurationText = value.filter { it.isDigit() }.take(4)
+                                animDurationText.toIntOrNull()?.let { settingsRepository.setInsertButtonAnimDurationMs(it) }
+                            },
+                            modifier = Modifier.width(80.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                )
             }
 
             var showResetDialog by remember { mutableStateOf(false) }
