@@ -1791,9 +1791,11 @@ private fun LyricLineCard(
                     val h = coords.size.height.toFloat()
                     if (h != surfaceHeightPx) surfaceHeightPx = h
                 }
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = if (isPreviewMode) null else onEditStart
+                .then(
+                    if (!isEditing) Modifier.combinedClickable(
+                        onClick = onClick,
+                        onLongClick = if (isPreviewMode) null else onEditStart
+                    ) else Modifier
                 )
                 .then(
                     if (swipeEnabled) Modifier.pointerInput(offsetAnimatable, itemWidthPx) {
