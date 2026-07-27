@@ -1965,7 +1965,7 @@ private fun LyricLineCard(
                         value = editingText,
                         onValueChange = onEditChange,
                         modifier = Modifier.weight(1f),
-                        singleLine = true,
+                        minLines = 1,
                         textStyle = MaterialTheme.typography.bodyMedium,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary
