@@ -44,6 +44,7 @@ class EditorViewModel(
 
     private val undoStack = mutableListOf<List<LrcLine>>()
     private val redoStack = mutableListOf<List<LrcLine>>()
+    private var nextUid = 0
 
     private fun pushUndo() {
         undoStack.add(_state.value.lyrics)
@@ -114,11 +115,12 @@ class EditorViewModel(
         val song = songRepository.getById(songId) ?: return
         undoStack.clear()
         redoStack.clear()
+        nextUid = 0
         val lyrics = if (song.wordSyncEnabled) {
             song.lyrics.map { syncUseCase.splitLineIntoWords(it) }
         } else {
             song.lyrics
-        }
+        }.map { it.copy(uid = nextUid++) }
         val firstLineWithWords = lyrics.indexOfFirst { it.words.isNotEmpty() }
         val firstWordIdx = if (firstLineWithWords >= 0 && song.wordSyncEnabled)
             skipPunctuationForward(lyrics[firstLineWithWords].words, 0).coerceAtLeast(0)
@@ -347,7 +349,10 @@ class EditorViewModel(
 
     fun insertLineBefore(index: Int, text: String = "") {
         pushUndo()
-        val newLyrics = syncUseCase.insertLine(_state.value.lyrics, index, text)
+        val uid = nextUid++
+        val newLine = LrcLine(text = text, uid = uid)
+        val newLyrics = (_state.value.lyrics.take(index) + newLine + _state.value.lyrics.drop(index))
+            .mapIndexed { i, line -> line.copy(index = i) }
         _state.value = _state.value.copy(
             lyrics = newLyrics,
             editingLineIndex = index,
@@ -358,8 +363,11 @@ class EditorViewModel(
 
     fun insertLineAfter(index: Int, text: String = "") {
         pushUndo()
+        val uid = nextUid++
         val insertAt = (index + 1).coerceAtMost(_state.value.lyrics.size)
-        val newLyrics = syncUseCase.insertLine(_state.value.lyrics, insertAt, text)
+        val newLine = LrcLine(text = text, uid = uid)
+        val newLyrics = (_state.value.lyrics.take(insertAt) + newLine + _state.value.lyrics.drop(insertAt))
+            .mapIndexed { i, line -> line.copy(index = i) }
         _state.value = _state.value.copy(
             lyrics = newLyrics,
             editingLineIndex = insertAt,
