@@ -18,9 +18,11 @@ Local modifications to the upstream sources:
 - `DetectorModel.kt` opts into `kotlin.io.encoding.ExperimentalEncodingApi`,
   which Kotlin 2.0.21 still requires for `Base64`.
 
-Language packs (`japanese.gjp`, `mandarin.bin`) are not bundled and are not part
-of this source tree; the app downloads them on demand from the release assets
-pinned in `Dictionaries`.
+Language packs are opened from `src/jvmSharedMain/resources/packs/` as
+`<pack id>.gz` (`japanese-v1.gz`, `mandarin-v1.gz`), so the app never needs the
+network to romanize; they are the release assets pinned in `Dictionaries`,
+gzipped. They derive from IPADIC and Unihan data, so `licenses/` ships their
+notices alongside this README.
 
 License: GPL-3.0-only, see `LICENSE.txt` and `NOTICE.md` next to this file. The
 app itself is distributed under AGPL-3.0, which the GPL-3.0-only terms allow

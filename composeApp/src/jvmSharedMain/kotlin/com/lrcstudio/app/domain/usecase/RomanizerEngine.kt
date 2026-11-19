@@ -11,8 +11,10 @@ import meow.nyx.glyphmind.LyricsRomanizer
 import meow.nyx.glyphmind.WordTimestamp
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URI
+import java.util.zip.GZIPInputStream
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -61,14 +63,13 @@ internal object RomanizerEngine {
         val missing = required.filter { pack ->
             pack.id !in installed && store.readInstalled(pack) == null
         }
-        when {
-            missing.isEmpty() -> installed += required.map { it.id }
-            !downloadPacks -> {
-                // Report the download before touching the network; characters
-                // this engine cannot read yet simply stay unchanged.
-                val partial = convert(engine, lines, lineTexts, fullText, languages)
-                return RomanizationOutcome(partial, pendingPacks = missing.map { it.toPack() })
-            }
+        // Both language packs ship inside the app, so they install themselves on
+        // the first conversion. Only a pack the app does not bundle would need
+        // the network, and that asks the user first.
+        val needsNetwork = missing.filter { !hasBundledPack(it) }
+        if (needsNetwork.isNotEmpty() && !downloadPacks) {
+            val partial = convert(engine, lines, lineTexts, fullText, languages)
+            return RomanizationOutcome(partial, pendingPacks = needsNetwork.map { it.toPack() })
         }
 
         var error: String? = null
@@ -147,8 +148,32 @@ internal object RomanizerEngine {
         sizeBytes = size
     )
 
+    private fun openBundledPack(pack: DictionaryPack): InputStream? =
+        RomanizerEngine::class.java.getResourceAsStream("/packs/${pack.id}.gz")
+            ?: RomanizerEngine::class.java.classLoader?.getResourceAsStream("packs/${pack.id}.gz")
+
+    private fun hasBundledPack(pack: DictionaryPack): Boolean = openBundledPack(pack)?.let { stream ->
+        stream.close()
+        true
+    } ?: false
+
+    /**
+     * Feeds the engine from the packs shipped in the APK/jar, so romanization
+     * never depends on the device resolving github.com; the HTTP path stays as a
+     * fallback for packs that are not bundled.
+     */
+    private suspend fun download(pack: DictionaryPack): ByteArray {
+        val bundled = withContext(Dispatchers.IO) {
+            openBundledPack(pack)?.use { raw ->
+                GZIPInputStream(raw).use { it.readBytes() }
+            }
+        }
+        if (bundled != null) return bundled
+        return downloadFromNetwork(pack)
+    }
+
     /** Bounded download so a broken response cannot exhaust memory. */
-    private suspend fun download(pack: DictionaryPack): ByteArray = withContext(Dispatchers.IO) {
+    private suspend fun downloadFromNetwork(pack: DictionaryPack): ByteArray = withContext(Dispatchers.IO) {
         val connection = (URI(pack.url).toURL().openConnection() as HttpURLConnection).apply {
             connectTimeout = 20_000
             readTimeout = 60_000
