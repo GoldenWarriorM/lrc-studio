@@ -1713,7 +1713,6 @@ fun EditorScreen(
  * (v1/v2, per line — the enhanced LRC "v1:" prefix and TTML ttm:agent) and a
  * quick TTML export. Hidden entirely when richsync is off.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RichsyncToolsRow(
     agent: Int,
@@ -1727,19 +1726,26 @@ private fun RichsyncToolsRow(
     onShowIssues: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FlowRow(
+    // One horizontally scrollable line instead of wrapped rows: on a phone the
+    // richsync bar should cost the lyrics a single row of height.
+    val scrollState = rememberScrollState()
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        // Right edge matches the toolbar icons above; wraps instead of clipping.
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 16.dp)
     ) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(scrollState)
+                .widthIn(min = maxWidth),
+            // Right edge matches the toolbar icons above when it fits.
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         Text(
             text = "Agent",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.align(Alignment.CenterVertically)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         for (value in 1..2) {
             FilterChip(
@@ -1782,6 +1788,7 @@ private fun RichsyncToolsRow(
                 label = { Text("$issueCount issue${if (issueCount == 1) "" else "s"}") },
                 shape = RoundedCornerShape(12.dp)
             )
+        }
         }
     }
 }
