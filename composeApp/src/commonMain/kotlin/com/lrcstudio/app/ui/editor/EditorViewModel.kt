@@ -11,6 +11,8 @@ import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.util.extractAudioMetadata
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.lrcstudio.app.data.model.VocalRole
+import com.lrcstudio.app.domain.usecase.Syllabifier
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.abs
 
@@ -181,7 +183,12 @@ class EditorViewModel(
         val lyrics = _state.value.lyrics
         if (index !in lyrics.indices) return
         val line = lyrics[index]
-        val wordCursor = if (line.words.isNotEmpty()) 0 else -1
+        // Land on the first real word, so the capture pill opens in its split state.
+        val wordCursor = if (line.words.isNotEmpty()) {
+            skipPunctuationForward(line.words, 0).coerceAtLeast(0)
+        } else {
+            -1
+        }
         _state.value = _state.value.copy(
             selectedLineIndex = index,
             wordCursorIndex = wordCursor
@@ -450,6 +457,184 @@ class EditorViewModel(
                 wordCursorIndex = -1
             )
             saveWordSyncMode(false)
+        }
+    }
+
+    /** Assigns the vocal agent of a single line (1, 2, 1000 for group); 0 clears it. */
+    fun setLineAgent(lineIndex: Int, agent: Int) {
+        val lyrics = _state.value.lyrics
+        if (lineIndex !in lyrics.indices) return
+        val normalized = agent.coerceAtLeast(0)
+        if (lyrics[lineIndex].agent == normalized) return
+        pushUndo()
+        val newLyrics = lyrics.toMutableList()
+        newLyrics[lineIndex] = newLyrics[lineIndex].copy(agent = normalized)
+        _state.value = _state.value.copy(lyrics = newLyrics)
+        saveLyrics(newLyrics)
+    }
+
+    private inline fun updateLine(index: Int, transform: (LrcLine) -> LrcLine) {
+        val lyrics = _state.value.lyrics
+        val line = lyrics.getOrNull(index) ?: return
+        val updated = transform(line)
+        if (updated == line) return
+        pushUndo()
+        val next = lyrics.toMutableList().apply { set(index, updated) }
+        _state.value = _state.value.copy(lyrics = next)
+        saveLyrics(next)
+    }
+
+    /** Marks the whole line as a background / harmony vocal ([bg: ...] in ELRC). */
+    fun setLineBackground(lineIndex: Int, isBackground: Boolean) {
+        updateLine(lineIndex) { it.copy(isBackground = isBackground) }
+    }
+
+    /** Syllable pieces are glued together, so "melt"+"ing" reads as "melting". */
+    private fun joinWordText(words: List<WordTimestamp>): String = buildString {
+        words.forEachIndexed { index, word ->
+            if (index > 0 && !word.joinsPrevious) append(' ')
+            append(word.text)
+        }
+    }
+
+    private fun syllablePieces(word: WordTimestamp, limit: Long): List<WordTimestamp> {
+        val pieces = Syllabifier.split(word.text)
+        if (pieces.size < 2) return listOf(word)
+        val start = word.startTime
+        // An explicit end wins; otherwise spread up to the next timed word so the
+        // syllables keep the original timing shape instead of losing it.
+        val end = when {
+            word.endTime > start -> word.endTime
+            limit > start -> limit
+            else -> 0L
+        }
+        val span = if (end > start) end - start else 0L
+        return pieces.mapIndexed { index, text ->
+            val pieceStart = when {
+                index == 0 -> start
+                span > 0L -> start + span * index / pieces.size
+                else -> 0L
+            }
+            val pieceEnd = if (index == pieces.lastIndex && span > 0L) end else 0L
+            word.copy(
+                text = text,
+                startTime = pieceStart,
+                endTime = pieceEnd,
+                joinsPrevious = index > 0 || word.joinsPrevious
+            )
+        }
+    }
+
+    /** Splits every word of every line into syllables. */
+    fun splitAllWordsIntoSyllables() {
+        if (_state.value.lyrics.none { it.words.isNotEmpty() }) return
+        pushUndo()
+        val lyrics = _state.value.lyrics
+        val updated = lyrics.map { line ->
+            if (line.words.isEmpty()) {
+                line
+            } else {
+                val words = mutableListOf<WordTimestamp>()
+                line.words.forEachIndexed { index, word ->
+                    val nextStart = line.words.drop(index + 1)
+                        .firstOrNull { it.startTime > word.startTime }?.startTime ?: 0L
+                    words.addAll(syllablePieces(word, nextStart))
+                }
+                line.copy(words = words, text = joinWordText(words))
+            }
+        }
+        _state.value = _state.value.copy(lyrics = updated)
+        saveLyrics(updated)
+    }
+
+    /** Glues syllable pieces back into whole words, keeping the outer timing. */
+    fun mergeSyllables() {
+        if (_state.value.lyrics.none { line -> line.words.any { it.joinsPrevious } }) return
+        pushUndo()
+        val lyrics = _state.value.lyrics
+        val updated = lyrics.map { line ->
+            if (line.words.isEmpty()) {
+                line
+            } else {
+                val merged = mutableListOf<WordTimestamp>()
+                for (word in line.words) {
+                    val last = merged.lastOrNull()
+                    if (word.joinsPrevious && last != null) {
+                        merged[merged.lastIndex] = last.copy(
+                            text = last.text + word.text,
+                            startTime = if (last.startTime > 0L) last.startTime else word.startTime,
+                            endTime = maxOf(last.endTime, word.endTime)
+                        )
+                    } else {
+                        merged.add(word)
+                    }
+                }
+                line.copy(words = merged, text = joinWordText(merged))
+            }
+        }
+        _state.value = _state.value.copy(lyrics = updated)
+        saveLyrics(updated)
+    }
+
+    /** Splits a single word into syllables (long-press on it). */
+    fun splitWordIntoSyllables(lineIndex: Int, wordIndex: Int) {
+        val line = _state.value.lyrics.getOrNull(lineIndex) ?: return
+        if (wordIndex !in line.words.indices) return
+        val word = line.words[wordIndex]
+        val nextStart = line.words.drop(wordIndex + 1)
+            .firstOrNull { it.startTime > word.startTime }?.startTime ?: 0L
+        val pieces = syllablePieces(word, nextStart)
+        if (pieces.size < 2) return
+        pushUndo()
+        val current = _state.value
+        val words = line.words.toMutableList().apply {
+            removeAt(wordIndex)
+            addAll(wordIndex, pieces)
+        }
+        val updated = current.lyrics.toMutableList().apply {
+            set(lineIndex, line.copy(words = words, text = joinWordText(words)))
+        }
+        _state.value = current.copy(lyrics = updated, wordCursorIndex = wordIndex)
+        saveLyrics(updated)
+    }
+
+    /**
+     * Closes the last already-started word before the cursor at the playback
+     * position. Used while sitting on the start of a new line, so the tail of the
+     * previous line is trimmed live instead of after the fact.
+     */
+    fun endPreviousWordAtPosition() {
+        val s = _state.value
+        if (!s.wordSyncMode) return
+        val position = audioPlayer.state.value.currentPosition
+        if (position <= 0L) return
+
+        var lineIdx = s.selectedLineIndex
+        while (lineIdx >= 0) {
+            val line = s.lyrics.getOrNull(lineIdx) ?: return
+            var wordIdx = if (lineIdx == s.selectedLineIndex) {
+                minOf(s.wordCursorIndex, line.words.size) - 1
+            } else {
+                line.words.lastIndex
+            }
+            while (wordIdx >= 0) {
+                val word = line.words[wordIdx]
+                if (word.startTime > 0L) {
+                    if (position <= word.startTime) return
+                    pushUndo()
+                    val words = line.words.toMutableList().apply {
+                        set(wordIdx, word.copy(endTime = position))
+                    }
+                    val newLyrics = s.lyrics.toMutableList().apply {
+                        set(lineIdx, line.copy(words = words))
+                    }
+                    _state.value = _state.value.copy(lyrics = newLyrics)
+                    saveLyrics(newLyrics)
+                    return
+                }
+                wordIdx--
+            }
+            lineIdx--
         }
     }
 

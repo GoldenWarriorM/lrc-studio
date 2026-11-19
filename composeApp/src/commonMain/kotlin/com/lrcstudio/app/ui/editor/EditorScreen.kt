@@ -1,5 +1,6 @@
 package com.lrcstudio.app.ui.editor
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -8,6 +9,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,6 +70,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -72,7 +78,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lrcstudio.app.data.model.VocalRole
 import com.lrcstudio.app.data.parser.LrcParser
+import com.lrcstudio.app.data.parser.RichsyncValidator
+import com.lrcstudio.app.data.parser.TtmlGenerator
 import com.lrcstudio.app.ui.picker.rememberLrcFileSaveLauncher
 import com.lrcstudio.app.util.SetImmersiveMode
 import com.lrcstudio.app.util.isDesktop
@@ -80,6 +89,7 @@ import com.lrcstudio.app.ui.player.PlaybackState
 import com.lrcstudio.app.ui.player.PlayerBar
 import com.lrcstudio.app.util.rememberFileExistsChecker
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -108,6 +118,7 @@ fun EditorScreen(
     landscapeOverlay: Boolean = false,
     disableFullscreen: Boolean = false,
     isEnhancedLrcEnabled: Boolean = false,
+    richsyncFormat: String = "elrc",
     skipStandalonePunctuation: Boolean = true
 ) {
     val state by viewModel.state.collectAsState()
@@ -126,6 +137,8 @@ fun EditorScreen(
     var isPreviewMode by remember { mutableStateOf(false) }
     var speed by remember { mutableStateOf(1f) }
     var showSpeedDialog by remember { mutableStateOf(false) }
+    var showRichsyncIssues by remember { mutableStateOf(false) }
+    var showSyllableConfirm by remember { mutableStateOf(false) }
     var showOverwriteConfirm by remember { mutableStateOf(false) }
     var pendingOverwriteContent by remember { mutableStateOf<String?>(null) }
     var pendingOverwriteFileName by remember { mutableStateOf("") }
@@ -143,6 +156,20 @@ fun EditorScreen(
         onSuccess = { scope.launch { snackbarHostState.showSnackbar("LRC saved") } },
         onError = { msg -> scope.launch { snackbarHostState.showSnackbar("Save failed: $msg") } }
     )
+
+    val saveTtmlFile = rememberLrcFileSaveLauncher(
+        defaultName = "${state.song?.title ?: "lyrics"}.ttml",
+        directory = lrcSaveDirectory,
+        onSuccess = { scope.launch { snackbarHostState.showSnackbar("TTML saved") } },
+        onError = { msg -> scope.launch { snackbarHostState.showSnackbar("Save failed: $msg") } }
+    )
+
+    val buildTtml: (String) -> String = { composer ->
+        TtmlGenerator.generate(
+            lyrics = state.lyrics,
+            songwriters = if (composer.isBlank()) emptyList() else listOf(composer)
+        )
+    }
 
     val displayItems = remember(state.lyrics) {
         buildList {
@@ -166,6 +193,24 @@ fun EditorScreen(
         }
     }
 
+    var measuredButtonHeight by remember { mutableStateOf(0) }
+
+    LaunchedEffect(state.editingLineIndex) {
+        if (state.editingLineIndex < 0) return@LaunchedEffect
+        withFrameNanos { }
+        val itemIndex = state.editingLineIndex * 3 + 1
+        val beforeItem = listState.layoutInfo.visibleItemsInfo.find { it.index == itemIndex }
+        val beforeHeight = beforeItem?.size ?: return@LaunchedEffect
+        delay(350)
+        val afterItem = listState.layoutInfo.visibleItemsInfo.find { it.index == itemIndex }
+        val afterHeight = afterItem?.size ?: beforeHeight
+        val cardDelta = afterHeight - beforeHeight
+        val totalPx = (measuredButtonHeight + cardDelta / 2).toFloat()
+        if (totalPx > 0.5f) {
+            listState.easedScrollBy(-totalPx)
+        }
+    }
+
     val canCapture = state.lyrics.isNotEmpty() && !isPreviewMode
     val onVibrationToast: (String) -> Unit = { msg ->
         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -173,6 +218,7 @@ fun EditorScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
+        val isNarrowPortrait = maxWidth < 400.dp
         val useLandscape = forceLandscapeEditor || (isLandscape && !isDesktop())
 
         SetImmersiveMode(useLandscape && !disableFullscreen)
@@ -312,43 +358,39 @@ fun EditorScreen(
                                                 }
                                             },
                                             onWordSeek = { wi ->
-                                                viewModel.seekToWord(item.index, wi, beforeMs = 1500L)
+                                                viewModel.splitWordIntoSyllables(item.index, wi)
                                             },
                                             modifier = Modifier.fillMaxWidth().animateItem()
                                         )
                                     }
                                     is DisplayItem.InsertAbove -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .animateContentSize(
-                                                    animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                                )
+                                        AnimatedVisibility(
+                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                            enter = fadeIn(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                    expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            exit = fadeOut(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                    shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
                                         ) {
-                                            if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                                InsertLineButton(
-                                                    text = "Insert line above",
-                                                    onClick = { viewModel.insertLineBefore(item.index) },
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                            }
+                                            InsertLineButton(
+                                                text = "Insert line above",
+                                                onClick = { viewModel.insertLineBefore(item.index) },
+                                                modifier = Modifier.fillMaxWidth().onSizeChanged { measuredButtonHeight = it.height }
+                                            )
                                         }
                                     }
                                     is DisplayItem.InsertBelow -> {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .animateContentSize(
-                                                    animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                                )
+                                        AnimatedVisibility(
+                                            visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                            enter = fadeIn(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                    expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                            exit = fadeOut(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                    shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
                                         ) {
-                                            if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                                InsertLineButton(
-                                                    text = "Insert line below",
-                                                    onClick = { viewModel.insertLineAfter(item.index) },
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                            }
+                                            InsertLineButton(
+                                                text = "Insert line above",
+                                                onClick = { viewModel.insertLineBefore(item.index) },
+                                                modifier = Modifier.fillMaxWidth().onSizeChanged { }
+                                            )
                                         }
                                     }
                                 }
@@ -864,11 +906,15 @@ fun EditorScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Lyrics (${state.lyrics.size})",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // Phones in portrait have no room for the line count;
+                        // the toolbar gets the full width instead.
+                        if (isDesktop() || !isNarrowPortrait) {
+                            Text(
+                                text = "Lyrics (${state.lyrics.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
                         val toolbarScrollState = rememberScrollState()
                         val toolbarAtStart = toolbarScrollState.value <= 0
@@ -1034,6 +1080,35 @@ fun EditorScreen(
                         }
                     }
 
+                    if (!isPreviewMode && isEnhancedLrcEnabled && state.wordSyncMode) {
+                        val richsyncLine = state.lyrics.getOrNull(state.selectedLineIndex)
+                        RichsyncToolsRow(
+                            agent = richsyncLine?.agent ?: 0,
+                            isBackground = richsyncLine?.isBackground == true,
+                            issueCount = RichsyncValidator.validate(state.lyrics).size,
+                            hasSyllables = state.lyrics.any { line ->
+                                line.words.any { it.joinsPrevious }
+                            },
+                            onMergeSyllables = { viewModel.mergeSyllables() },
+                            onSplitSyllables = {
+                                // Splitting timed lyrics re-spreads their word timings.
+                                if (state.lyrics.any { line -> line.words.any { it.startTime > 0L } }) {
+                                    showSyllableConfirm = true
+                                } else {
+                                    viewModel.splitAllWordsIntoSyllables()
+                                }
+                            },
+                            onAgentChange = { viewModel.setLineAgent(state.selectedLineIndex, it) },
+                            onBackgroundToggle = {
+                                viewModel.setLineBackground(
+                                    state.selectedLineIndex,
+                                    richsyncLine?.isBackground != true
+                                )
+                            },
+                            onShowIssues = { showRichsyncIssues = true }
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     LazyColumn(
@@ -1092,43 +1167,39 @@ fun EditorScreen(
                                             }
                                         },
                                         onWordSeek = { wi ->
-                                            viewModel.seekToWord(item.index, wi, beforeMs = 1500L)
+                                            viewModel.splitWordIntoSyllables(item.index, wi)
                                         },
                                         modifier = Modifier.fillMaxWidth().animateItem()
                                     )
                                 }
                                 is DisplayItem.InsertAbove -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateContentSize(
-                                                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            )
+                                    AnimatedVisibility(
+                                        visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                        enter = fadeIn(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        exit = fadeOut(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
                                     ) {
-                                        if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                            InsertLineButton(
-                                                text = "Insert line above",
-                                                onClick = { viewModel.insertLineBefore(item.index) },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
+                                        InsertLineButton(
+                                            text = "Insert line above",
+                                            onClick = { viewModel.insertLineBefore(item.index) },
+                                            modifier = Modifier.fillMaxWidth().onSizeChanged { }
+                                        )
                                     }
                                 }
                                 is DisplayItem.InsertBelow -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .animateContentSize(
-                                                animationSpec = spring<IntSize>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            )
+                                    AnimatedVisibility(
+                                        visible = !isPreviewMode && state.editingLineIndex == item.index,
+                                        enter = fadeIn(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)),
+                                        exit = fadeOut(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)) +
+                                                shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow))
                                     ) {
-                                        if (!isPreviewMode && state.editingLineIndex == item.index) {
-                                            InsertLineButton(
-                                                text = "Insert line below",
-                                                onClick = { viewModel.insertLineAfter(item.index) },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
+                                        InsertLineButton(
+                                            text = "Insert line below",
+                                            onClick = { viewModel.insertLineAfter(item.index) },
+                                            modifier = Modifier.fillMaxWidth().onSizeChanged { }
+                                        )
                                     }
                                 }
                             }
@@ -1195,10 +1266,36 @@ fun EditorScreen(
                             .padding(horizontal = 16.dp)
                     ) {
                         val undoW = 48.dp + 8.dp + 48.dp
-                        val rightEdge = maxWidth / 2 + 80.dp
                         val undoLeft = maxWidth - undoW - 8.dp
+                        val captureLine = state.lyrics.getOrNull(state.selectedLineIndex)
+                        val firstWordIndex = captureLine?.words
+                            ?.indexOfFirst { word -> word.text.any { it.isLetterOrDigit() } } ?: -1
+                        val atLineStart = state.wordSyncMode &&
+                            firstWordIndex >= 0 &&
+                            state.wordCursorIndex == firstWordIndex
+                        // Nothing to close before the very first line of the song.
+                        val showEnd = atLineStart && state.selectedLineIndex > 0
+                        val canEnd = showEnd && state.lyrics.take(state.selectedLineIndex)
+                            .any { l -> l.words.any { it.startTime > 0L } }
+                        val endAlpha by animateFloatAsState(
+                            targetValue = if (showEnd) 1f else 0f,
+                            animationSpec = spring(
+                                dampingRatio = 0.55f,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            label = "endButton"
+                        )
+                        val rightEdge = maxWidth / 2 + 80.dp + 8.dp
                         val shift = if (showUndoRedo && rightEdge > undoLeft)
                             rightEdge - undoLeft else 0.dp
+                        val onTime = {
+                            if (state.wordSyncMode && state.wordCursorIndex >= 0) {
+                                viewModel.captureWordTimestamp()
+                            } else {
+                                viewModel.captureCurrentLineTimestamp()
+                            }
+                        }
+
                         Box(
                             modifier = Modifier
                                 .align(Alignment.Center)
@@ -1208,13 +1305,7 @@ fun EditorScreen(
                                 .clickable(
                                     interactionSource = timeInteractionSource,
                                     indication = null,
-                                    onClick = {
-                                        if (state.wordSyncMode && state.wordCursorIndex >= 0) {
-                                            viewModel.captureWordTimestamp()
-                                        } else {
-                                            viewModel.captureCurrentLineTimestamp()
-                                        }
-                                    },
+                                    onClick = { onTime() }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -1240,6 +1331,37 @@ fun EditorScreen(
                                     text = "Time",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+
+                        // End sits in the free space on the left and closes the previous
+                        // line while the cursor waits at the start of the next one.
+                        if (endAlpha > 0.01f) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .graphicsLayer {
+                                        alpha = endAlpha
+                                        val grow = 0.86f + 0.14f * endAlpha
+                                        scaleX = grow
+                                        scaleY = grow
+                                    }
+                                    .width(92.dp)
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .clickable(enabled = canEnd) {
+                                        viewModel.endPreviousWordAtPosition()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "End",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                                        alpha = if (canEnd) 1f else 0.45f
+                                    )
                                 )
                             }
                         }
@@ -1316,6 +1438,57 @@ fun EditorScreen(
     }
     }
 
+    if (showSyllableConfirm) {
+        AlertDialog(
+            onDismissRequest = { showSyllableConfirm = false },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Split into syllables?") },
+            text = {
+                Text(
+                    "The lyrics are already timed. Syllables will be placed inside each " +
+                        "existing word, and its duration is spread across them. " +
+                        "Tap Undo if the result is not what you want."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSyllableConfirm = false
+                    viewModel.splitAllWordsIntoSyllables()
+                }) { Text("Split") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSyllableConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showRichsyncIssues) {
+        val issues = RichsyncValidator.validate(state.lyrics)
+        AlertDialog(
+            onDismissRequest = { showRichsyncIssues = false },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Richsync issues (${issues.size})") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    issues.forEach { issue ->
+                        Text(
+                            text = "• ${issue.message}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRichsyncIssues = false }) { Text("OK") }
+            }
+        )
+    }
+
     if (showShiftDialog) {
         ShiftTimestampsDialog(
             onConfirm = { offsetMs ->
@@ -1390,8 +1563,10 @@ fun EditorScreen(
         val song = state.song
         val clipboardManager = LocalClipboardManager.current
         val isEnhanced = isEnhancedLrcEnabled && state.wordSyncMode
+        val isTtmlExport = isEnhanced && richsyncFormat == "ttml"
         SaveLrcDialog(
             isEnhanced = isEnhanced,
+            isTtml = isTtmlExport,
             initialTitle = song?.title ?: "",
             initialArtist = song?.artist ?: "",
             initialAlbum = song?.album ?: "",
@@ -1400,23 +1575,27 @@ fun EditorScreen(
             onConfirm = { title, artist, album, composer, creator ->
                 showSaveDialog = false
                 if (state.lyrics.isNotEmpty()) {
-                    val lyricsForExport = if (isEnhanced) state.lyrics
-                        else state.lyrics.map { it.copy(words = emptyList()) }
-                    val lrc = LrcParser.generate(
-                        lyrics = lyricsForExport,
-                        title = title,
-                        artist = artist,
-                        album = album,
-                        composer = composer,
-                        creator = creator
-                    )
-                    val fileName = "${title.ifBlank { state.song?.title ?: "lyrics" }}.lrc"
-                    if (lrcSaveDirectory != null && checkFileExists(fileName)) {
-                        pendingOverwriteContent = lrc
-                        pendingOverwriteFileName = fileName
-                        showOverwriteConfirm = true
+                    if (isTtmlExport) {
+                        saveTtmlFile(buildTtml(composer))
                     } else {
-                        saveLrcFile(lrc)
+                        val lyricsForExport = if (isEnhanced) state.lyrics
+                            else state.lyrics.map { it.copy(words = emptyList()) }
+                        val lrc = LrcParser.generate(
+                            lyrics = lyricsForExport,
+                            title = title,
+                            artist = artist,
+                            album = album,
+                            composer = composer,
+                            creator = creator
+                        )
+                        val fileName = "${title.ifBlank { state.song?.title ?: "lyrics" }}.lrc"
+                        if (lrcSaveDirectory != null && checkFileExists(fileName)) {
+                            pendingOverwriteContent = lrc
+                            pendingOverwriteFileName = fileName
+                            showOverwriteConfirm = true
+                        } else {
+                            saveLrcFile(lrc)
+                        }
                     }
                 }
             },
@@ -1427,6 +1606,17 @@ fun EditorScreen(
                         else state.lyrics.map { it.copy(words = emptyList()) }
                     )
                     clipboardManager.setText(AnnotatedString(plain))
+                }
+            },
+            onSaveTtml = { composer ->
+                showSaveDialog = false
+                if (state.lyrics.isNotEmpty()) {
+                    saveTtmlFile(buildTtml(composer))
+                }
+            },
+            onCopyTtml = { composer ->
+                if (state.lyrics.isNotEmpty()) {
+                    clipboardManager.setText(AnnotatedString(buildTtml(composer)))
                 }
             },
             onDismiss = { showSaveDialog = false }
@@ -1502,6 +1692,84 @@ fun EditorScreen(
     }
 }
 
+/**
+ * Extra actions that exist only while word-level sync is on: the vocal agent
+ * (v1/v2, per line — the enhanced LRC "v1:" prefix and TTML ttm:agent) and a
+ * quick TTML export. Hidden entirely when richsync is off.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RichsyncToolsRow(
+    agent: Int,
+    isBackground: Boolean,
+    issueCount: Int,
+    hasSyllables: Boolean,
+    onMergeSyllables: () -> Unit,
+    onSplitSyllables: () -> Unit,
+    onAgentChange: (Int) -> Unit,
+    onBackgroundToggle: () -> Unit,
+    onShowIssues: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        // Right edge matches the toolbar icons above; wraps instead of clipping.
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = "Agent",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterVertically)
+        )
+        for (value in 1..2) {
+            FilterChip(
+                // An unassigned line is the lead voice, i.e. v1.
+                selected = agent == value || (agent == 0 && value == 1),
+                onClick = { onAgentChange(value) },
+                label = { Text("v$value") },
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+        FilterChip(
+            selected = isBackground,
+            onClick = onBackgroundToggle,
+            label = { Text("BG") },
+            shape = RoundedCornerShape(12.dp)
+        )
+        FilterChip(
+            selected = false,
+            onClick = onSplitSyllables,
+            label = { Text("Syllables") },
+            shape = RoundedCornerShape(12.dp)
+        )
+        FilterChip(
+            selected = hasSyllables,
+            enabled = hasSyllables,
+            onClick = onMergeSyllables,
+            label = { Text("Merge") },
+            shape = RoundedCornerShape(12.dp)
+        )
+        FilterChip(
+            selected = agent == 1000,
+            onClick = { onAgentChange(1000) },
+            label = { Text("Group") },
+            shape = RoundedCornerShape(12.dp)
+        )
+        if (issueCount > 0) {
+            FilterChip(
+                selected = true,
+                onClick = onShowIssues,
+                label = { Text("$issueCount issue${if (issueCount == 1) "" else "s"}") },
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+    }
+}
+
 private const val LYRICS_ANCHOR_RATIO = 0.35f
 
 private suspend fun centerItem(index: Int, listState: LazyListState) {
@@ -1540,6 +1808,25 @@ private suspend fun centerItem(index: Int, listState: LazyListState) {
             lastScrolled = targetScroll
             if (fraction >= 1f) break
         }
+    }
+}
+
+private suspend fun LazyListState.easedScrollBy(px: Float, durationMs: Long = 200L) {
+    if (abs(px) <= 0.5f) return
+    val startMs = withFrameMillis { it }
+    var lastScrolled = 0f
+    while (true) {
+        val nowMs = withFrameMillis { it }
+        val elapsed = nowMs - startMs
+        val fraction = (elapsed.toFloat() / durationMs).coerceAtMost(1f)
+        val eased = FastOutSlowInEasing.transform(fraction)
+        val current = eased * px
+        val step = current - lastScrolled
+        if (abs(step) > 0.5f) {
+            scroll { scrollBy(step) }
+        }
+        lastScrolled = current
+        if (fraction >= 1f) break
     }
 }
 
@@ -1672,10 +1959,11 @@ private fun LyricLineCard(
         }
     }
 
-    val containerColor = if (isCurrentLine)
-        MaterialTheme.colorScheme.primaryContainer
-    else
-        MaterialTheme.colorScheme.surfaceVariant
+    val containerColor = when {
+        isCurrentLine -> MaterialTheme.colorScheme.primaryContainer
+        line.isBackground -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
 
     LaunchedEffect(isPlaybackLine, wordSyncMode, isPlaying) {
         if (isPlaybackLine && isPlaying) {
@@ -2015,6 +2303,7 @@ private fun LyricLineCard(
                             val hasWordTime = word.startTime > 0L
                             val wordBg = when {
                                 isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                word.role != VocalRole.MAIN -> MaterialTheme.colorScheme.tertiaryContainer
                                 isWordCursor -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                 hasWordTime -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                 else -> Color.Transparent
@@ -2025,6 +2314,7 @@ private fun LyricLineCard(
                                 Color.Transparent
                             val wordTextColor = when {
                                 isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                word.role != VocalRole.MAIN -> MaterialTheme.colorScheme.onTertiaryContainer
                                 hasWordTime -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.onSurface
                             }
@@ -2142,7 +2432,13 @@ private fun LyricLineCard(
                                 Text(
                                     text = word.text,
                                     modifier = Modifier.padding(horizontal = 2.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontStyle = if (word.role != VocalRole.MAIN) {
+                                            androidx.compose.ui.text.font.FontStyle.Italic
+                                        } else {
+                                            androidx.compose.ui.text.font.FontStyle.Normal
+                                        }
+                                    ),
                                     color = wordTextColor
                                 )
                             }
@@ -2452,6 +2748,7 @@ private fun AddLineDialog(
 @Composable
 private fun SaveLrcDialog(
     isEnhanced: Boolean,
+    isTtml: Boolean = false,
     initialTitle: String,
     initialArtist: String,
     initialAlbum: String,
@@ -2459,6 +2756,8 @@ private fun SaveLrcDialog(
     initialCreator: String,
     onConfirm: (title: String, artist: String, album: String, composer: String, creator: String) -> Unit,
     onCopyPlain: () -> Unit,
+    onSaveTtml: (composer: String) -> Unit,
+    onCopyTtml: (composer: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var title by remember { mutableStateOf(initialTitle) }
@@ -2470,7 +2769,16 @@ private fun SaveLrcDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        title = { Text(if (isEnhanced) "Save Enhanced LRC" else "Save LRC", style = MaterialTheme.typography.headlineSmall) },
+        title = {
+            Text(
+                text = when {
+                    isTtml -> "Save Richsync (TTML)"
+                    isEnhanced -> "Save Richsync (ELRC)"
+                    else -> "Save LRC"
+                },
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -2518,6 +2826,17 @@ private fun SaveLrcDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(onClick = { onCopyTtml(composer.trim()) }) {
+                        Text("Copy TTML")
+                    }
+                    TextButton(onClick = { onSaveTtml(composer.trim()) }) {
+                        Text("Save TTML")
+                    }
+                }
             }
         },
         confirmButton = {

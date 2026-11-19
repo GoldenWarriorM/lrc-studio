@@ -1,6 +1,7 @@
 package com.lrcstudio.app.data.parser
 
 import com.lrcstudio.app.data.model.LrcLine
+import com.lrcstudio.app.data.model.VocalRole
 
 object LrcParser {
 
@@ -36,72 +37,62 @@ object LrcParser {
         sb.appendLine()
         sb.appendLine("[re: LRC Studio - Cross-platform LRC editor]")
         sb.appendLine()
-        val sorted = lyrics.sortedBy { it.timestamp }
-        for (line in sorted) {
+        for (line in lyrics.sortedBy { it.timestamp }) {
             if (line.timestamp == 0L) continue
-            val ts = line.timestampLrcFormatted
-            sb.appendLine("[$ts]${formatLineText(line)}")
+            sb.appendLine(formatLine(line))
         }
         return sb.toString().trimEnd()
     }
 
+    /** Plain text export: no tags at all, just the readable lyrics. */
     fun generatePlain(
         lyrics: List<LrcLine>,
     ): String {
         val sb = StringBuilder()
-        val sorted = lyrics.sortedBy { it.timestamp }
-        for (line in sorted) {
+        for (line in lyrics.sortedBy { it.timestamp }) {
             if (line.timestamp == 0L) continue
-            val ts = line.timestampLrcFormatted
-            sb.appendLine("[$ts]${formatLineText(line)}")
+            sb.appendLine("[${line.timestampLrcFormatted}]${line.text}")
         }
         return sb.toString().trimEnd()
     }
 
-    private fun formatLineText(line: LrcLine): String {
-        if (line.words.isEmpty()) return line.text
-        val punctuation = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
-        val sb = StringBuilder()
-
-        for ((i, word) in line.words.withIndex()) {
-            val isPunct = punctuation.matches(word.text)
-            val time = if (isPunct && word.startTime == 0L) {
-                var prevTimed = -1
-                for (j in i - 1 downTo 0) {
-                    if (line.words[j].startTime > 0L && !punctuation.matches(line.words[j].text)) {
-                        prevTimed = j
-                        break
-                    }
-                }
-                var nextTimed = -1
-                for (j in i + 1 until line.words.size) {
-                    if (line.words[j].startTime > 0L && !punctuation.matches(line.words[j].text)) {
-                        nextTimed = j
-                        break
-                    }
-                }
-                when {
-                    prevTimed >= 0 && nextTimed >= 0 ->
-                        (line.words[prevTimed].startTime + line.words[nextTimed].startTime) / 2L
-                    prevTimed >= 0 -> line.words[prevTimed].startTime
-                    nextTimed >= 0 -> line.words[nextTimed].startTime
-                    else -> 0L
-                }
-            } else {
-                word.startTime
-            }
-            sb.append(" <${formatWordTime(time)}>${word.text}")
-        }
-        return sb.toString().trimStart()
+    private fun formatLine(line: LrcLine): String {
+        if (line.isBackground) return "[bg:${formatBody(line, allowFragments = false)}]"
+        val agentPrefix = if (line.agent > 0) "v${line.agent}:" else ""
+        val stamp = "[${line.timestampLrcFormatted}]"
+        return "$stamp$agentPrefix${formatBody(line, allowFragments = true)}"
     }
 
-    private fun formatWordTime(ms: Long): String {
-        val minutes = (ms / 60000).toInt()
-        val seconds = ((ms % 60000) / 1000).toInt()
-        val hundredths = ((ms % 1000) / 10).toInt()
-        val minStr = minutes.toString().padStart(2, '0')
-        val secStr = seconds.toString().padStart(2, '0')
-        val fracStr = hundredths.toString().padStart(2, '0')
-        return "$minStr:$secStr.$fracStr"
+    private fun formatBody(line: LrcLine, allowFragments: Boolean): String {
+        val words = line.words.filter { it.text.isNotBlank() }
+        if (words.isEmpty()) return line.text
+
+        val sb = StringBuilder()
+        var currentRole: VocalRole? = null
+        for (word in words) {
+            val role = if (allowFragments) word.role else VocalRole.MAIN
+            if (role != currentRole) {
+                if (currentRole != null && currentRole != VocalRole.MAIN) sb.append(']')
+                if (role != VocalRole.MAIN) {
+                    sb.append(if (sb.isEmpty()) "[" else " [")
+                        .append(LrcLine.roleKeyword(role)).append(':')
+                }
+                currentRole = role
+            }
+            val last = sb.lastOrNull()
+            val needsSpace = !word.joinsPrevious && sb.isNotEmpty() &&
+                last != ':' && last != ' ' && last != '['
+            if (needsSpace) sb.append(' ')
+            if (word.startTime > 0L) {
+                sb.append('<').append(LrcLine.formatLrcTimestamp(word.startTime)).append('>')
+            }
+            sb.append(word.text)
+            // A trailing empty tag closes this word (keeps pauses between words).
+            if (word.endTime > word.startTime) {
+                sb.append(" <").append(LrcLine.formatLrcTimestamp(word.endTime)).append('>')
+            }
+        }
+        if (currentRole != null && currentRole != VocalRole.MAIN) sb.append(']')
+        return sb.toString().trimStart()
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
@@ -33,6 +34,7 @@ import com.lrcstudio.app.ui.picker.rememberDirectoryPickerLauncher
 import com.lrcstudio.app.util.fabBottomPadding
 import com.lrcstudio.app.util.treeUriToDisplayPath
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +46,8 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val topBarSurface = LocalSnapSurface.current
     var showElrcBetaWarning by remember { mutableStateOf(false) }
+    var pendingRichsyncMode by remember { mutableStateOf("elrc") }
+    var richsyncResetTick by remember { mutableIntStateOf(0) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
@@ -332,23 +336,70 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSection("Enhanced LRC (Beta)") {
-                SettingsRow(
-                    title = "Word-level sync",
-                    subtitle = "Enable word-by-word timestamp editing and eLRC export",
-                    trailing = {
-                        AccentSwitch(
-                            checked = settings.isEnhancedLrcEnabled,
-                            onCheckedChange = { enabled ->
-                                if (enabled) {
+            SettingsSection("Richsync") {
+                val modeIndex = when {
+                    !settings.isEnhancedLrcEnabled -> 0
+                    settings.richsyncFormat == "ttml" -> 2
+                    else -> 1
+                }
+                var sliderValue by remember(modeIndex, richsyncResetTick) {
+                    mutableFloatStateOf(modeIndex.toFloat())
+                }
+
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(
+                        text = "Word-level sync",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "Off: line timestamps only. ELRC: <mm:ss.xx> word tags in .lrc. " +
+                            "TTML: richsync for Unison and Apple-style players.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        onValueChangeFinished = {
+                            val target = sliderValue.roundToInt()
+                            if (target != modeIndex) {
+                                val mode = when (target) {
+                                    0 -> "off"
+                                    1 -> "elrc"
+                                    else -> "ttml"
+                                }
+                                if (modeIndex == 0 && target > 0) {
+                                    pendingRichsyncMode = mode
                                     showElrcBetaWarning = true
                                 } else {
-                                    settingsRepository.toggleEnhancedLrc()
+                                    settingsRepository.setRichsyncMode(mode)
                                 }
                             }
+                        },
+                        valueRange = 0f..2f,
+                        steps = 1,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = SliderDefaults.colors(
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            thumbColor = MaterialTheme.colorScheme.primary
                         )
+                    )
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        listOf("Off", "ELRC", "TTML").forEachIndexed { index, label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                textAlign = TextAlign.Center,
+                                color = if (index == sliderValue.roundToInt())
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                )
+                }
                 if (settings.isEnhancedLrcEnabled) {
                     SettingsRow(
                         title = "Interpolate punctuation",
@@ -362,8 +413,9 @@ fun SettingsScreen(
                     )
                 }
                 SettingsRow(
-                    title = "About Enhanced LRC",
-                    subtitle = "eLRC extends standard LRC with <mm:ss.xx> tags for each word, enabling karaoke-style word highlighting."
+                    title = "About Richsync",
+                    subtitle = "Richsync adds word-level timing: ELRC writes <mm:ss.xx> tags inside .lrc, " +
+                        "TTML writes timed <span> elements used by Apple Music and Unison."
                 )
             }
 
@@ -434,14 +486,18 @@ fun SettingsScreen(
 
     if (showElrcBetaWarning) {
         AlertDialog(
-            onDismissRequest = { showElrcBetaWarning = false },
+            onDismissRequest = {
+                showElrcBetaWarning = false
+                richsyncResetTick++
+            },
             shape = RoundedCornerShape(24.dp),
-            title = { Text("Enhanced LRC (Beta)", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("Richsync (Beta)", style = MaterialTheme.typography.headlineSmall) },
             text = {
                 Text(
                     "Word-level sync is a beta feature. " +
-                    "Before publishing your lyrics on public repositories, " +
-                    "please verify that the platform supports ELRC format " +
+                    "ELRC writes <mm:ss.xx> word tags into .lrc files, TTML writes timed spans " +
+                    "for Unison and Apple-style players. Before publishing your lyrics, " +
+                    "verify that the target platform supports the chosen format " +
                     "and check the sync quality."
                 )
             },
@@ -449,7 +505,7 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showElrcBetaWarning = false
-                        settingsRepository.toggleEnhancedLrc()
+                        settingsRepository.setRichsyncMode(pendingRichsyncMode)
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -457,7 +513,10 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showElrcBetaWarning = false }) {
+                TextButton(onClick = {
+                    showElrcBetaWarning = false
+                    richsyncResetTick++
+                }) {
                     Text("Cancel")
                 }
             }

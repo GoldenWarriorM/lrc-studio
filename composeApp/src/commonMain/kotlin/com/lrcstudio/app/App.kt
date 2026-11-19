@@ -213,6 +213,7 @@ fun App(audioPlayer: AudioPlayer) {
                                     landscapeOverlay = settings.landscapeOverlay,
                                     disableFullscreen = settings.disableFullscreen,
                                     isEnhancedLrcEnabled = settings.isEnhancedLrcEnabled,
+                                    richsyncFormat = settings.richsyncFormat,
                                     skipStandalonePunctuation = settings.skipStandalonePunctuation
                                 )
                             }

@@ -35,7 +35,9 @@ data class AppSettings(
     val landscapeOverlay: Boolean = false,
     val disableFullscreen: Boolean = false,
     val isEnhancedLrcEnabled: Boolean = false,
-    val skipStandalonePunctuation: Boolean = true
+    val skipStandalonePunctuation: Boolean = true,
+    /** Export format while word-level sync is on: "elrc" or "ttml". */
+    val richsyncFormat: String = "elrc"
 )
 
 class SettingsRepository(private val storageDir: String) {
@@ -202,9 +204,19 @@ class SettingsRepository(private val storageDir: String) {
         saveToDisk()
     }
 
-    fun toggleEnhancedLrc() {
+    /**
+     * Word-level sync has three states: "off", "elrc" and "ttml".
+     * [AppSettings.isEnhancedLrcEnabled] stays the single on/off flag while
+     * [AppSettings.richsyncFormat] picks the export format.
+     */
+    fun setRichsyncMode(mode: String) {
+        val normalized = when (mode) {
+            "elrc", "ttml" -> mode
+            else -> "off"
+        }
         _settings.value = _settings.value.copy(
-            isEnhancedLrcEnabled = !_settings.value.isEnhancedLrcEnabled
+            isEnhancedLrcEnabled = normalized != "off",
+            richsyncFormat = if (normalized == "off") _settings.value.richsyncFormat else normalized
         )
         saveToDisk()
     }
