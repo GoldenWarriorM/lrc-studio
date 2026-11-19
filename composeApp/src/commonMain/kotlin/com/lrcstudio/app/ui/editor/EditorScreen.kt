@@ -1564,6 +1564,24 @@ fun EditorScreen(
         val clipboardManager = LocalClipboardManager.current
         val isEnhanced = isEnhancedLrcEnabled && state.wordSyncMode
         val isTtmlExport = isEnhanced && richsyncFormat == "ttml"
+        fun buildLrcText(
+            title: String,
+            artist: String,
+            album: String,
+            composer: String,
+            creator: String
+        ): String {
+            val lyricsForExport = if (isEnhanced) state.lyrics
+            else state.lyrics.map { it.copy(words = emptyList()) }
+            return LrcParser.generate(
+                lyrics = lyricsForExport,
+                title = title,
+                artist = artist,
+                album = album,
+                composer = composer,
+                creator = creator
+            )
+        }
         SaveLrcDialog(
             isEnhanced = isEnhanced,
             isTtml = isTtmlExport,
@@ -1578,16 +1596,7 @@ fun EditorScreen(
                     if (isTtmlExport) {
                         saveTtmlFile(buildTtml(composer))
                     } else {
-                        val lyricsForExport = if (isEnhanced) state.lyrics
-                            else state.lyrics.map { it.copy(words = emptyList()) }
-                        val lrc = LrcParser.generate(
-                            lyrics = lyricsForExport,
-                            title = title,
-                            artist = artist,
-                            album = album,
-                            composer = composer,
-                            creator = creator
-                        )
+                        val lrc = buildLrcText(title, artist, album, composer, creator)
                         val fileName = "${title.ifBlank { state.song?.title ?: "lyrics" }}.lrc"
                         if (lrcSaveDirectory != null && checkFileExists(fileName)) {
                             pendingOverwriteContent = lrc
@@ -1606,6 +1615,13 @@ fun EditorScreen(
                         else state.lyrics.map { it.copy(words = emptyList()) }
                     )
                     clipboardManager.setText(AnnotatedString(plain))
+                }
+            },
+            onCopyLrc = { title, artist, album, composer, creator ->
+                if (state.lyrics.isNotEmpty()) {
+                    clipboardManager.setText(
+                        AnnotatedString(buildLrcText(title, artist, album, composer, creator))
+                    )
                 }
             },
             onSaveTtml = { composer ->
@@ -2280,7 +2296,9 @@ private fun LyricLineCard(
                             .weight(1f)
                             .padding(vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        // Spacing between chips is applied per chip so that the
+                        // syllables of one word can sit flush against each other.
+                        horizontalArrangement = Arrangement.Start
                     ) {
                         val punctRegex = remember { Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+") }
                         line.words.forEachIndexed { wi, word ->
@@ -2384,11 +2402,29 @@ private fun LyricLineCard(
                                 }
                             }
                             val karaokeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                            // A split word keeps reading as one word: its pieces touch
+                            // each other and only the corner facing a real word gap
+                            // stays rounded.
+                            val joinsPrevious = word.joinsPrevious
+                            val joinsNext = line.words.getOrNull(wi + 1)?.joinsPrevious == true
+                            val seamTimed = joinsPrevious && word.startTime > 0L &&
+                                (line.words.getOrNull(wi - 1)?.startTime ?: 0L) > 0L
+                            val startRadius = if (joinsPrevious) 0.dp else 6.dp
+                            val endRadius = if (joinsNext) 0.dp else 6.dp
+                            val chipShape = RoundedCornerShape(
+                                topStart = startRadius,
+                                topEnd = endRadius,
+                                bottomEnd = endRadius,
+                                bottomStart = startRadius
+                            )
 
                             Box(
                                 modifier = Modifier
-                                    .padding(end = 4.dp, bottom = 2.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .padding(
+                                        end = if (joinsNext) 0.dp else 8.dp,
+                                        bottom = 2.dp
+                                    )
+                                    .clip(chipShape)
                                     .background(wordBg)
                                     .drawBehind {
                                         val displayAlpha = fillAlpha.value.coerceAtLeast(0f)
@@ -2417,7 +2453,7 @@ private fun LyricLineCard(
                                     .border(
                                         width = if (isWordCursor && !isPunct) 1.5.dp else 0.dp,
                                         color = wordBorder,
-                                        shape = RoundedCornerShape(6.dp)
+                                        shape = chipShape
                                     )
                                     .then(
                                         if (!isPunct) Modifier.pointerInput(wi) {
@@ -2427,11 +2463,20 @@ private fun LyricLineCard(
                                             )
                                         } else Modifier
                                     )
-                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                                    .padding(
+                                        start = if (joinsPrevious) 1.dp else 2.dp,
+                                        end = if (joinsNext) 1.dp else 2.dp,
+                                        top = 2.dp,
+                                        bottom = 2.dp
+                                    )
                             ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.height(IntrinsicSize.Min)
+                                ) {
+                                if (joinsPrevious) SyllableSeam(timed = seamTimed)
                                 Text(
                                     text = word.text,
-                                    modifier = Modifier.padding(horizontal = 2.dp),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontStyle = if (word.role != VocalRole.MAIN) {
                                             androidx.compose.ui.text.font.FontStyle.Italic
@@ -2441,6 +2486,7 @@ private fun LyricLineCard(
                                     ),
                                     color = wordTextColor
                                 )
+                                }
                             }
                         }
                     }
@@ -2756,6 +2802,7 @@ private fun SaveLrcDialog(
     initialCreator: String,
     onConfirm: (title: String, artist: String, album: String, composer: String, creator: String) -> Unit,
     onCopyPlain: () -> Unit,
+    onCopyLrc: (title: String, artist: String, album: String, composer: String, creator: String) -> Unit,
     onSaveTtml: (composer: String) -> Unit,
     onCopyTtml: (composer: String) -> Unit,
     onDismiss: () -> Unit
@@ -2826,15 +2873,17 @@ private fun SaveLrcDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TextButton(onClick = { onCopyTtml(composer.trim()) }) {
-                        Text("Copy TTML")
-                    }
-                    TextButton(onClick = { onSaveTtml(composer.trim()) }) {
-                        Text("Save TTML")
+                if (isTtml) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(onClick = { onCopyTtml(composer.trim()) }) {
+                            Text("Copy TTML")
+                        }
+                        TextButton(onClick = { onSaveTtml(composer.trim()) }) {
+                            Text("Save TTML")
+                        }
                     }
                 }
             }
@@ -2843,6 +2892,21 @@ private fun SaveLrcDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onCopyPlain) {
                     Text("Copy plain LRC")
+                }
+                if (isEnhanced && !isTtml) {
+                    TextButton(
+                        onClick = {
+                            onCopyLrc(
+                                title.trim(),
+                                artist.trim(),
+                                album.trim(),
+                                composer.trim(),
+                                creator.trim()
+                            )
+                        }
+                    ) {
+                        Text("Copy ELRC")
+                    }
                 }
                 Button(
                     onClick = { onConfirm(title.trim(), artist.trim(), album.trim(), composer.trim(), creator.trim()) },
@@ -2858,6 +2922,38 @@ private fun SaveLrcDialog(
             }
         }
     )
+}
+
+/**
+ * Marks the seam between two syllable pieces of the same word.
+ *
+ * A timed seam gets a thin square-ended rule (no rounding, so it does not read
+ * as a separate word), an untimed one a small low-contrast dot.
+ */
+@Composable
+private fun SyllableSeam(timed: Boolean) {
+    val color = MaterialTheme.colorScheme.outline
+    // A fixed slot keeps every seam the same width, so syllables of one word
+    // stay evenly spaced no matter which mark they get.
+    Box(
+        modifier = Modifier.width(if (timed) 3.dp else 2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (timed) {
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(14.dp)
+                    .background(color.copy(alpha = 0.65f), RoundedCornerShape(0.dp))
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(2.dp)
+                    .background(color.copy(alpha = 0.55f), CircleShape)
+            )
+        }
+    }
 }
 
 @Composable

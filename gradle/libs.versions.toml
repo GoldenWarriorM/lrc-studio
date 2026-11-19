@@ -7,6 +7,7 @@ media3 = "1.4.1"
 coroutines = "1.8.1"
 activity-compose = "1.9.3"
 serialization-json = "1.7.3"
+fop = "2.11"
 
 [libraries]
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
@@ -17,6 +18,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization-json" }
+fop = { module = "org.apache.xmlgraphics:fop-core", version.ref = "fop" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -15,9 +15,30 @@ kotlin {
         }
     }
 
-    jvm()
+    jvm {
+        // Pin the desktop bytecode level so the build does not depend on the
+        // JDK that happens to run Gradle (the app must start on Java 17+).
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     sourceSets {
+        // Android and the desktop app both run on the JVM, so the syllable
+        // hyphenation engine is compiled once for the two of them.
+        val jvmSharedMain by creating {
+            dependsOn(commonMain.get())
+        }
+        getByName("androidMain").dependsOn(jvmSharedMain)
+        getByName("jvmMain").dependsOn(jvmSharedMain)
+
+        jvmSharedMain.dependencies {
+            // Only the hyphenation engine is used, so skip FOP's rendering stack.
+            implementation("org.apache.xmlgraphics:fop-core:${libs.versions.fop.get()}") {
+                isTransitive = false
+            }
+        }
+
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -52,6 +73,10 @@ kotlin {
 android {
     namespace = "com.lrcstudio.app"
     compileSdk = 35
+
+    // TeX hyphenation patterns live in the shared JVM source set; package them
+    // with the APK as classpath resources.
+    sourceSets.getByName("main").resources.srcDir("src/jvmSharedMain/resources")
 
     defaultConfig {
         applicationId = "com.lrcstudio.app"
