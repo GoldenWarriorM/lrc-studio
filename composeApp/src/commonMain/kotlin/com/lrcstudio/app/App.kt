@@ -214,7 +214,8 @@ fun App(audioPlayer: AudioPlayer) {
                                     disableFullscreen = settings.disableFullscreen,
                                     isEnhancedLrcEnabled = settings.isEnhancedLrcEnabled,
                                     richsyncFormat = settings.richsyncFormat,
-                                    skipStandalonePunctuation = settings.skipStandalonePunctuation
+                                    skipStandalonePunctuation = settings.skipStandalonePunctuation,
+                                    romanizationDir = storageDir
                                 )
                             }
                         }

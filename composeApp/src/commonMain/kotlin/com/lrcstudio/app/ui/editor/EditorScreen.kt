@@ -79,6 +79,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.model.VocalRole
+import com.lrcstudio.app.domain.usecase.RomanizationPack
+import com.lrcstudio.app.domain.usecase.romanizeLyricWords
 import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.data.parser.RichsyncValidator
 import com.lrcstudio.app.data.parser.TtmlGenerator
@@ -119,7 +121,8 @@ fun EditorScreen(
     disableFullscreen: Boolean = false,
     isEnhancedLrcEnabled: Boolean = false,
     richsyncFormat: String = "elrc",
-    skipStandalonePunctuation: Boolean = true
+    skipStandalonePunctuation: Boolean = true,
+    romanizationDir: String = ""
 ) {
     val state by viewModel.state.collectAsState()
     val playerState by viewModel.audioPlayer.state.collectAsState()
@@ -143,6 +146,32 @@ fun EditorScreen(
     var pendingOverwriteContent by remember { mutableStateOf<String?>(null) }
     var pendingOverwriteFileName by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Romanization only changes what the cards render: words, timings and every
+    // export keep the original characters.
+    var romanizeLyrics by remember { mutableStateOf(false) }
+    var romanizedLines by remember { mutableStateOf<List<List<String>?>>(emptyList()) }
+    var romanizationPacks by remember { mutableStateOf<List<RomanizationPack>>(emptyList()) }
+    var romanizationBusy by remember { mutableStateOf(false) }
+    var showRomanizationDownload by remember { mutableStateOf(false) }
+    val romanizationWords = remember(state.lyrics) {
+        state.lyrics.map { line ->
+            if (line.words.isEmpty()) listOf(line.text) else line.words.map { it.text }
+        }
+    }
+    LaunchedEffect(romanizeLyrics, romanizationWords, romanizationDir) {
+        if (!romanizeLyrics || romanizationDir.isBlank()) {
+            romanizedLines = emptyList()
+            return@LaunchedEffect
+        }
+        romanizationBusy = true
+        val outcome = romanizeLyricWords(romanizationDir, romanizationWords, downloadPacks = false)
+        romanizationBusy = false
+        romanizedLines = outcome.lines
+        romanizationPacks = outcome.pendingPacks
+        showRomanizationDownload = outcome.pendingPacks.isNotEmpty()
+        outcome.error?.let { snackbarHostState.showSnackbar(it) }
+    }
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
     val timeScale by animateFloatAsState(
@@ -331,6 +360,7 @@ fun EditorScreen(
                                             showDebugBorders = showDebugBorders,
                                             showVibrationToast = showVibrationToast,
                                             wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                            romanizedWords = romanizedLines.getOrNull(item.index),
                                             wordCursorIndex = if (item.index == state.selectedLineIndex) state.wordCursorIndex else -1,
                                             currentWordIndex = if (item.index == state.currentLineIndex) state.currentWordIndex else -1,
                                             isPlaying = playerState.state == PlaybackState.PLAYING,
@@ -1051,6 +1081,47 @@ fun EditorScreen(
                             }
 
                             if (!isPreviewMode) {
+                                val romanizeActive = romanizeLyrics
+                                FilledTonalIconButton(
+                                    onClick = {
+                                        romanizeLyrics = !romanizeLyrics
+                                        showRomanizationDownload = false
+                                        if (!romanizeLyrics) romanizationPacks = emptyList()
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = if (romanizeActive)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        contentColor = if (romanizeActive)
+                                            MaterialTheme.colorScheme.onPrimary
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    if (romanizationBusy) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = if (romanizeActive)
+                                                MaterialTheme.colorScheme.onPrimary
+                                            else
+                                                MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Translate,
+                                            contentDescription = if (romanizeActive)
+                                                "Show original lyrics"
+                                            else
+                                                "Romanize lyrics"
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (!isPreviewMode) {
                                 FilledTonalIconButton(
                                     onClick = { showShiftDialog = true },
                                     shape = RoundedCornerShape(12.dp),
@@ -1140,6 +1211,7 @@ fun EditorScreen(
                                         showDebugBorders = showDebugBorders,
                                         showVibrationToast = showVibrationToast,
                                         wordSyncMode = isEnhancedLrcEnabled && state.wordSyncMode && item.lrcLine.words.isNotEmpty(),
+                                        romanizedWords = romanizedLines.getOrNull(item.index),
                                         wordCursorIndex = if (item.index == state.selectedLineIndex) state.wordCursorIndex else -1,
                                         currentWordIndex = if (item.index == state.currentLineIndex) state.currentWordIndex else -1,
                                         isPlaying = playerState.state == PlaybackState.PLAYING,
@@ -1436,6 +1508,38 @@ fun EditorScreen(
             }
         }
     }
+    }
+
+    if (showRomanizationDownload) {
+        AlertDialog(
+            onDismissRequest = { showRomanizationDownload = false },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Romanize lyrics") },
+            text = {
+                Text(
+                    "Reading the characters as romaji needs the " +
+                        romanizationPacks.joinToString(" and ") {
+                            "${it.label.lowercase()} (${formatPackSize(it.sizeBytes)})"
+                        } +
+                        ". Download once? The lyrics keep their original characters in the file."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showRomanizationDownload = false
+                    scope.launch {
+                        romanizationBusy = true
+                        val outcome = romanizeLyricWords(romanizationDir, romanizationWords, downloadPacks = true)
+                        romanizationBusy = false
+                        romanizedLines = outcome.lines
+                        outcome.error?.let { snackbarHostState.showSnackbar(it) }
+                    }
+                }) { Text("Download") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRomanizationDownload = false }) { Text("Not now") }
+            }
+        )
     }
 
     if (showSyllableConfirm) {
@@ -1885,6 +1989,7 @@ private fun LyricLineCard(
     showDebugBorders: Boolean = false,
     showVibrationToast: Boolean = false,
     wordSyncMode: Boolean = false,
+    romanizedWords: List<String>? = null,
     wordCursorIndex: Int = -1,
     currentWordIndex: Int = -1,
     isPlaying: Boolean = false,
@@ -2483,7 +2588,7 @@ private fun LyricLineCard(
                                 ) {
                                 if (joinsPrevious) SyllableSeam(timed = seamTimed)
                                 Text(
-                                    text = word.text,
+                                    text = romanizedWords?.getOrNull(wi)?.ifBlank { null } ?: word.text,
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontStyle = if (word.role != VocalRole.MAIN) {
                                             androidx.compose.ui.text.font.FontStyle.Italic
@@ -2518,7 +2623,10 @@ private fun LyricLineCard(
                     }
                 } else {
                     Text(
-                        text = line.text.ifEmpty { "..." },
+                        text = romanizedWords
+                            ?.joinToString(" ") { it.trim() }
+                            ?.ifBlank { null }
+                            ?: line.text.ifEmpty { "..." },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (line.text.isEmpty())
                             MaterialTheme.colorScheme.outline
@@ -2617,6 +2725,10 @@ private fun LyricLineCard(
         )
     }
 }
+
+private fun formatPackSize(bytes: Long): String =
+    if (bytes >= 1024L * 1024L) "${(bytes + 512L * 1024L) / (1024L * 1024L)} MB"
+    else "${(bytes + 512L) / 1024L} KB"
 
 private fun parseTimestampMs(input: String): Long? {
     val regex = Regex("""(\d+):(\d{2}):(\d{2})""")
@@ -2798,6 +2910,7 @@ private fun AddLineDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SaveLrcDialog(
     isEnhanced: Boolean,
@@ -2880,47 +2993,49 @@ private fun SaveLrcDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-                if (isTtml) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                // Copy actions live in the body: three buttons in the
+                // dialog's confirm slot squeezed "Save" into a clipped pill on
+                // narrow screens.
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (isTtml) {
                         TextButton(onClick = { onCopyTtml(composer.trim()) }) {
                             Text("Copy TTML")
                         }
                         TextButton(onClick = { onSaveTtml(composer.trim()) }) {
                             Text("Save TTML")
                         }
+                    } else {
+                        TextButton(onClick = onCopyPlain) {
+                            Text("Copy plain LRC")
+                        }
+                        if (isEnhanced) {
+                            TextButton(
+                                onClick = {
+                                    onCopyLrc(
+                                        title.trim(),
+                                        artist.trim(),
+                                        album.trim(),
+                                        composer.trim(),
+                                        creator.trim()
+                                    )
+                                }
+                            ) {
+                                Text("Copy ELRC")
+                            }
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onCopyPlain) {
-                    Text("Copy plain LRC")
-                }
-                if (isEnhanced && !isTtml) {
-                    TextButton(
-                        onClick = {
-                            onCopyLrc(
-                                title.trim(),
-                                artist.trim(),
-                                album.trim(),
-                                composer.trim(),
-                                creator.trim()
-                            )
-                        }
-                    ) {
-                        Text("Copy ELRC")
-                    }
-                }
-                Button(
-                    onClick = { onConfirm(title.trim(), artist.trim(), album.trim(), composer.trim(), creator.trim()) },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Save")
-                }
+            Button(
+                onClick = { onConfirm(title.trim(), artist.trim(), album.trim(), composer.trim(), creator.trim()) },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Save")
             }
         },
         dismissButton = {
