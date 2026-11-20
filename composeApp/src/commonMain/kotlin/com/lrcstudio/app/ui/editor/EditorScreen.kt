@@ -2135,6 +2135,10 @@ private fun LyricLineCard(
     // right edge while the marker stays in place. Background vocals are quieter:
     // smaller, grey text.
     val isSecondVoice = line.agent == 2
+    // A captured line end turns the right edge of the last chip into a closing
+    // bracket, so the line still reads as one block instead of gaining a marker.
+    val lineHasEnd = line.words.any { it.endTime > 0L }
+    val endBracketColor = MaterialTheme.colorScheme.primary
     val lineTextStyle = if (line.isBackground) {
         MaterialTheme.typography.bodySmall
     } else {
@@ -2582,6 +2586,7 @@ private fun LyricLineCard(
                             // stays rounded.
                             val joinsPrevious = word.joinsPrevious
                             val joinsNext = line.words.getOrNull(wi + 1)?.joinsPrevious == true
+                            val closesLine = lineHasEnd && wi == line.words.lastIndex
                             val seamTimed = joinsPrevious && word.startTime > 0L &&
                                 (line.words.getOrNull(wi - 1)?.startTime ?: 0L) > 0L
                             val startRadius = if (joinsPrevious) 0.dp else 6.dp
@@ -2624,6 +2629,30 @@ private fun LyricLineCard(
                                                 )
                                             }
                                         }
+                                        if (closesLine) {
+                                            val stroke = 2.dp.toPx()
+                                            val tick = 4.dp.toPx()
+                                            val inset = 3.dp.toPx()
+                                            val x = size.width - stroke / 2f
+                                            drawLine(
+                                                color = endBracketColor,
+                                                start = Offset(x, inset),
+                                                end = Offset(x, size.height - inset),
+                                                strokeWidth = stroke
+                                            )
+                                            drawLine(
+                                                color = endBracketColor,
+                                                start = Offset(x - tick, inset + stroke / 2f),
+                                                end = Offset(x, inset + stroke / 2f),
+                                                strokeWidth = stroke
+                                            )
+                                            drawLine(
+                                                color = endBracketColor,
+                                                start = Offset(x - tick, size.height - inset - stroke / 2f),
+                                                end = Offset(x, size.height - inset - stroke / 2f),
+                                                strokeWidth = stroke
+                                            )
+                                        }
                                     }
                                     .border(
                                         width = if (isWordCursor && !isPunct) 1.5.dp else 0.dp,
@@ -2664,35 +2693,6 @@ private fun LyricLineCard(
                                 }
                             }
                             }
-                            }
-                        }
-
-                        // A trailing empty tag closes the line; show it so a line
-                        // whose end was already captured is recognisable.
-                        val lineEnd = line.words.lastOrNull { it.endTime > 0L }?.endTime ?: 0L
-                        if (lineEnd > 0L) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .padding(start = 2.dp, top = 4.dp, bottom = 6.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(2.dp)
-                                        .height(12.dp)
-                                        .background(MaterialTheme.colorScheme.primary)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = com.lrcstudio.app.data.model.LrcLine
-                                        .formatLrcTimestamp(lineEnd),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
                             }
                         }
                     }
