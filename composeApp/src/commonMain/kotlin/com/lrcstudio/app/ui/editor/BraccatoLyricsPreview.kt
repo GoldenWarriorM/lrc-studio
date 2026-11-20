@@ -1,10 +1,11 @@
 package com.lrcstudio.app.ui.editor
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,19 +20,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
@@ -231,7 +230,13 @@ fun BraccatoLyricsPreview(
     }
 }
 
-/** The active line lights its words as they are sung. */
+/**
+ * The active line lights its words as they are sung. The sweep, glow and wobble
+ * follow Metrolist's Braccato renderer (words/Braccato.kt): the fill crosses a
+ * word with a soft leading edge, the singing word lifts and swells through a
+ * sine wave, and a glow follows it.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ActiveLyricLine(
     line: LrcLine,
@@ -254,10 +259,22 @@ private fun ActiveLyricLine(
         )
         return
     }
-    val waiting = textColor.copy(alpha = 0.32f)
-    // Everything before the word being sung is lit, that word fills smoothly, the rest waits.
+    if (line.words.isEmpty()) {
+        Text(
+            text = line.text,
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = fontSize),
+            fontWeight = FontWeight.Bold,
+            color = textColor,
+            textAlign = TextAlign.Center,
+            modifier = modifier.padding(vertical = 4.dp)
+        )
+        return
+    }
+
+    val dim = textColor.copy(alpha = 0.32f)
+    // The word currently being sung, and how far through it the audio is.
     val singingIndex = line.words.indexOfLast { it.startTime > 0L && currentPositionMs >= it.startTime }
-    val wordProgress = if (singingIndex >= 0) {
+    val singingProgress = if (singingIndex >= 0) {
         val word = line.words[singingIndex]
         val end = line.words.getOrNull(singingIndex + 1)
             ?.takeIf { it.startTime > word.startTime }?.startTime
@@ -268,56 +285,66 @@ private fun ActiveLyricLine(
     } else {
         0f
     }
-    // Smoothstep, so a word lights up gently instead of jumping from dim to lit.
-    val easedProgress = wordProgress * wordProgress * (3f - 2f * wordProgress)
-    val highlighted = buildAnnotatedString {
+    val fontSizePx = with(LocalDensity.current) { fontSize.toPx() }
+
+    FlowRow(
+        modifier = modifier.padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
         line.words.forEachIndexed { index, word ->
-            if (index > 0 && !word.joinsPrevious) append(' ')
             val wordText = romanizedWords?.getOrNull(index)?.ifBlank { null } ?: word.text
-            val style = when {
-                index == singingIndex -> SpanStyle(color = lerp(waiting, accent, easedProgress))
-                index < singingIndex -> SpanStyle(color = textColor)
-                word.startTime > 0L -> SpanStyle(color = waiting)
-                else -> SpanStyle(color = textColor.copy(alpha = 0.55f))
+            val trailing = if (index < line.words.lastIndex && !line.words[index + 1].joinsPrevious) " " else ""
+            val progress = when {
+                index < singingIndex -> 1f
+                index == singingIndex -> singingProgress
+                word.startTime == 0L -> if (index < singingIndex) 1f else 0f
+                else -> 0f
             }
-            withStyle(style) { append(wordText) }
-        }
-    }
-    // Each new word gives the line a small spring pulse, as Metrolist does.
-    val pulse = remember { Animatable(1f) }
-    LaunchedEffect(singingIndex) {
-        if (singingIndex >= 0) {
-            pulse.snapTo(1.045f)
-            pulse.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 420f))
-        }
-    }
-    val glowAlpha = if (singingIndex >= 0) 0.10f + 0.14f * easedProgress else 0f
-    val hasWords = line.words.isNotEmpty()
-    Text(
-        text = if (hasWords) highlighted else AnnotatedString(displayText(line, romanizedWords)),
-        style = MaterialTheme.typography.headlineMedium.copy(fontSize = fontSize),
-        fontWeight = FontWeight.Bold,
-        color = if (hasWords) Color.Unspecified else textColor,
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = pulse.value
-                scaleY = pulse.value
-            }
-            .drawBehind {
-                if (glowAlpha > 0.01f) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(accent.copy(alpha = glowAlpha), Color.Transparent),
-                            center = Offset(size.width / 2f, size.height / 2f),
-                            radius = size.width * 0.65f
-                        ),
-                        radius = size.width * 0.65f,
-                        center = Offset(size.width / 2f, size.height / 2f)
-                    )
+            // The wave peaks in the middle of the word, so it lifts and settles.
+            val wave = if (index == singingIndex) kotlin.math.sin(Math.PI * progress).toFloat().coerceIn(0f, 1f) else 0f
+            Text(
+                text = wordText + trailing,
+                style = TextStyle(
+                    brush = swipeBrush(progress, accent, dim),
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.Bold,
+                    shadow = if (wave > 0.01f) {
+                        Shadow(
+                            color = accent.copy(alpha = 0.35f * wave),
+                            offset = Offset.Zero,
+                            blurRadius = fontSizePx * 0.8f
+                        )
+                    } else {
+                        null
+                    }
+                ),
+                modifier = Modifier.graphicsLayer {
+                    translationY = -fontSizePx * 0.0375f * wave
+                    scaleX = 1f + 0.025f * wave
+                    scaleY = 1f + 0.06f * wave
                 }
-            }
-            .padding(vertical = 4.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Braccato's fill: solid accent up to the progress point, then a soft edge into
+ * the waiting colour, so the light crosses the word instead of switching on.
+ */
+private fun swipeBrush(progress: Float, accent: Color, dim: Color): Brush {
+    val p = progress.coerceIn(0f, 1f)
+    if (p >= 1f) return SolidColor(accent)
+    if (p <= 0f) return SolidColor(dim)
+    val edge = 0.12f
+    val start = (p - edge).coerceIn(0.001f, 0.998f)
+    val end = (p + edge).coerceIn(start + 0.001f, 0.999f)
+    return Brush.horizontalGradient(
+        0f to accent,
+        start to accent,
+        end to dim,
+        1f to dim
     )
 }
 
