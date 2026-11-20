@@ -35,6 +35,8 @@ data class AppSettings(
     val landscapeOverlay: Boolean = false,
     val disableFullscreen: Boolean = false,
     val isEnhancedLrcEnabled: Boolean = false,
+    /** Beta: replaces the editor preview with the Braccato-style renderer. */
+    val braccatoPreview: Boolean = false,
     val skipStandalonePunctuation: Boolean = true,
     /** Export format while word-level sync is on: "elrc" or "ttml". */
     val richsyncFormat: String = "elrc"
@@ -217,6 +219,13 @@ class SettingsRepository(private val storageDir: String) {
         _settings.value = _settings.value.copy(
             isEnhancedLrcEnabled = normalized != "off",
             richsyncFormat = if (normalized == "off") _settings.value.richsyncFormat else normalized
+        )
+        saveToDisk()
+    }
+
+    fun toggleBraccatoPreview() {
+        _settings.value = _settings.value.copy(
+            braccatoPreview = !_settings.value.braccatoPreview
         )
         saveToDisk()
     }

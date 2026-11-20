@@ -95,6 +95,19 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection("Preview (beta)") {
+                SettingsRow(
+                    title = "Braccato lyrics preview",
+                    subtitle = "Replace the editor preview with the modern word-by-word renderer",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.braccatoPreview,
+                            onCheckedChange = { settingsRepository.toggleBraccatoPreview() }
+                        )
+                    }
+                )
+            }
+
             SettingsSection("Swipe") {
                 var activationSlider by remember(settings.swipeActivationThresholdDp) {
                     mutableFloatStateOf(settings.swipeActivationThresholdDp.toFloat())

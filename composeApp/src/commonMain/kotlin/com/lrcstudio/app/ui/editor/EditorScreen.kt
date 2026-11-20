@@ -122,6 +122,7 @@ fun EditorScreen(
     landscapeOverlay: Boolean = false,
     disableFullscreen: Boolean = false,
     isEnhancedLrcEnabled: Boolean = false,
+    braccatoPreview: Boolean = false,
     richsyncFormat: String = "elrc",
     skipStandalonePunctuation: Boolean = true,
     romanizationDir: String = ""
@@ -178,6 +179,23 @@ fun EditorScreen(
         showRomanizationDownload = outcome.pendingPacks.isNotEmpty()
         outcome.error?.let { snackbarHostState.showSnackbar(it) }
     }
+
+    // The beta preview replaces the editable card list entirely while the eye
+    // button is on, so it can use the whole screen for its own layout.
+    if (braccatoPreview && isPreviewMode) {
+        BraccatoLyricsPreview(
+            title = state.song?.title ?: "",
+            lyrics = state.lyrics,
+            currentLineIndex = state.currentLineIndex,
+            currentPositionMs = playerState.currentPosition,
+            isPlaying = playerState.state == PlaybackState.PLAYING,
+            romanizedLines = romanizedLines,
+            onPlayPause = { viewModel.playPause() },
+            onClose = { isPreviewMode = false }
+        )
+        return
+    }
+
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
     val timeScale by animateFloatAsState(
