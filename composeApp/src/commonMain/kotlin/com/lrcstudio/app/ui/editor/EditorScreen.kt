@@ -13,6 +13,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -652,6 +653,35 @@ fun EditorScreen(
                                 }
                             }
                         }
+                        if (isEnhancedLrcEnabled && state.wordSyncMode) {
+                            val richsyncLine = state.lyrics.getOrNull(state.selectedLineIndex)
+                            RichsyncToolsRow(
+                                agent = richsyncLine?.agent ?: 0,
+                                isBackground = richsyncLine?.isBackground == true,
+                                issueCount = RichsyncValidator.validate(state.lyrics).size,
+                                hasSyllables = state.lyrics.any { line ->
+                                    line.words.any { it.joinsPrevious }
+                                },
+                                onMergeSyllables = { viewModel.mergeSyllables() },
+                                onSplitSyllables = {
+                                    if (state.lyrics.any { line -> line.words.any { it.startTime > 0L } }) {
+                                        showSyllableConfirm = true
+                                    } else {
+                                        viewModel.splitAllWordsIntoSyllables()
+                                    }
+                                },
+                                onAgentChange = { viewModel.setLineAgent(state.selectedLineIndex, it) },
+                                onBackgroundToggle = {
+                                    viewModel.setLineBackground(
+                                        state.selectedLineIndex,
+                                        richsyncLine?.isBackground != true
+                                    )
+                                },
+                                onShowIssues = { showRichsyncIssues = true },
+                                onHint = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
                     }
                 }
 
@@ -669,6 +699,23 @@ fun EditorScreen(
                             val undoLeft = maxWidth - undoW - 8.dp
                             val shift = if (showUndoRedo && landscapeInverted && rightEdge > undoLeft)
                                 rightEdge - undoLeft else 0.dp
+                            val captureLine = state.lyrics.getOrNull(state.selectedLineIndex)
+                            val firstWordIndex = captureLine?.words
+                                ?.indexOfFirst { word -> word.text.any { it.isLetterOrDigit() } } ?: -1
+                            val atLineStart = state.wordSyncMode &&
+                                firstWordIndex >= 0 &&
+                                state.wordCursorIndex == firstWordIndex
+                            val showEnd = atLineStart && state.selectedLineIndex > 0
+                            val canEnd = showEnd && state.lyrics.take(state.selectedLineIndex)
+                                .any { l -> l.words.any { it.startTime > 0L } }
+                            val endAlpha by animateFloatAsState(
+                                targetValue = if (showEnd) 1f else 0f,
+                                animationSpec = spring(
+                                    dampingRatio = 0.55f,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                label = "endButton"
+                            )
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.Center)
@@ -710,6 +757,38 @@ fun EditorScreen(
                                         text = "Time",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+                            }
+
+                            // The left side holds undo/redo here, so End sits right
+                            // of Time and closes the previous line at a new start.
+                            if (endAlpha > 0.01f) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .graphicsLayer {
+                                            translationX = 134.dp.toPx() - shift.toPx()
+                                            alpha = endAlpha
+                                            val grow = 0.86f + 0.14f * endAlpha
+                                            scaleX = grow
+                                            scaleY = grow
+                                        }
+                                        .width(92.dp)
+                                        .height(48.dp)
+                                        .clip(RoundedCornerShape(24.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                        .clickable(enabled = canEnd) {
+                                            viewModel.endPreviousWordAtPosition()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "End",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                                            alpha = if (canEnd) 1f else 0.45f
+                                        )
                                     )
                                 }
                             }
@@ -1200,7 +1279,8 @@ fun EditorScreen(
                                     richsyncLine?.isBackground != true
                                 )
                             },
-                            onShowIssues = { showRichsyncIssues = true }
+                            onShowIssues = { showRichsyncIssues = true },
+                            onHint = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                         )
                     }
 
@@ -1852,6 +1932,7 @@ private fun RichsyncToolsRow(
     onAgentChange: (Int) -> Unit,
     onBackgroundToggle: () -> Unit,
     onShowIssues: () -> Unit,
+    onHint: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // One horizontally scrollable line instead of wrapped rows: on a phone the
@@ -1876,47 +1957,107 @@ private fun RichsyncToolsRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         for (value in 1..2) {
-            FilterChip(
+            RichsyncChip(
+                label = "v$value",
                 // An unassigned line is the lead voice, i.e. v1.
                 selected = agent == value || (agent == 0 && value == 1),
                 onClick = { onAgentChange(value) },
-                label = { Text("v$value") },
-                shape = RoundedCornerShape(12.dp)
+                onLongPress = {
+                    onHint(
+                        "Agent v$value: ${if (value == 1) "lead" else "second"} voice of the line. " +
+                            "Exported as v$value: in LRC and ttm:agent=\"v$value\" in TTML. " +
+                            "Hold to read, tap to assign."
+                    )
+                }
             )
         }
-        FilterChip(
+        RichsyncChip(
+            label = "BG",
             selected = isBackground,
             onClick = onBackgroundToggle,
-            label = { Text("BG") },
-            shape = RoundedCornerShape(12.dp)
+            onLongPress = {
+                onHint(
+                    "Background vocals: the line is shown quieter and italic, and exported " +
+                        "as a [bg:…] fragment / background agent."
+                )
+            }
         )
-        FilterChip(
+        RichsyncChip(
+            label = "Syllables",
             selected = false,
             onClick = onSplitSyllables,
-            label = { Text("Syllables") },
-            shape = RoundedCornerShape(12.dp)
+            onLongPress = {
+                onHint(
+                    "Splits every word into syllables and spreads the word's timing across " +
+                        "them. Long-pressing a single chip in the lyrics does the same for that word only."
+                )
+            }
         )
-        FilterChip(
+        RichsyncChip(
+            label = "Merge",
             selected = hasSyllables,
             enabled = hasSyllables,
             onClick = onMergeSyllables,
-            label = { Text("Merge") },
-            shape = RoundedCornerShape(12.dp)
+            onLongPress = {
+                onHint(
+                    "Merges syllable pieces back into whole words; the first piece keeps its timing."
+                )
+            }
         )
-        FilterChip(
+        RichsyncChip(
+            label = "Group",
             selected = agent == 1000,
             onClick = { onAgentChange(1000) },
-            label = { Text("Group") },
-            shape = RoundedCornerShape(12.dp)
+            onLongPress = {
+                onHint(
+                    "Group line: agent 1000, for a line several voices sing together."
+                )
+            }
         )
         if (issueCount > 0) {
-            FilterChip(
+            RichsyncChip(
+                label = "$issueCount issue${if (issueCount == 1) "" else "s"}",
                 selected = true,
                 onClick = onShowIssues,
-                label = { Text("$issueCount issue${if (issueCount == 1) "" else "s"}") },
-                shape = RoundedCornerShape(12.dp)
+                onLongPress = {
+                    onHint("Opens the list of richsync problems found in this project.")
+                }
             )
         }
+        }
+    }
+}
+
+/** Filter chip that also answers a long press with a hint. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RichsyncChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    enabled: Boolean = true
+) {
+    val container = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    val content = when {
+        !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        selected -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = container,
+        contentColor = content,
+        border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .height(32.dp)
+            .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongPress)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = label, style = MaterialTheme.typography.labelLarge, color = content)
         }
     }
 }

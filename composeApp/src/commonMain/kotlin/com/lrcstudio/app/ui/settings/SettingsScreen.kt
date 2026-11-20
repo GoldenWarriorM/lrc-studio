@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
@@ -20,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.repository.AppSettings
@@ -34,7 +34,6 @@ import com.lrcstudio.app.ui.picker.rememberDirectoryPickerLauncher
 import com.lrcstudio.app.util.fabBottomPadding
 import com.lrcstudio.app.util.treeUriToDisplayPath
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +46,6 @@ fun SettingsScreen(
     val topBarSurface = LocalSnapSurface.current
     var showElrcBetaWarning by remember { mutableStateOf(false) }
     var pendingRichsyncMode by remember { mutableStateOf("elrc") }
-    var richsyncResetTick by remember { mutableIntStateOf(0) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
@@ -355,64 +353,68 @@ fun SettingsScreen(
                     settings.richsyncFormat == "ttml" -> 2
                     else -> 1
                 }
-                var sliderValue by remember(modeIndex, richsyncResetTick) {
-                    mutableFloatStateOf(modeIndex.toFloat())
+                val modeLabel = when (modeIndex) {
+                    0 -> "Off"
+                    1 -> "ELRC"
+                    else -> "TTML"
                 }
-
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text(
-                        text = "Word-level sync",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "Off: line timestamps only. ELRC: <mm:ss.xx> word tags in .lrc. " +
-                            "TTML: richsync for Unison and Apple-style players.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Slider(
-                        value = sliderValue,
-                        onValueChange = { sliderValue = it },
-                        onValueChangeFinished = {
-                            val target = sliderValue.roundToInt()
-                            if (target != modeIndex) {
-                                val mode = when (target) {
-                                    0 -> "off"
-                                    1 -> "elrc"
-                                    else -> "ttml"
-                                }
-                                if (modeIndex == 0 && target > 0) {
-                                    pendingRichsyncMode = mode
-                                    showElrcBetaWarning = true
-                                } else {
-                                    settingsRepository.setRichsyncMode(mode)
-                                }
+                var modeMenuExpanded by remember { mutableStateOf(false) }
+                SettingsRow(
+                    title = "Word-level sync",
+                    subtitle = "Off: line timestamps only. ELRC: <mm:ss.xx> word tags in .lrc. " +
+                        "TTML: richsync for Unison and Apple-style players.",
+                    trailing = {
+                        Box {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { modeMenuExpanded = true }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = modeLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Choose word-level sync format",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
-                        },
-                        valueRange = 0f..2f,
-                        steps = 1,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = SliderDefaults.colors(
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            thumbColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        listOf("Off", "ELRC", "TTML").forEachIndexed { index, label ->
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelMedium,
-                                textAlign = TextAlign.Center,
-                                color = if (index == sliderValue.roundToInt())
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f)
-                            )
+                            DropdownMenu(
+                                expanded = modeMenuExpanded,
+                                onDismissRequest = { modeMenuExpanded = false }
+                            ) {
+                                listOf("Off" to "off", "ELRC" to "elrc", "TTML" to "ttml")
+                                    .forEachIndexed { index, (label, mode) ->
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            trailingIcon = {
+                                                if (index == modeIndex) {
+                                                    Icon(Icons.Default.Check, contentDescription = null)
+                                                }
+                                            },
+                                            onClick = {
+                                                modeMenuExpanded = false
+                                                if (index != modeIndex) {
+                                                    if (modeIndex == 0) {
+                                                        pendingRichsyncMode = mode
+                                                        showElrcBetaWarning = true
+                                                    } else {
+                                                        settingsRepository.setRichsyncMode(mode)
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                            }
                         }
                     }
-                }
+                )
                 if (settings.isEnhancedLrcEnabled) {
                     SettingsRow(
                         title = "Interpolate punctuation",
@@ -499,10 +501,7 @@ fun SettingsScreen(
 
     if (showElrcBetaWarning) {
         AlertDialog(
-            onDismissRequest = {
-                showElrcBetaWarning = false
-                richsyncResetTick++
-            },
+            onDismissRequest = { showElrcBetaWarning = false },
             shape = RoundedCornerShape(24.dp),
             title = { Text("Richsync (Beta)", style = MaterialTheme.typography.headlineSmall) },
             text = {
@@ -526,10 +525,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showElrcBetaWarning = false
-                    richsyncResetTick++
-                }) {
+                TextButton(onClick = { showElrcBetaWarning = false }) {
                     Text("Cancel")
                 }
             }
