@@ -1983,6 +1983,16 @@ private fun RichsyncToolsRow(
             }
         )
         RichsyncChip(
+            label = "Group",
+            selected = agent == 1000,
+            onClick = { onAgentChange(1000) },
+            onLongPress = {
+                onHint(
+                    "Group line: agent 1000, for a line several voices sing together."
+                )
+            }
+        )
+        RichsyncChip(
             label = "Syllables",
             selected = false,
             onClick = onSplitSyllables,
@@ -2001,16 +2011,6 @@ private fun RichsyncToolsRow(
             onLongPress = {
                 onHint(
                     "Merges syllable pieces back into whole words; the first piece keeps its timing."
-                )
-            }
-        )
-        RichsyncChip(
-            label = "Group",
-            selected = agent == 1000,
-            onClick = { onAgentChange(1000) },
-            onLongPress = {
-                onHint(
-                    "Group line: agent 1000, for a line several voices sing together."
                 )
             }
         )
