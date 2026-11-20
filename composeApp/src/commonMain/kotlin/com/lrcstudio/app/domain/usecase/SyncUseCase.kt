@@ -63,7 +63,10 @@ class SyncUseCase {
         for (i in line.words.indices.reversed()) {
             if (line.words[i].startTime > 0L && positionMs >= line.words[i].startTime) return i
         }
-        for (i in line.words.indices.reversed()) {
+        // Position is still before the first word (the player reports a hair
+        // under the seek target), so the upcoming word is the first one, not the
+        // last word that already passed.
+        for (i in line.words.indices) {
             if (!Punctuation.isStandalone(line.words[i].text)) return i
         }
         return -1

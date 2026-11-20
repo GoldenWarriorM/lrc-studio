@@ -2543,8 +2543,9 @@ private fun LyricLineCard(
                             else hasWordTime && animDuration > 0L
                             val wordProgress = remember { Animatable(0f) }
                             val fillAlpha = remember { Animatable(0f) }
-                            LaunchedEffect(isWordCurrent, word.startTime, isPlaying) {
-                                if (isWordCurrent && canAnimate && isPlaying) {
+                            val wordHasStarted = currentPositionMs >= word.startTime
+                            LaunchedEffect(isWordCurrent, word.startTime, isPlaying, wordHasStarted) {
+                                if (isWordCurrent && canAnimate && isPlaying && wordHasStarted) {
                                     fillAlpha.snapTo(1f)
                                     val elapsed = (currentPositionMs - word.startTime).coerceAtLeast(0L)
                                     val initialProgress = if (animDuration > 0L) (elapsed.toFloat() / animDuration).coerceIn(0f, 1f) else 0f
@@ -2560,7 +2561,7 @@ private fun LyricLineCard(
                                 } else if (!isPlaying) {
                                     fillAlpha.snapTo(0f)
                                     wordProgress.snapTo(0f)
-                                } else if (isWordCurrent && wordProgress.value > 0f && wordProgress.value < 0.99f) {
+                                } else if (isWordCurrent && wordHasStarted && wordProgress.value > 0f && wordProgress.value < 0.99f) {
                                     val remainingMs = (animDuration * (1f - wordProgress.value)).toInt().coerceAtLeast(50)
                                     coroutineScope {
                                         launch {
