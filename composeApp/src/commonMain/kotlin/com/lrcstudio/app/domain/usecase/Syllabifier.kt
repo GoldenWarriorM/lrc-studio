@@ -34,6 +34,7 @@ object Syllabifier {
         if (word.none { isJapaneseKana(it) }) return null
         val pieces = mutableListOf<String>()
         val current = StringBuilder()
+        val punctuation = StringBuilder()
         var inKanaRun = false
 
         fun flush() {
@@ -43,11 +44,29 @@ object Syllabifier {
             }
         }
 
+        fun flushPunctuation() {
+            if (punctuation.isNotEmpty()) {
+                pieces.add(punctuation.toString())
+                punctuation.setLength(0)
+            }
+        }
+
         for (char in word) {
             when {
+                // A mark is a piece of its own: it is not sung, so the word
+                // cursor skips it and it stays glued to the mora before it.
+                Punctuation.isMark(char) -> {
+                    if (inKanaRun) {
+                        flush()
+                        inKanaRun = false
+                    }
+                    punctuation.append(char)
+                }
+
                 !isJapaneseKana(char) -> {
-                    // Kanji, latin or punctuation: end the kana run, then keep
-                    // consecutive non-kana characters together as one unit.
+                    // Kanji or latin: end the kana and punctuation runs, then
+                    // keep consecutive non-kana characters together.
+                    flushPunctuation()
                     if (inKanaRun) {
                         flush()
                         inKanaRun = false
@@ -55,15 +74,20 @@ object Syllabifier {
                     current.append(char)
                 }
 
-                char in moraExtenders -> current.append(char)
+                char in moraExtenders -> {
+                    flushPunctuation()
+                    current.append(char)
+                }
 
                 else -> {
+                    flushPunctuation()
                     flush()
                     current.append(char)
                     inKanaRun = true
                 }
             }
         }
+        flushPunctuation()
         flush()
         return pieces.takeIf { it.size > 1 }
     }

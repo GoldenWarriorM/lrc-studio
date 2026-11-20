@@ -5,6 +5,7 @@ import com.lrcstudio.app.data.model.LrcLine
 import com.lrcstudio.app.data.model.Song
 import com.lrcstudio.app.data.model.WordTimestamp
 import com.lrcstudio.app.data.repository.SongRepository
+import com.lrcstudio.app.domain.usecase.Punctuation
 import com.lrcstudio.app.domain.usecase.SyncUseCase
 import com.lrcstudio.app.ui.player.AudioPlayer
 import com.lrcstudio.app.ui.player.PlaybackState
@@ -509,19 +510,34 @@ class EditorViewModel(
             else -> 0L
         }
         val span = if (end > start) end - start else 0L
+        // Punctuation is not sung, so it stays untimed: the word cursor skips it
+        // and the export leaves it interpolated into the word in front of it.
+        val spokenCount = pieces.count { !Punctuation.isStandalone(it) }
+        var spokenIndex = 0
         return pieces.mapIndexed { index, text ->
-            val pieceStart = when {
-                index == 0 -> start
-                span > 0L -> start + span * index / pieces.size
-                else -> 0L
+            val joinsPrevious = index > 0 || word.joinsPrevious
+            if (Punctuation.isStandalone(text)) {
+                word.copy(
+                    text = text,
+                    startTime = 0L,
+                    endTime = 0L,
+                    joinsPrevious = joinsPrevious
+                )
+            } else {
+                val position = spokenIndex++
+                val pieceStart = when {
+                    position == 0 -> start
+                    span > 0L && spokenCount > 1 -> start + span * position / spokenCount
+                    else -> 0L
+                }
+                val pieceEnd = if (position == spokenCount - 1 && span > 0L) end else 0L
+                word.copy(
+                    text = text,
+                    startTime = pieceStart,
+                    endTime = pieceEnd,
+                    joinsPrevious = joinsPrevious
+                )
             }
-            val pieceEnd = if (index == pieces.lastIndex && span > 0L) end else 0L
-            word.copy(
-                text = text,
-                startTime = pieceStart,
-                endTime = pieceEnd,
-                joinsPrevious = index > 0 || word.joinsPrevious
-            )
         }
     }
 
@@ -684,12 +700,10 @@ class EditorViewModel(
         saveLyrics(newLyrics)
     }
 
-    private val punctRegex = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
-
     private fun skipPunctuationForward(words: List<WordTimestamp>, from: Int): Int {
         var i = from
         while (i < words.size) {
-            if (!punctRegex.matches(words[i].text)) return i
+            if (!Punctuation.isStandalone(words[i].text)) return i
             i++
         }
         return -1
@@ -713,7 +727,7 @@ class EditorViewModel(
 
     fun setWordCursor(lineIndex: Int, wordIndex: Int) {
         val line = _state.value.lyrics.getOrNull(lineIndex) ?: return
-        val idx = if (wordIndex in line.words.indices && !punctRegex.matches(line.words[wordIndex].text))
+        val idx = if (wordIndex in line.words.indices && !Punctuation.isStandalone(line.words[wordIndex].text))
             wordIndex
         else
             skipPunctuationForward(line.words, wordIndex).coerceAtLeast(0)

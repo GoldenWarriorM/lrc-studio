@@ -2,6 +2,8 @@ package com.lrcstudio.app.data.parser
 
 import com.lrcstudio.app.data.model.LrcLine
 import com.lrcstudio.app.data.model.VocalRole
+import com.lrcstudio.app.data.model.WordTimestamp
+import com.lrcstudio.app.domain.usecase.Punctuation
 
 /**
  * Exports lyrics as TTML, the format Unison (better-lyrics/unison) stores as
@@ -130,8 +132,29 @@ object TtmlGenerator {
         if (line.agent > 0) "v${line.agent}" else "v1"
 
     private fun isWordTimed(line: LrcLine): Boolean {
-        val words = line.words.filter { it.text.isNotBlank() }
+        // Untimed punctuation does not make the line line-synced: it is folded
+        // into the word before it below.
+        val words = line.words.filter {
+            it.text.isNotBlank() && (it.startTime > 0L || !Punctuation.isStandalone(it.text))
+        }
         return words.isNotEmpty() && words.all { it.startTime > 0L }
+    }
+
+    /**
+     * Standalone punctuation has no timing of its own, so it is appended to the
+     * word in front of it and inherits that word's span.
+     */
+    private fun sungWords(line: LrcLine): List<WordTimestamp> {
+        val words = mutableListOf<WordTimestamp>()
+        for (word in line.words.filter { it.text.isNotBlank() }) {
+            val last = words.lastOrNull()
+            if (last != null && word.startTime <= 0L && Punctuation.isStandalone(word.text)) {
+                words[words.lastIndex] = last.copy(text = last.text + word.text)
+            } else {
+                words.add(word)
+            }
+        }
+        return words
     }
 
     /**
@@ -141,7 +164,7 @@ object TtmlGenerator {
      */
     private fun buildParagraph(line: LrcLine, nextStart: Long?): Paragraph {
         val begin = line.timestamp
-        val words = line.words.filter { it.text.isNotBlank() }
+        val words = sungWords(line)
         val agent = agentIdOf(line)
 
         if (!isWordTimed(line)) {

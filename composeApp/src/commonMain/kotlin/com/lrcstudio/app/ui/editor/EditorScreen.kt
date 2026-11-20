@@ -79,6 +79,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.model.VocalRole
+import com.lrcstudio.app.domain.usecase.Punctuation
 import com.lrcstudio.app.domain.usecase.RomanizationPack
 import com.lrcstudio.app.domain.usecase.romanizeLyricWords
 import com.lrcstudio.app.data.parser.LrcParser
@@ -1957,6 +1958,44 @@ private suspend fun LazyListState.easedScrollBy(px: Float, durationMs: Long = 20
     }
 }
 
+/** Chips of one word are wider than this, so a long word is cut to keep wrapping. */
+private const val MAX_GROUP_CHARS = 12
+
+/**
+ * Groups the syllable pieces of one word, so a line break keeps the whole word
+ * together. A run longer than one line can hold (a Japanese line has no word
+ * spaces, so all its morae are one run) is cut at syllable boundaries.
+ */
+private fun groupJoiningWords(words: List<com.lrcstudio.app.data.model.WordTimestamp>): List<IntRange> {
+    if (words.isEmpty()) return emptyList()
+    val runs = mutableListOf<IntRange>()
+    var start = 0
+    words.forEachIndexed { index, word ->
+        if (index > 0 && !word.joinsPrevious) {
+            runs.add(start until index)
+            start = index
+        }
+    }
+    runs.add(start until words.size)
+
+    return runs.flatMap { run ->
+        val chunks = mutableListOf<IntRange>()
+        var chunkStart = run.first
+        var length = 0
+        for (i in run) {
+            val pieceLength = words[i].text.length
+            if (i > chunkStart && length + pieceLength > MAX_GROUP_CHARS) {
+                chunks.add(chunkStart until i)
+                chunkStart = i
+                length = 0
+            }
+            length += pieceLength
+        }
+        chunks.add(chunkStart..run.last)
+        chunks
+    }
+}
+
 private sealed class DisplayItem {
     abstract val key: String
     data class Line(val lrcLine: com.lrcstudio.app.data.model.LrcLine, val index: Int) : DisplayItem() {
@@ -2012,9 +2051,8 @@ private fun LyricLineCard(
     modifier: Modifier = Modifier
 ) {
     val hasTimestamp = if (wordSyncMode) {
-        val punctRegex = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
         line.words.isNotEmpty() && line.words.all { word ->
-            punctRegex.matches(word.text) || word.startTime > 0L
+            Punctuation.isStandalone(word.text) || word.startTime > 0L
         }
     } else {
         line.timestamp > 0L
@@ -2412,9 +2450,14 @@ private fun LyricLineCard(
                         // syllables of one word can sit flush against each other.
                         horizontalArrangement = Arrangement.Start
                     ) {
-                        val punctRegex = remember { Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+") }
-                        line.words.forEachIndexed { wi, word ->
-                            val isPunct = punctRegex.matches(word.text)
+                        val wordGroups = remember(line.words) { groupJoiningWords(line.words) }
+                        // A word and its syllables form one row, so wrapping the
+                        // chips can never leave half a word on the previous line.
+                        wordGroups.forEach { group ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            for (wi in group) {
+                            val word = line.words[wi]
+                            val isPunct = Punctuation.isStandalone(word.text)
                             val isWordCurrent = if (!isPunct) {
                                 wi == currentWordIndex
                             } else {
@@ -2422,7 +2465,7 @@ private fun LyricLineCard(
                                     var prevTimedIdx = -1
                                     for (j in wi - 1 downTo 0) {
                                         val w = line.words[j]
-                                        if (!punctRegex.matches(w.text) && w.startTime > 0L) {
+                                        if (!Punctuation.isStandalone(w.text) && w.startTime > 0L) {
                                             prevTimedIdx = j; break
                                         }
                                     }
@@ -2432,7 +2475,11 @@ private fun LyricLineCard(
                             val isWordCursor = wi == wordCursorIndex
                             val hasWordTime = word.startTime > 0L
                             val wordBg = when {
-                                isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                // Romanized words are latin, so a full-width mark
+                                // would leave a wide block of its own colour next
+                                // to them; keep it bare there.
+                                isPunct -> if (romanizedWords != null) Color.Transparent
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                                 word.role != VocalRole.MAIN -> MaterialTheme.colorScheme.tertiaryContainer
                                 isWordCursor -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                 hasWordTime -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -2453,7 +2500,7 @@ private fun LyricLineCard(
                                     var next = word.startTime + 500L
                                     var n = wi + 1
                                     while (n < line.words.size) {
-                                        if (!punctRegex.matches(line.words[n].text) && line.words[n].startTime > 0L) {
+                                        if (!Punctuation.isStandalone(line.words[n].text) && line.words[n].startTime > 0L) {
                                             next = line.words[n].startTime
                                             break
                                         }
@@ -2463,11 +2510,11 @@ private fun LyricLineCard(
                                 } else if (isPunct) {
                                     var prevTime = word.startTime
                                     for (j in wi - 1 downTo 0) {
-                                        if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { prevTime = line.words[j].startTime; break }
+                                        if (!Punctuation.isStandalone(line.words[j].text) && line.words[j].startTime > 0L) { prevTime = line.words[j].startTime; break }
                                     }
                                     var nextTime = prevTime + 500L
                                     for (j in wi + 1 until line.words.size) {
-                                        if (!punctRegex.matches(line.words[j].text) && line.words[j].startTime > 0L) { nextTime = line.words[j].startTime; break }
+                                        if (!Punctuation.isStandalone(line.words[j].text) && line.words[j].startTime > 0L) { nextTime = line.words[j].startTime; break }
                                     }
                                     (nextTime - prevTime).coerceAtLeast(30L)
                                 } else 0L
@@ -2599,6 +2646,37 @@ private fun LyricLineCard(
                                     color = wordTextColor
                                 )
                                 }
+                            }
+                            }
+                            }
+                        }
+
+                        // A trailing empty tag closes the line; show it so a line
+                        // whose end was already captured is recognisable.
+                        val lineEnd = line.words.lastOrNull { it.endTime > 0L }?.endTime ?: 0L
+                        if (lineEnd > 0L) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(start = 2.dp, top = 4.dp, bottom = 6.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(2.dp)
+                                        .height(12.dp)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = com.lrcstudio.app.data.model.LrcLine
+                                        .formatLrcTimestamp(lineEnd),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }

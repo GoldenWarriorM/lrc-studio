@@ -403,7 +403,7 @@ fun SettingsScreen(
                 if (settings.isEnhancedLrcEnabled) {
                     SettingsRow(
                         title = "Interpolate punctuation",
-                        subtitle = "Auto-assign timestamps for standalone punctuation marks (.,!?;:) at export",
+                        subtitle = "Auto-assign timestamps for standalone punctuation marks (.,!?;:、。！？) at export",
                         trailing = {
                             AccentSwitch(
                                 checked = settings.skipStandalonePunctuation,

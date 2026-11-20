@@ -60,12 +60,11 @@ class SyncUseCase {
 
     fun getCurrentWordIndex(line: LrcLine, positionMs: Long): Int {
         if (line.words.isEmpty() || line.timestamp == 0L) return -1
-        val punctRegex = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
         for (i in line.words.indices.reversed()) {
             if (line.words[i].startTime > 0L && positionMs >= line.words[i].startTime) return i
         }
         for (i in line.words.indices.reversed()) {
-            if (!punctRegex.matches(line.words[i].text)) return i
+            if (!Punctuation.isStandalone(line.words[i].text)) return i
         }
         return -1
     }
@@ -90,10 +89,7 @@ class SyncUseCase {
         )
     }
 
-    fun isPunctuationOnly(text: String): Boolean {
-        val punctuation = Regex("[.,!?;:\\-–—()\\[\\]{}「」『』《》【】\"'«»…]+")
-        return text.isNotBlank() && punctuation.matches(text)
-    }
+    fun isPunctuationOnly(text: String): Boolean = Punctuation.isStandalone(text)
 
     fun removeWordTimestamp(line: LrcLine, wordIndex: Int): LrcLine {
         if (wordIndex !in line.words.indices) return line
