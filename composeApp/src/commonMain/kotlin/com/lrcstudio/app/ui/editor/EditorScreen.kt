@@ -199,8 +199,10 @@ fun EditorScreen(
 
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
+    // The pill keeps its full width at rest; only the press grows it. Shrinking
+    // the background while the label stayed put made the button look squeezed.
     val timeScale by animateFloatAsState(
-        targetValue = if (isTimePressed) 1f else 140f / 160f,
+        targetValue = if (isTimePressed) 1.06f else 1f,
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "timeScale"
     )
