@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -2010,9 +2011,15 @@ private fun RichsyncToolsRow(
                 )
             }
         )
-        RichsyncChip(
-            label = "Syllables",
-            selected = false,
+        // Agent choices and syllable actions are separate groups.
+        VerticalDivider(
+            modifier = Modifier.height(24.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+        RichsyncIconButton(
+            icon = Icons.Default.CallSplit,
+            contentDescription = "Split into syllables",
             onClick = onSplitSyllables,
             onLongPress = {
                 onHint(
@@ -2021,9 +2028,9 @@ private fun RichsyncToolsRow(
                 )
             }
         )
-        RichsyncChip(
-            label = "Merge",
-            selected = hasSyllables,
+        RichsyncIconButton(
+            icon = Icons.Default.MergeType,
+            contentDescription = "Merge syllables",
             enabled = hasSyllables,
             onClick = onMergeSyllables,
             onLongPress = {
@@ -2042,6 +2049,40 @@ private fun RichsyncToolsRow(
                 }
             )
         }
+        }
+    }
+}
+
+/** Icon button in the main toolbar's style, with the same long-press hint. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RichsyncIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    enabled: Boolean = true
+) {
+    val content = if (enabled) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.2f else 0.08f),
+        contentColor = content,
+        modifier = Modifier
+            .size(36.dp)
+            .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongPress)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = content,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
