@@ -2590,7 +2590,9 @@ private fun LyricLineCard(
                             val seamTimed = joinsPrevious && word.startTime > 0L &&
                                 (line.words.getOrNull(wi - 1)?.startTime ?: 0L) > 0L
                             val startRadius = if (joinsPrevious) 0.dp else 6.dp
-                            val endRadius = if (joinsNext) 0.dp else 6.dp
+                            // The closing bracket frames the chip, so its right
+                            // corners are square instead of rounded.
+                            val endRadius = if (joinsNext || closesLine) 0.dp else 6.dp
                             val chipShape = RoundedCornerShape(
                                 topStart = startRadius,
                                 topEnd = endRadius,
@@ -2600,6 +2602,40 @@ private fun LyricLineCard(
 
                             Box(
                                 modifier = Modifier
+                                    .drawWithContent {
+                                        drawContent()
+                                        if (closesLine) {
+                                            // Drawn in the trailing gap, so the
+                                            // bracket sits on the chip's edge
+                                            // rather than inside its fill.
+                                            val gap = 8.dp.toPx()
+                                            val bottomGap = 2.dp.toPx()
+                                            val stroke = 2.dp.toPx()
+                                            val tick = 5.dp.toPx()
+                                            val right = size.width - gap
+                                            val top = stroke / 2f
+                                            val bottom = size.height - bottomGap - stroke / 2f
+                                            val x = right + stroke / 2f
+                                            drawLine(
+                                                color = endBracketColor,
+                                                start = Offset(x, top),
+                                                end = Offset(x, bottom),
+                                                strokeWidth = stroke
+                                            )
+                                            drawLine(
+                                                color = endBracketColor,
+                                                start = Offset(x - tick, top),
+                                                end = Offset(x, top),
+                                                strokeWidth = stroke
+                                            )
+                                            drawLine(
+                                                color = endBracketColor,
+                                                start = Offset(x - tick, bottom),
+                                                end = Offset(x, bottom),
+                                                strokeWidth = stroke
+                                            )
+                                        }
+                                    }
                                     .padding(
                                         end = if (joinsNext) 0.dp else 8.dp,
                                         bottom = 2.dp
@@ -2628,30 +2664,6 @@ private fun LyricLineCard(
                                                     size = Size(fillWidth + overflowRight, size.height)
                                                 )
                                             }
-                                        }
-                                        if (closesLine) {
-                                            val stroke = 2.dp.toPx()
-                                            val tick = 4.dp.toPx()
-                                            val inset = 3.dp.toPx()
-                                            val x = size.width - stroke / 2f
-                                            drawLine(
-                                                color = endBracketColor,
-                                                start = Offset(x, inset),
-                                                end = Offset(x, size.height - inset),
-                                                strokeWidth = stroke
-                                            )
-                                            drawLine(
-                                                color = endBracketColor,
-                                                start = Offset(x - tick, inset + stroke / 2f),
-                                                end = Offset(x, inset + stroke / 2f),
-                                                strokeWidth = stroke
-                                            )
-                                            drawLine(
-                                                color = endBracketColor,
-                                                start = Offset(x - tick, size.height - inset - stroke / 2f),
-                                                end = Offset(x, size.height - inset - stroke / 2f),
-                                                strokeWidth = stroke
-                                            )
                                         }
                                     }
                                     .border(
