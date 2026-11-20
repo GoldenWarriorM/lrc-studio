@@ -1,7 +1,8 @@
 package com.lrcstudio.app.ui.editor
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,10 +17,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -27,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
@@ -137,7 +142,7 @@ fun BraccatoLyricsPreview(
                                     distance == 2 -> 0.4f
                                     else -> 0.2f
                                 },
-                                animationSpec = tween(280),
+                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
                                 label = "lineAlpha"
                             )
                             val lineScale by animateFloatAsState(
@@ -146,38 +151,32 @@ fun BraccatoLyricsPreview(
                                     distance == 1 -> 0.95f
                                     else -> 0.9f
                                 },
-                                animationSpec = tween(280),
+                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
                                 label = "lineScale"
                             )
 
-                            if (index == activeIndex) {
-                                ActiveLyricLine(
-                                    line = line,
-                                    romanizedWords = romanizedLines.getOrNull(index),
-                                    currentPositionMs = currentPositionMs,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .graphicsLayer {
-                                            scaleX = lineScale
-                                            scaleY = lineScale
-                                        }
-                                )
-                            } else {
-                                Text(
-                                    text = displayText(line, romanizedLines.getOrNull(index)),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .graphicsLayer {
-                                            alpha = lineAlpha
-                                            scaleX = lineScale
-                                            scaleY = lineScale
-                                        }
-                                )
-                            }
+                            val isActive = index == activeIndex
+                            // The active line grows into place instead of being swapped
+                            // for a different composable.
+                            val fontSize by animateFloatAsState(
+                                targetValue = if (isActive) 28f else 20f,
+                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
+                                label = "lineSize"
+                            )
+                            ActiveLyricLine(
+                                line = line,
+                                romanizedWords = romanizedLines.getOrNull(index),
+                                currentPositionMs = currentPositionMs,
+                                active = isActive,
+                                fontSize = fontSize.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer {
+                                        alpha = lineAlpha
+                                        scaleX = lineScale
+                                        scaleY = lineScale
+                                    }
+                            )
                         }
                     }
                     // Lines fade into the background at the edges of the list.
@@ -238,33 +237,87 @@ private fun ActiveLyricLine(
     line: LrcLine,
     romanizedWords: List<String>?,
     currentPositionMs: Long,
+    active: Boolean,
+    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
-    // Everything before the word being sung is lit, that word glows, the rest waits.
+    if (!active) {
+        Text(
+            text = displayText(line, romanizedWords),
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = fontSize),
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+            textAlign = TextAlign.Center,
+            modifier = modifier.padding(vertical = 4.dp)
+        )
+        return
+    }
+    val waiting = textColor.copy(alpha = 0.32f)
+    // Everything before the word being sung is lit, that word fills smoothly, the rest waits.
     val singingIndex = line.words.indexOfLast { it.startTime > 0L && currentPositionMs >= it.startTime }
+    val wordProgress = if (singingIndex >= 0) {
+        val word = line.words[singingIndex]
+        val end = line.words.getOrNull(singingIndex + 1)
+            ?.takeIf { it.startTime > word.startTime }?.startTime
+            ?: word.endTime.takeIf { it > word.startTime }
+            ?: (word.startTime + 350L)
+        ((currentPositionMs - word.startTime).toFloat() / (end - word.startTime).toFloat())
+            .coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    // Smoothstep, so a word lights up gently instead of jumping from dim to lit.
+    val easedProgress = wordProgress * wordProgress * (3f - 2f * wordProgress)
     val highlighted = buildAnnotatedString {
         line.words.forEachIndexed { index, word ->
             if (index > 0 && !word.joinsPrevious) append(' ')
             val wordText = romanizedWords?.getOrNull(index)?.ifBlank { null } ?: word.text
             val style = when {
-                index == singingIndex -> SpanStyle(color = accent)
+                index == singingIndex -> SpanStyle(color = lerp(waiting, accent, easedProgress))
                 index < singingIndex -> SpanStyle(color = textColor)
-                word.startTime > 0L -> SpanStyle(color = textColor.copy(alpha = 0.38f))
+                word.startTime > 0L -> SpanStyle(color = waiting)
                 else -> SpanStyle(color = textColor.copy(alpha = 0.55f))
             }
             withStyle(style) { append(wordText) }
         }
     }
+    // Each new word gives the line a small spring pulse, as Metrolist does.
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(singingIndex) {
+        if (singingIndex >= 0) {
+            pulse.snapTo(1.045f)
+            pulse.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 420f))
+        }
+    }
+    val glowAlpha = if (singingIndex >= 0) 0.10f + 0.14f * easedProgress else 0f
     val hasWords = line.words.isNotEmpty()
     Text(
         text = if (hasWords) highlighted else AnnotatedString(displayText(line, romanizedWords)),
-        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
+        style = MaterialTheme.typography.headlineMedium.copy(fontSize = fontSize),
         fontWeight = FontWeight.Bold,
         color = if (hasWords) Color.Unspecified else textColor,
         textAlign = TextAlign.Center,
-        modifier = modifier.padding(vertical = 4.dp)
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = pulse.value
+                scaleY = pulse.value
+            }
+            .drawBehind {
+                if (glowAlpha > 0.01f) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(accent.copy(alpha = glowAlpha), Color.Transparent),
+                            center = Offset(size.width / 2f, size.height / 2f),
+                            radius = size.width * 0.65f
+                        ),
+                        radius = size.width * 0.65f,
+                        center = Offset(size.width / 2f, size.height / 2f)
+                    )
+                }
+            }
+            .padding(vertical = 4.dp)
     )
 }
 
