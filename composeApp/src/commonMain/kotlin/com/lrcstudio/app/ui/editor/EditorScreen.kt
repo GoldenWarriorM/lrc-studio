@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import com.lrcstudio.app.data.model.VocalRole
 import com.lrcstudio.app.domain.usecase.Punctuation
 import com.lrcstudio.app.domain.usecase.RomanizationPack
+import com.lrcstudio.app.domain.usecase.RomanizationWord
 import com.lrcstudio.app.domain.usecase.romanizeLyricWords
 import com.lrcstudio.app.data.parser.LrcParser
 import com.lrcstudio.app.data.parser.RichsyncValidator
@@ -157,7 +158,11 @@ fun EditorScreen(
     var showRomanizationDownload by remember { mutableStateOf(false) }
     val romanizationWords = remember(state.lyrics) {
         state.lyrics.map { line ->
-            if (line.words.isEmpty()) listOf(line.text) else line.words.map { it.text }
+            if (line.words.isEmpty()) {
+                listOf(RomanizationWord(line.text))
+            } else {
+                line.words.map { RomanizationWord(it.text, it.joinsPrevious) }
+            }
         }
     }
     LaunchedEffect(romanizeLyrics, romanizationWords, romanizationDir) {

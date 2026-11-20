@@ -73,11 +73,21 @@ class LyricsRomanizer(
                 if (token.reading.isBlank() && containsJapaneseKanji(token.surface)) return text
                 token.reading.ifBlank { token.surface }.takeIf(String::isNotBlank)
             }
+        // The tokenizer can split a yōon mora ("ち" + "ゅう"); the small kana has
+        // no reading of its own, so it must stay glued to the mora before it or
+        // "romanizeKana" sees a lone "ゅ" and leaves it unconverted.
+        val leadingSmallKana = "ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ"
         val joined =
             buildString {
                 readings.forEachIndexed { i, reading ->
                     append(reading)
-                    if (i < readings.lastIndex && reading.last() != 'っ' && reading.last() != 'ッ') append(' ')
+                    if (
+                        i < readings.lastIndex &&
+                        reading.last() != 'っ' && reading.last() != 'ッ' &&
+                        readings[i + 1].first() !in leadingSmallKana
+                    ) {
+                        append(' ')
+                    }
                 }
             }
         return romanizeKana(joined)

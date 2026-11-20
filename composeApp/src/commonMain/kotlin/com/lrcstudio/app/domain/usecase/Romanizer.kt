@@ -1,5 +1,14 @@
 package com.lrcstudio.app.domain.usecase
 
+/**
+ * One word of a line. [joinsPrevious] marks a syllable piece of the word before
+ * it, so the engine reads the whole word instead of each piece on its own.
+ */
+data class RomanizationWord(
+    val text: String,
+    val joinsPrevious: Boolean = false
+)
+
 /** Language data the romanizer needs before it can convert a script's characters. */
 data class RomanizationPack(
     val id: String,
@@ -29,6 +38,6 @@ data class RomanizationOutcome(
  */
 internal expect suspend fun romanizeLyricWords(
     storageDir: String,
-    lines: List<List<String>>,
+    lines: List<List<RomanizationWord>>,
     downloadPacks: Boolean
 ): RomanizationOutcome

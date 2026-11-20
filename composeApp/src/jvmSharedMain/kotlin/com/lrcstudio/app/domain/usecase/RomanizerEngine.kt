@@ -47,12 +47,12 @@ internal object RomanizerEngine {
 
     suspend fun romanize(
         storageDir: String,
-        lines: List<List<String>>,
+        lines: List<List<RomanizationWord>>,
         downloadPacks: Boolean
     ): RomanizationOutcome {
         if (lines.isEmpty()) return RomanizationOutcome(lines.map { null })
         val (engine, store) = engineFor(storageDir)
-        val lineTexts = lines.map { words -> words.joinToString(" ").trim() }
+        val lineTexts = lines.map(::lineTextOf)
         val fullText = lineTexts.joinToString("\n")
         val languages = LanguageDetector.languageShare(lineTexts).keys
             .mapNotNull(::romanizationLanguage)
@@ -89,9 +89,33 @@ internal object RomanizerEngine {
         return RomanizationOutcome(converted, error = error)
     }
 
+    /** Syllable pieces of one word are glued, only real word gaps get a space. */
+    private fun lineTextOf(words: List<RomanizationWord>): String = buildString {
+        words.forEachIndexed { index, word ->
+            if (index > 0 && !word.joinsPrevious) append(' ')
+            append(word.text)
+        }
+    }.trim()
+
+    /**
+     * A yōon piece split from its base kana ("ち" + "ゅう") has no reading on its
+     * own, so the engine's kana table cannot map it; widen it to the romaji a
+     * standalone small kana stands for instead of leaving the character raw.
+     */
+    private val straySmallKana = mapOf(
+        'ゃ' to "ya",
+        'ゅ' to "yu",
+        'ょ' to "yo",
+        'ゎ' to "wa"
+    )
+
+    private fun romanizeStraySmallKana(text: String): String = buildString(text.length) {
+        for (char in text) append(straySmallKana[char] ?: char)
+    }
+
     private suspend fun convert(
         engine: LyricsRomanizer,
-        lines: List<List<String>>,
+        lines: List<List<RomanizationWord>>,
         lineTexts: List<String>,
         fullText: String,
         languages: Set<String>
@@ -101,10 +125,11 @@ internal object RomanizerEngine {
             if (lineText.isBlank() || words.isEmpty()) return@mapIndexed null
             val stamps = words.mapIndexed { wordIndex, word ->
                 WordTimestamp(
-                    text = word,
+                    text = word.text,
                     startTime = 0.0,
                     endTime = 0.0,
-                    hasTrailingSpace = wordIndex < words.lastIndex
+                    hasTrailingSpace = wordIndex < words.lastIndex &&
+                        !words[wordIndex + 1].joinsPrevious
                 )
             }
             val result = engine.romanizeWords(
@@ -114,7 +139,7 @@ internal object RomanizerEngine {
                 enabledLanguages = languages,
                 cyrillicByLine = true
             ) ?: return@mapIndexed null
-            val romanized = result.second.map { it.text.trim() }
+            val romanized = result.second.map { romanizeStraySmallKana(it.text.trim()) }
             romanized.takeIf { it.size == words.size }
         }
     }
