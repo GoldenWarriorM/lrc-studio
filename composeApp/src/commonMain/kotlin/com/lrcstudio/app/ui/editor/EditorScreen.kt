@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -2132,13 +2131,10 @@ private fun LyricLineCard(
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
 
-    // The second voice answers the first one, so its line is indented to read
-    // on the right. Background vocals are quieter: smaller, grey text.
+    // The second voice answers the first one, so its lyrics are aligned to the
+    // right edge while the marker stays in place. Background vocals are quieter:
+    // smaller, grey text.
     val isSecondVoice = line.agent == 2
-    val contentStartPadding by animateDpAsState(
-        targetValue = if (isSecondVoice) 48.dp else 12.dp,
-        label = "lineIndent"
-    )
     val lineTextStyle = if (line.isBackground) {
         MaterialTheme.typography.bodySmall
     } else {
@@ -2341,7 +2337,7 @@ private fun LyricLineCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = contentStartPadding, top = 12.dp, end = 12.dp, bottom = 12.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -2467,7 +2463,7 @@ private fun LyricLineCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         // Spacing between chips is applied per chip so that the
                         // syllables of one word can sit flush against each other.
-                        horizontalArrangement = Arrangement.Start
+                        horizontalArrangement = if (isSecondVoice) Arrangement.End else Arrangement.Start
                     ) {
                         val wordGroups = remember(line.words) { groupJoiningWords(line.words) }
                         // A word and its syllables form one row, so wrapping the
@@ -2730,6 +2726,7 @@ private fun LyricLineCard(
                             MaterialTheme.colorScheme.outline
                         else
                             lineTextColor,
+                        textAlign = if (isSecondVoice) TextAlign.End else TextAlign.Start,
                         modifier = Modifier.weight(1f)
                     )
 
