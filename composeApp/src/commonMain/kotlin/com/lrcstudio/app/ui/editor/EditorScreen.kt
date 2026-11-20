@@ -199,10 +199,8 @@ fun EditorScreen(
 
     val timeInteractionSource = remember { MutableInteractionSource() }
     val isTimePressed by timeInteractionSource.collectIsPressedAsState()
-    // The pill keeps its full width at rest; only the press grows it. Shrinking
-    // the background while the label stayed put made the button look squeezed.
     val timeScale by animateFloatAsState(
-        targetValue = if (isTimePressed) 1.06f else 1f,
+        targetValue = if (isTimePressed) 1f else 140f / 160f,
         animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
         label = "timeScale"
     )
@@ -921,13 +919,31 @@ fun EditorScreen(
                             Box(modifier = Modifier.alpha(if (landscapeOverlay) 1f - overlayProgress else 1f)) {
                                 topBarContent()
                             }
-                            controlsOverlay()
-                            Spacer(modifier = Modifier.weight(1f))
+                            // Player, toolbar and the richsync row scroll, while
+                            // Time/End stay pinned above the navigation bar.
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(bottom = 104.dp)
+                            ) {
+                                controlsOverlay()
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                        ) {
                             timeOverlay()
                         }
                         SnackbarHost(
                             hostState = snackbarHostState,
-                            modifier = Modifier.navigationBarsPadding()
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(bottom = 88.dp)
                         )
                     }
                 }
