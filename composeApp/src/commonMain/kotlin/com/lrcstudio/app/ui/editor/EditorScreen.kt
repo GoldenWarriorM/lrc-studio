@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -2131,6 +2132,24 @@ private fun LyricLineCard(
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
 
+    // The second voice answers the first one, so its line is indented to read
+    // on the right. Background vocals are quieter: smaller, grey text.
+    val isSecondVoice = line.agent == 2
+    val contentStartPadding by animateDpAsState(
+        targetValue = if (isSecondVoice) 48.dp else 12.dp,
+        label = "lineIndent"
+    )
+    val lineTextStyle = if (line.isBackground) {
+        MaterialTheme.typography.bodySmall
+    } else {
+        MaterialTheme.typography.bodyMedium
+    }
+    val lineTextColor = if (line.isBackground) {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
     LaunchedEffect(isPlaybackLine, wordSyncMode, isPlaying) {
         if (isPlaybackLine && isPlaying) {
             if (wordSyncMode && line.words.isNotEmpty()) {
@@ -2322,7 +2341,7 @@ private fun LyricLineCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(start = contentStartPadding, top = 12.dp, end = 12.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -2491,6 +2510,7 @@ private fun LyricLineCard(
                                 Color.Transparent
                             val wordTextColor = when {
                                 isPunct -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                line.isBackground -> lineTextColor
                                 word.role != VocalRole.MAIN -> MaterialTheme.colorScheme.onTertiaryContainer
                                 hasWordTime -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.onSurface
@@ -2636,8 +2656,8 @@ private fun LyricLineCard(
                                 if (joinsPrevious) SyllableSeam(timed = seamTimed)
                                 Text(
                                     text = romanizedWords?.getOrNull(wi)?.ifBlank { null } ?: word.text,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontStyle = if (word.role != VocalRole.MAIN) {
+                                    style = lineTextStyle.copy(
+                                        fontStyle = if (line.isBackground || word.role != VocalRole.MAIN) {
                                             androidx.compose.ui.text.font.FontStyle.Italic
                                         } else {
                                             androidx.compose.ui.text.font.FontStyle.Normal
@@ -2705,11 +2725,11 @@ private fun LyricLineCard(
                             ?.joinToString(" ") { it.trim() }
                             ?.ifBlank { null }
                             ?: line.text.ifEmpty { "..." },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = lineTextStyle,
                         color = if (line.text.isEmpty())
                             MaterialTheme.colorScheme.outline
                         else
-                            MaterialTheme.colorScheme.onSurface,
+                            lineTextColor,
                         modifier = Modifier.weight(1f)
                     )
 
