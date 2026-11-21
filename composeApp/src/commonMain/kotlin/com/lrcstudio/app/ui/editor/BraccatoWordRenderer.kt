@@ -566,10 +566,27 @@ internal fun BraccatoWordLine(
             runtime.lastPos = pos
             fxPos = pos
             mode = 1
-        } else if (runtime.hadActive && runtime.exitWall > 0L) {
-            val elapsed = (frameWallMs - runtime.exitWall).toFloat().coerceAtLeast(0f)
+        } else if (runtime.hadActive) {
+            // Start the exit on the first frame the line is no longer active. The
+            // LaunchedEffect that also sets this runs after composition, so waiting
+            // for it drew one frame in the inactive style (a visible colour flash).
+            if (runtime.exitWall <= 0L && frameWallMs > 0L) {
+                runtime.exitPos = runtime.lastPos
+                runtime.exitWall = frameWallMs
+            }
+            val elapsed = if (runtime.exitWall > 0L) {
+                (frameWallMs - runtime.exitWall).toFloat().coerceAtLeast(0f)
+            } else {
+                0f
+            }
             val maxExpectedPos = runtime.exitPos + (if (isPlaying) elapsed.toLong() else 0L) + 500L
-            if (anchor < runtime.lastPos - 80L || anchor > maxExpectedPos) {
+            if (runtime.exitWall <= 0L) {
+                // No frame clock yet: keep the finished line fully lit for this
+                // frame instead of falling through to the inactive style.
+                mode = 2
+                fadeOpacity = 1f
+                pos = max(runtime.lastPos, bst.lineStartMs)
+            } else if (anchor < runtime.lastPos - 80L || anchor > maxExpectedPos) {
                 runtime.hadActive = false
             } else {
                 val exitPos = runtime.exitPos

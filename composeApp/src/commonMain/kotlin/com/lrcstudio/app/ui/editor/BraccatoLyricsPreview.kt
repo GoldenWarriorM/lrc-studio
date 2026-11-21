@@ -43,7 +43,8 @@ import kotlin.math.sqrt
 
 /** Metrolist's lyric metrics: 36sp text, 1.3 line height, 12dp insets, 16dp gap. */
 private const val LYRIC_TEXT_SIZE = 36f
-private const val LYRIC_ALPHA_MS = 750
+/** Braccato's unlit word opacity; inactive lines use the same. */
+private const val LYRIC_UNLIT_ALPHA = 0.38f
 private const val LYRIC_SCALE_MS = 800
 
 /** Insets for lines on opposite sides when more than one singer is present. */
@@ -98,7 +99,10 @@ private class LyPlusSpring(
  * side, a different singer alternates to the other side, groups stay centred,
  * and a list that is almost entirely right-aligned is mirrored.
  */
-private fun assignLineAlignments(lyrics: List<LrcLine>): List<TextAlign> {
+private fun assignLineAlignments(
+    lyrics: List<LrcLine>,
+    untaggedLeft: Boolean
+): List<TextAlign> {
     val result = ArrayList<TextAlign>(lyrics.size)
     var currentSideIsLeft = true
     var lastPersonId: String? = null
@@ -128,7 +132,9 @@ private fun assignLineAlignments(lyrics: List<LrcLine>): List<TextAlign> {
                 else -> if (currentSideIsLeft) TextAlign.Start else TextAlign.End
             }.also { if (!isGroup) lastPersonId = singerId }
         } else {
-            TextAlign.Center
+            // A line without an agent tag: centred by default, or left-aligned
+            // when the user prefers that for untagged lyrics.
+            if (untaggedLeft) TextAlign.Start else TextAlign.Center
         }
         if (align != TextAlign.Center) {
             totalCount++
@@ -166,14 +172,18 @@ fun BraccatoLyricsPreview(
     onSeek: (Long) -> Unit,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
+    /** Untagged lines sit on the left instead of the centre. */
+    untaggedLeft: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val scrollSpring = remember { LyPlusSpring(LYRIC_SCROLL_MS) }
     val activeIndex = if (currentLineIndex in lyrics.indices) currentLineIndex else 0
     val background = MaterialTheme.colorScheme.background
     val accent = MaterialTheme.colorScheme.primary
-    val lineAlignments = remember(lyrics) { assignLineAlignments(lyrics) }
+    val scrollSpring = remember { LyPlusSpring(LYRIC_SCROLL_MS) }
+    val lineAlignments = remember(lyrics, untaggedLeft) {
+        assignLineAlignments(lyrics, untaggedLeft)
+    }
     val hasMultipleSingers = remember(lyrics, lineAlignments) {
         lineAlignments.distinct().size > 1 ||
             lyrics.mapNotNull { it.agent.takeIf { agent -> agent != 0 } }.distinct().size > 1
@@ -182,33 +192,30 @@ fun BraccatoLyricsPreview(
     LaunchedEffect(activeIndex, lyrics.size) {
         if (lyrics.isEmpty()) return@LaunchedEffect
         val target = activeIndex.coerceIn(lyrics.indices)
-        // Metrolist puts the active line's centre on the anchor: the list jumps
-        // by the full distance and the rows slide into place with LyPlusSpring,
-        // which keeps one continuous motion instead of a list-state animation.
+        val info = listState.layoutInfo
+        val viewportHeight = info.viewportSize.height
+        if (viewportHeight <= 0) return@LaunchedEffect
+        // Item offsets are reported without the leading content padding, which
+        // equals half the viewport here, so an item resting at the anchor sits at
+        // offset + size/2 == 0. Centre it by scrolling that distance forward.
         fun centreDelta(): Float? {
-            val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+            val targetInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
                 ?: return null
-            val viewportCentre = listState.layoutInfo.viewportSize.height / 2f
-            return info.offset + info.size / 2f - viewportCentre
+            return targetInfo.offset + targetInfo.size / 2f
         }
         var delta = centreDelta()
         if (delta == null) {
-            // The target is outside the composed window: place it, wait for the
-            // layout to report its real position, then centre it.
             listState.scrollToItem(target)
             withFrameNanos { }
             delta = centreDelta()
         }
-        if (delta == null || abs(delta) < 0.5f) return@LaunchedEffect
-        val viewportHeight = listState.layoutInfo.viewportSize.height
-        if (abs(delta) > viewportHeight * LYRICS_FAR_JUMP_VIEWPORTS) {
-            // A seek far away should not slide through every line in between.
+        if (delta == null) return@LaunchedEffect
+        val viewport = listState.layoutInfo.viewportSize.height
+        if (abs(delta) < 0.5f) return@LaunchedEffect
+        if (abs(delta) > viewport * LYRICS_FAR_JUMP_VIEWPORTS) {
             listState.scrollBy(delta)
             return@LaunchedEffect
         }
-        // Animate the list itself with Metrolist's spring curve. Its own renderer
-        // moves each row instead, but the curve is the same and a scroll animation
-        // can never leave the rows stuck displaced off-screen.
         listState.animateScrollBy(
             value = delta,
             animationSpec = tween(
@@ -289,15 +296,9 @@ fun BraccatoLyricsPreview(
                             val distance = abs(index - activeIndex)
                             val isActive = index == activeIndex
                             // Metrolist keeps one text size for every line and only
-                            // dims and shrinks the ones around the active line.
-                            val lineAlpha by animateFloatAsState(
-                                targetValue = if (isActive) 1f else 0.35f,
-                                animationSpec = tween(
-                                    durationMillis = LYRIC_ALPHA_MS,
-                                    easing = FastOutSlowInEasing
-                                ),
-                                label = "lineAlpha"
-                            )
+                            // shrinks the ones around the active line. The dimming
+                            // comes from the text colour (see ActiveLyricLine), so an
+                            // inactive line matches the unlit words of the active one.
                             val lineScale by animateFloatAsState(
                                 targetValue = when {
                                     isActive -> 1f
@@ -358,7 +359,6 @@ fun BraccatoLyricsPreview(
                                     .padding(start = startInset, end = endInset)
                                     .padding(horizontal = 12.dp, vertical = 12.dp)
                                     .graphicsLayer {
-                                        alpha = lineAlpha
                                         scaleX = lineScale
                                         scaleY = lineScale
                                     }
@@ -370,6 +370,7 @@ fun BraccatoLyricsPreview(
                                         currentPositionMs = currentPositionMs,
                                         isPlaying = isPlaying,
                                         active = isActive,
+                                        background = true,
                                         fontSize = (LYRIC_TEXT_SIZE * 0.62f).sp,
                                         alignment = alignment,
                                         modifier = Modifier
@@ -463,9 +464,13 @@ private fun ActiveLyricLine(
     isPlaying: Boolean,
     active: Boolean,
     fontSize: TextUnit,
+    /** Background-vocal block: its unlit colour is the tertiary accent. */
+    background: Boolean = false,
     alignment: TextAlign = TextAlign.Center,
     modifier: Modifier = Modifier
 ) {
+    val accent = MaterialTheme.colorScheme.primary
+    val bgAccent = MaterialTheme.colorScheme.tertiary
     BraccatoWordLine(
         line = line,
         romanizedWords = romanizedWords,
@@ -473,9 +478,15 @@ private fun ActiveLyricLine(
         isPlaying = isPlaying,
         active = active,
         fontSize = fontSize,
-        textColor = MaterialTheme.colorScheme.onSurface,
-        accent = MaterialTheme.colorScheme.primary,
-        bgAccent = MaterialTheme.colorScheme.tertiary,
+        // An inactive line uses the same colour as the unlit words of the active
+        // one, so the list reads as one palette instead of two greys.
+        textColor = if (active) {
+            MaterialTheme.colorScheme.onSurface
+        } else {
+            (if (background) bgAccent else accent).copy(alpha = LYRIC_UNLIT_ALPHA)
+        },
+        accent = accent,
+        bgAccent = bgAccent,
         alignment = alignment,
         modifier = modifier
     )
