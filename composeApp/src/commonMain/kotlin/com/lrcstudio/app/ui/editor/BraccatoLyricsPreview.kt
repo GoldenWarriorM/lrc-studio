@@ -370,7 +370,6 @@ fun BraccatoLyricsPreview(
                                         currentPositionMs = currentPositionMs,
                                         isPlaying = isPlaying,
                                         active = isActive,
-                                        background = true,
                                         fontSize = (LYRIC_TEXT_SIZE * 0.62f).sp,
                                         alignment = alignment,
                                         modifier = Modifier
@@ -464,13 +463,10 @@ private fun ActiveLyricLine(
     isPlaying: Boolean,
     active: Boolean,
     fontSize: TextUnit,
-    /** Background-vocal block: its unlit colour is the tertiary accent. */
-    background: Boolean = false,
     alignment: TextAlign = TextAlign.Center,
     modifier: Modifier = Modifier
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val bgAccent = MaterialTheme.colorScheme.tertiary
     BraccatoWordLine(
         line = line,
         romanizedWords = romanizedWords,
@@ -483,10 +479,12 @@ private fun ActiveLyricLine(
         textColor = if (active) {
             MaterialTheme.colorScheme.onSurface
         } else {
-            (if (background) bgAccent else accent).copy(alpha = LYRIC_UNLIT_ALPHA)
+            accent.copy(alpha = LYRIC_UNLIT_ALPHA)
         },
         accent = accent,
-        bgAccent = bgAccent,
+        // Metrolist lights background voices with the same accent: its Braccato
+        // renderer never reads isBackground, only the block size and opacity differ.
+        bgAccent = accent,
         alignment = alignment,
         modifier = modifier
     )
