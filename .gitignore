@@ -38,3 +38,6 @@ composeApp/local.properties
 *.hprof
 
 .opencode/plans/
+
+# Local agent instructions
+AGENTS.md
