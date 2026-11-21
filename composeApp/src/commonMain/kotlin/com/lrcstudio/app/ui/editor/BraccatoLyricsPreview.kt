@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -162,6 +163,7 @@ fun BraccatoLyricsPreview(
     currentPositionMs: Long,
     isPlaying: Boolean,
     romanizedLines: List<List<String>?>,
+    onSeek: (Long) -> Unit,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
@@ -346,6 +348,9 @@ fun BraccatoLyricsPreview(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    // Tapping a line seeks to it, as in Metrolist's lyric list.
+                                    .clickable(enabled = line.timestamp > 0L) { onSeek(line.timestamp) }
                                     .padding(start = startInset, end = endInset)
                                     .padding(horizontal = 12.dp, vertical = 12.dp)
                                     .graphicsLayer {

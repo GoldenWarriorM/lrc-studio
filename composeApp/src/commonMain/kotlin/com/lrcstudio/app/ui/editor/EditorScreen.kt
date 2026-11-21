@@ -192,6 +192,7 @@ fun EditorScreen(
             currentPositionMs = playerState.currentPosition,
             isPlaying = playerState.state == PlaybackState.PLAYING,
             romanizedLines = romanizedLines,
+            onSeek = { viewModel.seekTo(it) },
             onPlayPause = { viewModel.playPause() },
             onClose = { isPreviewMode = false }
         )
