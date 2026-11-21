@@ -59,7 +59,9 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
                     _state.value = _state.value.copy(
                         currentPosition = exoPlayer.currentPosition.coerceAtLeast(0)
                     )
-                    delay(10)
+                    // ~30 Hz: every collector of this state redraws the editor, and
+                    // 100 Hz bought nothing the display can show.
+                    delay(33)
                 }
             }
         }
