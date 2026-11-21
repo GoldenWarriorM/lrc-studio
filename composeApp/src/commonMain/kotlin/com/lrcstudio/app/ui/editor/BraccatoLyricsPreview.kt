@@ -1,11 +1,11 @@
 package com.lrcstudio.app.ui.editor
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -170,8 +170,6 @@ fun BraccatoLyricsPreview(
 ) {
     val listState = rememberLazyListState()
     val scrollSpring = remember { LyPlusSpring(LYRIC_SCROLL_MS) }
-    // Metrolist scrolls the list instantly and slides the rows by this offset.
-    val scrollShift = remember { Animatable(0f) }
     val activeIndex = if (currentLineIndex in lyrics.indices) currentLineIndex else 0
     val background = MaterialTheme.colorScheme.background
     val accent = MaterialTheme.colorScheme.primary
@@ -195,18 +193,24 @@ fun BraccatoLyricsPreview(
         }
         var delta = centreDelta()
         if (delta == null) {
-            // The target is outside the composed window: place it, then centre it.
+            // The target is outside the composed window: place it, wait for the
+            // layout to report its real position, then centre it.
             listState.scrollToItem(target)
+            withFrameNanos { }
             delta = centreDelta()
         }
         if (delta == null || abs(delta) < 0.5f) return@LaunchedEffect
         val viewportHeight = listState.layoutInfo.viewportSize.height
-        listState.scrollBy(delta)
-        if (abs(delta) > viewportHeight * LYRICS_FAR_JUMP_VIEWPORTS) return@LaunchedEffect
-        // Keep the currently visible offset when a new target arrives mid-slide.
-        scrollShift.snapTo(delta + scrollShift.value)
-        scrollShift.animateTo(
-            targetValue = 0f,
+        if (abs(delta) > viewportHeight * LYRICS_FAR_JUMP_VIEWPORTS) {
+            // A seek far away should not slide through every line in between.
+            listState.scrollBy(delta)
+            return@LaunchedEffect
+        }
+        // Animate the list itself with Metrolist's spring curve. Its own renderer
+        // moves each row instead, but the curve is the same and a scroll animation
+        // can never leave the rows stuck displaced off-screen.
+        listState.animateScrollBy(
+            value = delta,
             animationSpec = tween(
                 durationMillis = scrollSpring.totalMs.roundToInt(),
                 easing = Easing { fraction -> scrollSpring.value(fraction * scrollSpring.totalMs) }
@@ -357,7 +361,6 @@ fun BraccatoLyricsPreview(
                                         alpha = lineAlpha
                                         scaleX = lineScale
                                         scaleY = lineScale
-                                        translationY = scrollShift.value
                                     }
                             ) {
                                 if (bgWords.isNotEmpty()) {
