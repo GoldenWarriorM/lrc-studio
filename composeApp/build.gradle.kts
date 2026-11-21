@@ -102,6 +102,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Lets a debug build be installed next to a release build, whose
+            // signing key differs: ./gradlew assembleDebug -PdebugAppIdSuffix=.debug
+            (project.findProperty("debugAppIdSuffix") as String?)?.let { applicationIdSuffix = it }
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
