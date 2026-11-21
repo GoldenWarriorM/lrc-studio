@@ -1,9 +1,12 @@
 package com.lrcstudio.app.ui.editor
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
 import com.lrcstudio.app.data.model.VocalRole
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** Metrolist's lyric metrics: 36sp text, 1.3 line height, 12dp insets, 16dp gap. */
 private const val LYRIC_TEXT_SIZE = 36f
@@ -38,6 +47,50 @@ private const val LYRIC_SCALE_MS = 800
 
 /** Insets for lines on opposite sides when more than one singer is present. */
 private const val MULTI_SINGER_PADDING_RATIO = 0.10f
+
+// Metrolist's scroll timing: 750ms apple duration * 0.65, spring zeta 0.78.
+private const val LYRIC_SCROLL_MS = 487.5f
+private const val SPRING_ZETA_DEFAULT = 0.78f
+private const val LYRICS_FAR_JUMP_VIEWPORTS = 2f
+
+private val LyPlusScrollEasing = CubicBezierEasing(0.41f, 0f, 0.12f, 0.99f)
+
+/** Port of Metrolist's LyPlusSpring from LyricsScrollAnimation.kt. */
+private class LyPlusSpring(
+    private val peakMs: Float,
+    zeta: Float = SPRING_ZETA_DEFAULT,
+    settleRatio: Float = 1.5f
+) {
+    private val tailMs = peakMs * settleRatio
+    private val peakValue: Float
+    val totalMs: Float = peakMs + tailMs
+
+    init {
+        val peakS = peakMs / 1000.0
+        val omegaD = PI / peakS
+        val omega0 = omegaD / sqrt(1.0 - zeta * zeta)
+        val decayRate = zeta * omega0
+        val dt = 1.0 / 120.0
+        var pv = 1.0
+        var t = 0.0
+        while (t <= peakS) {
+            pv = 1.0 - exp(-decayRate * t) * (cos(omegaD * t) + (decayRate / omegaD) * sin(omegaD * t))
+            t += dt
+        }
+        peakValue = pv.toFloat()
+    }
+
+    fun value(tMs: Float): Float =
+        when {
+            tMs <= 0f -> 0f
+            tMs >= totalMs -> 1f
+            tMs < peakMs -> peakValue * LyPlusScrollEasing.transform(tMs / peakMs)
+            else -> {
+                val u = (tMs - peakMs) / tailMs
+                1f + (peakValue - 1f) * 0.5f * (1f + cos(PI.toFloat() * u))
+            }
+        }
+}
 
 /**
  * Metrolist's LyricsUtils.assignLineAlignments: the first singer takes the left
@@ -114,6 +167,9 @@ fun BraccatoLyricsPreview(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    val scrollSpring = remember { LyPlusSpring(LYRIC_SCROLL_MS) }
+    // Metrolist scrolls the list instantly and slides the rows by this offset.
+    val scrollShift = remember { Animatable(0f) }
     val activeIndex = if (currentLineIndex in lyrics.indices) currentLineIndex else 0
     val background = MaterialTheme.colorScheme.background
     val accent = MaterialTheme.colorScheme.primary
@@ -126,9 +182,9 @@ fun BraccatoLyricsPreview(
     LaunchedEffect(activeIndex, lyrics.size) {
         if (lyrics.isEmpty()) return@LaunchedEffect
         val target = activeIndex.coerceIn(lyrics.indices)
-        // Metrolist puts the active line's centre on the anchor, so scroll by the
-        // distance between its current centre and the viewport centre in one
-        // animation; animating to the item and then nudging it caused a hitch.
+        // Metrolist puts the active line's centre on the anchor: the list jumps
+        // by the full distance and the rows slide into place with LyPlusSpring,
+        // which keeps one continuous motion instead of a list-state animation.
         fun centreDelta(): Float? {
             val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
                 ?: return null
@@ -141,9 +197,19 @@ fun BraccatoLyricsPreview(
             listState.scrollToItem(target)
             delta = centreDelta()
         }
-        if (delta != null && abs(delta) > 1f) {
-            listState.animateScrollBy(delta)
-        }
+        if (delta == null || abs(delta) < 0.5f) return@LaunchedEffect
+        val viewportHeight = listState.layoutInfo.viewportSize.height
+        listState.scrollBy(delta)
+        if (abs(delta) > viewportHeight * LYRICS_FAR_JUMP_VIEWPORTS) return@LaunchedEffect
+        // Keep the currently visible offset when a new target arrives mid-slide.
+        scrollShift.snapTo(delta + scrollShift.value)
+        scrollShift.animateTo(
+            targetValue = 0f,
+            animationSpec = tween(
+                durationMillis = scrollSpring.totalMs.roundToInt(),
+                easing = Easing { fraction -> scrollSpring.value(fraction * scrollSpring.totalMs) }
+            )
+        )
     }
 
     Box(
@@ -286,6 +352,7 @@ fun BraccatoLyricsPreview(
                                         alpha = lineAlpha
                                         scaleX = lineScale
                                         scaleY = lineScale
+                                        translationY = scrollShift.value
                                     }
                             ) {
                                 if (bgWords.isNotEmpty()) {

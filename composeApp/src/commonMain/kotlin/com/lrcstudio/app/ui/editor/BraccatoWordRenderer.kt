@@ -357,9 +357,19 @@ private fun buildLayout(
     val advances = FloatArray(clusters.size) { widths[it] + if (clusters[it].trailingSpace) spaceWidth else 0f }
     val heights = FloatArray(clusters.size) { layouts[it].size.height.toFloat() }
 
-    // Wrap at word boundaries, then center every row.
-    val wordAdvance = HashMap<Int, Float>()
-    clusters.forEachIndexed { i, c -> wordAdvance[c.wordIndex] = (wordAdvance[c.wordIndex] ?: 0f) + advances[i] }
+    // Wrap at word-group boundaries: a word written as joined syllables must
+    // never be split across rows, and Metrolist's layout only breaks at spaces.
+    val groupOfWord = IntArray(words.size)
+    var groupIndex = -1
+    words.forEachIndexed { i, w ->
+        if (i == 0 || !w.joinsPrevious) groupIndex++
+        groupOfWord[i] = groupIndex
+    }
+    val groupAdvance = HashMap<Int, Float>()
+    clusters.forEachIndexed { i, c ->
+        val g = groupOfWord[c.wordIndex]
+        groupAdvance[g] = (groupAdvance[g] ?: 0f) + advances[i]
+    }
     val xs = FloatArray(clusters.size)
     val ys = FloatArray(clusters.size)
     var rowTop = 0f
@@ -376,7 +386,11 @@ private fun buildLayout(
     }
     for (i in clusters.indices) {
         val c = clusters[i]
-        if (c.letterIdx == 0 && cursorX > 0f && cursorX + (wordAdvance[c.wordIndex] ?: 0f) > maxWidth) {
+        val startsGroup = c.letterIdx == 0 &&
+            (c.wordIndex == 0 || !words[c.wordIndex].joinsPrevious)
+        if (startsGroup && cursorX > 0f &&
+            cursorX + (groupAdvance[groupOfWord[c.wordIndex]] ?: 0f) > maxWidth
+        ) {
             closeRow(i)
         }
         val layout = layouts[i]
