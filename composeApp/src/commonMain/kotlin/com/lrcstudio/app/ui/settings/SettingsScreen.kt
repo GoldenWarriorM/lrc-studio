@@ -104,6 +104,16 @@ fun SettingsScreen(
                         )
                     }
                 )
+                SettingsRow(
+                    title = "Untagged lines on the left",
+                    subtitle = "Braccato: centre lines without a v1/v2/Group tag, or align them left",
+                    trailing = {
+                        AccentSwitch(
+                            checked = settings.braccatoUntaggedLeft,
+                            onCheckedChange = { settingsRepository.toggleBraccatoUntaggedLeft() }
+                        )
+                    }
+                )
             }
 
             SettingsSection("Swipe") {

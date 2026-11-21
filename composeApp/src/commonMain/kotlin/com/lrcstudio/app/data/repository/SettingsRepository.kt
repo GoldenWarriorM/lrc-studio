@@ -37,6 +37,8 @@ data class AppSettings(
     val isEnhancedLrcEnabled: Boolean = false,
     /** Beta: replaces the editor preview with the Braccato-style renderer. */
     val braccatoPreview: Boolean = false,
+    /** Braccato: untagged lines sit on the left instead of the centre. */
+    val braccatoUntaggedLeft: Boolean = false,
     val skipStandalonePunctuation: Boolean = true,
     /** Export format while word-level sync is on: "elrc" or "ttml". */
     val richsyncFormat: String = "elrc"
@@ -226,6 +228,13 @@ class SettingsRepository(private val storageDir: String) {
     fun toggleBraccatoPreview() {
         _settings.value = _settings.value.copy(
             braccatoPreview = !_settings.value.braccatoPreview
+        )
+        saveToDisk()
+    }
+
+    fun toggleBraccatoUntaggedLeft() {
+        _settings.value = _settings.value.copy(
+            braccatoUntaggedLeft = !_settings.value.braccatoUntaggedLeft
         )
         saveToDisk()
     }

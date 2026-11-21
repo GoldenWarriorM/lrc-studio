@@ -125,6 +125,7 @@ fun EditorScreen(
     disableFullscreen: Boolean = false,
     isEnhancedLrcEnabled: Boolean = false,
     braccatoPreview: Boolean = false,
+    braccatoUntaggedLeft: Boolean = false,
     richsyncFormat: String = "elrc",
     skipStandalonePunctuation: Boolean = true,
     romanizationDir: String = ""
@@ -192,6 +193,7 @@ fun EditorScreen(
             currentPositionMs = playerState.currentPosition,
             isPlaying = playerState.state == PlaybackState.PLAYING,
             romanizedLines = romanizedLines,
+            untaggedLeft = braccatoUntaggedLeft,
             onSeek = { viewModel.seekTo(it) },
             onPlayPause = { viewModel.playPause() },
             onClose = { isPreviewMode = false }
@@ -1979,14 +1981,16 @@ private fun RichsyncToolsRow(
         for (value in 1..2) {
             RichsyncChip(
                 label = "v$value",
-                // An unassigned line is the lead voice, i.e. v1.
-                selected = agent == value || (agent == 0 && value == 1),
-                onClick = { onAgentChange(value) },
+                // Only a line that really carries the tag shows as selected;
+                // an untagged line is not silently reported as v1.
+                selected = agent == value,
+                // Tapping the assigned value again removes the tag.
+                onClick = { onAgentChange(if (agent == value) 0 else value) },
                 onLongPress = {
                     onHint(
                         "Agent v$value: ${if (value == 1) "lead" else "second"} voice of the line. " +
                             "Exported as v$value: in LRC and ttm:agent=\"v$value\" in TTML. " +
-                            "Hold to read, tap to assign."
+                            "Tap again to remove the tag. Hold to read."
                     )
                 }
             )
@@ -2005,10 +2009,11 @@ private fun RichsyncToolsRow(
         RichsyncChip(
             label = "Group",
             selected = agent == 1000,
-            onClick = { onAgentChange(1000) },
+            onClick = { onAgentChange(if (agent == 1000) 0 else 1000) },
             onLongPress = {
                 onHint(
-                    "Group line: agent 1000, for a line several voices sing together."
+                    "Group line: agent 1000, for a line several voices sing together. " +
+                        "Tap again to remove the tag."
                 )
             }
         )

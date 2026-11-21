@@ -48,7 +48,8 @@ object TtmlGenerator {
         val begin: Long,
         val end: Long,
         val spans: List<Span>,
-        val agent: String,
+        /** null when the line carries no agent tag at all. */
+        val agent: String?,
         val background: Boolean = false
     )
 
@@ -75,7 +76,7 @@ object TtmlGenerator {
         sb.append(">")
 
         sb.append("<head><metadata>")
-        for (agent in timed.map { agentIdOf(it) }.distinct()) {
+        for (agent in timed.mapNotNull { agentIdOf(it) }.distinct()) {
             val type = when (agent) {
                 "v1000" -> "group"
                 "v2000" -> "other"
@@ -102,7 +103,7 @@ object TtmlGenerator {
                 sb.append("<p begin=\"${formatTime(paragraph.begin)}\"")
                 sb.append(" end=\"${formatTime(paragraph.end)}\"")
                 sb.append(" itunes:key=\"L${index + 1}\"")
-                sb.append(" ttm:agent=\"${paragraph.agent}\"")
+                paragraph.agent?.let { sb.append(" ttm:agent=\"$it\"") }
                 if (paragraph.background) sb.append(" ttm:role=\"x-bg\"")
                 sb.append(">")
                 paragraph.spans.forEachIndexed { spanIndex, span ->
@@ -127,9 +128,9 @@ object TtmlGenerator {
         return sb.toString()
     }
 
-    /** Each line carries its own vocal agent; unassigned lines are the lead voice. */
-    private fun agentIdOf(line: LrcLine): String =
-        if (line.agent > 0) "v${line.agent}" else "v1"
+    /** Each line carries its own vocal agent; untagged lines export none. */
+    private fun agentIdOf(line: LrcLine): String? =
+        if (line.agent > 0) "v${line.agent}" else null
 
     private fun isWordTimed(line: LrcLine): Boolean {
         // Untimed punctuation does not make the line line-synced: it is folded

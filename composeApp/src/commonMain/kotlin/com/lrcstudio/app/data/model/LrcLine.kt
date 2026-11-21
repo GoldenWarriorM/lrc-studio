@@ -11,7 +11,7 @@ data class LrcLine(
     val index: Int = 0,
     val words: List<WordTimestamp> = emptyList(),
     val uid: Int = -1,
-    /** Vocal agent of this line: 1 = v1, 2 = v2, 1000 = group, 0 = unassigned (v1). */
+    /** Vocal agent tag of this line: 1 = v1, 2 = v2, 1000 = group, 0 = no tag. */
     val agent: Int = 0,
     /** Whole line is a background vocal (`[bg: ...]` in enhanced LRC). */
     val isBackground: Boolean = false
