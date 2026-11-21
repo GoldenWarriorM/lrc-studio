@@ -1,7 +1,9 @@
 package com.lrcstudio.app.ui.editor
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +28,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
 import kotlin.math.abs
+
+/** Metrolist's lyric metrics: 36sp text, 1.3 line height, 12dp insets, 16dp gap. */
+private const val LYRIC_TEXT_SIZE = 36f
+private const val LYRIC_ALPHA_MS = 750
+private const val LYRIC_SCALE_MS = 800
 
 /**
  * Beta preview renderer in the spirit of Metrolist's Braccato lyric view:
@@ -52,7 +59,11 @@ fun BraccatoLyricsPreview(
 
     LaunchedEffect(activeIndex, lyrics.size) {
         if (lyrics.isEmpty()) return@LaunchedEffect
-        listState.animateScrollToItem(activeIndex.coerceIn(lyrics.indices))
+        val target = activeIndex.coerceIn(lyrics.indices)
+        listState.animateScrollToItem(target)
+        // Metrolist puts the active line's centre on the anchor, not its top.
+        val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+        if (info != null) listState.scrollBy(info.size / 2f)
     }
 
     Box(
@@ -111,47 +122,43 @@ fun BraccatoLyricsPreview(
                 }
             } else {
                 BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                    val topInset = maxHeight * 0.30f
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            start = 24.dp,
-                            end = 24.dp,
-                            top = topInset,
-                            bottom = maxHeight * 0.45f
+                            start = 0.dp,
+                            end = 0.dp,
+                            top = maxHeight / 2,
+                            bottom = maxHeight / 2
                         ),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         itemsIndexed(lyrics, key = { index, line -> "${line.timestamp}-$index" }) { index, line ->
                             val distance = abs(index - activeIndex)
+                            val isActive = index == activeIndex
+                            // Metrolist keeps one text size for every line and only
+                            // dims and shrinks the ones around the active line.
                             val lineAlpha by animateFloatAsState(
-                                targetValue = when {
-                                    distance == 0 -> 1f
-                                    distance == 1 -> 0.7f
-                                    distance == 2 -> 0.4f
-                                    else -> 0.2f
-                                },
-                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
+                                targetValue = if (isActive) 1f else 0.35f,
+                                animationSpec = tween(
+                                    durationMillis = LYRIC_ALPHA_MS,
+                                    easing = FastOutSlowInEasing
+                                ),
                                 label = "lineAlpha"
                             )
                             val lineScale by animateFloatAsState(
                                 targetValue = when {
-                                    distance == 0 -> 1f
-                                    distance == 1 -> 0.95f
-                                    else -> 0.9f
+                                    isActive -> 1f
+                                    distance == 1 -> 0.97f
+                                    distance == 2 || distance == 3 -> 0.93f
+                                    distance == 4 -> 0.90f
+                                    else -> 0.85f
                                 },
-                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
+                                animationSpec = tween(
+                                    durationMillis = LYRIC_SCALE_MS,
+                                    easing = FastOutSlowInEasing
+                                ),
                                 label = "lineScale"
-                            )
-
-                            val isActive = index == activeIndex
-                            // The active line grows into place instead of being swapped
-                            // for a different composable.
-                            val fontSize by animateFloatAsState(
-                                targetValue = if (isActive) 28f else 20f,
-                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
-                                label = "lineSize"
                             )
                             ActiveLyricLine(
                                 line = line,
@@ -159,9 +166,10 @@ fun BraccatoLyricsPreview(
                                 currentPositionMs = currentPositionMs,
                                 isPlaying = isPlaying,
                                 active = isActive,
-                                fontSize = fontSize.sp,
+                                fontSize = LYRIC_TEXT_SIZE.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 12.dp)
                                     .graphicsLayer {
                                         alpha = lineAlpha
                                         scaleX = lineScale
@@ -174,7 +182,7 @@ fun BraccatoLyricsPreview(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(72.dp)
+                            .height(130.dp)
                             .align(Alignment.TopCenter)
                             .background(
                                 Brush.verticalGradient(
@@ -186,7 +194,7 @@ fun BraccatoLyricsPreview(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(96.dp)
+                            .height(160.dp)
                             .align(Alignment.BottomCenter)
                             .background(
                                 Brush.verticalGradient(

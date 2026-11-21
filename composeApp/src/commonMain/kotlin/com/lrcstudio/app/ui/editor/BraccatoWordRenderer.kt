@@ -18,7 +18,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
 import com.lrcstudio.app.data.model.WordTimestamp
 import kotlin.math.max
@@ -445,11 +445,14 @@ internal fun BraccatoWordLine(
     if (words.isEmpty()) {
         Text(
             text = line.text,
-            style = MaterialTheme.typography.headlineMedium.copy(fontSize = fontSize),
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = fontSize,
+                lineHeight = fontSize * 1.3f,
+                fontWeight = FontWeight.Bold
+            ),
             color = textColor,
             textAlign = TextAlign.Center,
-            modifier = modifier.padding(vertical = 4.dp)
+            modifier = modifier
         )
         return
     }
@@ -459,10 +462,17 @@ internal fun BraccatoWordLine(
     val texts = remember(words, romanizedWords) {
         words.mapIndexed { i, w -> romanizedWords?.getOrNull(i)?.ifBlank { null } ?: w.text }
     }
-    val style = remember(fontSize, active) {
+    // Metrolist's lyric style: bold body text, 1.3 line height, and no extra
+    // tracking for joining scripts.
+    val hasJoiningScript = remember(words) { words.any { w -> w.text.any { isJoiningChar(it) } } }
+    val fontFamily = MaterialTheme.typography.bodyLarge.fontFamily
+    val style = remember(fontSize, hasJoiningScript, fontFamily) {
         TextStyle(
             fontSize = fontSize,
-            fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold
+            fontWeight = FontWeight.Bold,
+            lineHeight = fontSize * 1.3f,
+            letterSpacing = if (hasJoiningScript) 0.sp else (-0.5).sp,
+            fontFamily = fontFamily
         )
     }
 
@@ -514,7 +524,7 @@ internal fun BraccatoWordLine(
     var fxPos = anchor
     var fadeOpacity = 1f
 
-    BoxWithConstraints(modifier = modifier.padding(vertical = 4.dp)) {
+    BoxWithConstraints(modifier = modifier) {
         val widthPx = constraints.maxWidth
         if (widthPx <= 0) return@BoxWithConstraints
         val layout = remember(words, texts, style, widthPx) {
