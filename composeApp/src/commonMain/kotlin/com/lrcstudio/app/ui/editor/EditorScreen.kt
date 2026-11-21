@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -99,7 +100,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EditorScreen(
     viewModel: EditorViewModel,
@@ -366,6 +367,7 @@ fun EditorScreen(
                                 .weight(1f)
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
+                                .imePadding()
                                 .navigationBarsPadding(),
                             contentPadding = PaddingValues(bottom = 88.dp)
                         ) {
@@ -393,13 +395,20 @@ fun EditorScreen(
                                             wordCursorIndex = if (item.index == state.selectedLineIndex) state.wordCursorIndex else -1,
                                             currentWordIndex = if (item.index == state.currentLineIndex) state.currentWordIndex else -1,
                                             isPlaying = playerState.state == PlaybackState.PLAYING,
-                                            currentPositionMs = playerState.currentPosition,
+                                            // Only the playing line needs the live position;
+                                            // a changing value here defeats skipping for every
+                                            // other card on each position tick.
+                                            currentPositionMs = if (item.index == state.currentLineIndex) {
+                                                playerState.currentPosition
+                                            } else {
+                                                0L
+                                            },
 
                                             onVibrationToast = onVibrationToast,
                                             onTimestampSet = { ms -> viewModel.setTimestamp(item.index, ms) },
                                             onEditStart = { viewModel.startEditing(item.index) },
                                             onEditChange = { viewModel.updateEditingText(it) },
-                                            onEditDone = { viewModel.finishEditing() },
+                                            onEditDone = { viewModel.finishEditing(item.index) },
                                             onClearTimestamp = {
                                                 if (state.wordSyncMode) viewModel.clearWordTimestamps(item.index)
                                                 else viewModel.clearTimestamp(item.index)
@@ -418,6 +427,17 @@ fun EditorScreen(
                                             },
                                             onWordSeek = { wi ->
                                                 viewModel.splitWordIntoSyllables(item.index, wi)
+                                            },
+                                            onWordClearTime = { wi ->
+                                                viewModel.clearWordTimestamp(item.index, wi)
+                                            },
+                                            onEditFocus = {
+                                                // The IME shrinks the list; put the card being
+                                                // edited at the top so the field stays visible.
+                                                scope.launch {
+                                                    delay(200)
+                                                    listState.animateScrollToItem(item.index * 3 + 1)
+                                                }
                                             },
                                             modifier = Modifier.fillMaxWidth().animateItem()
                                         )
@@ -1295,6 +1315,16 @@ fun EditorScreen(
                                 }
                             },
                             onAgentChange = { viewModel.setLineAgent(state.selectedLineIndex, it) },
+                            wordBackground = richsyncLine
+                                ?.words
+                                ?.getOrNull(state.wordCursorIndex)
+                                ?.let { it.role != VocalRole.MAIN },
+                            onWordBackgroundToggle = {
+                                viewModel.toggleWordBackground(
+                                    state.selectedLineIndex,
+                                    state.wordCursorIndex
+                                )
+                            },
                             onBackgroundToggle = {
                                 viewModel.setLineBackground(
                                     state.selectedLineIndex,
@@ -1314,6 +1344,7 @@ fun EditorScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
+                            .imePadding()
                             .navigationBarsPadding(),
                         contentPadding = PaddingValues(bottom = 88.dp)
                     ) {
@@ -1341,13 +1372,17 @@ fun EditorScreen(
                                         wordCursorIndex = if (item.index == state.selectedLineIndex) state.wordCursorIndex else -1,
                                         currentWordIndex = if (item.index == state.currentLineIndex) state.currentWordIndex else -1,
                                         isPlaying = playerState.state == PlaybackState.PLAYING,
-                                        currentPositionMs = playerState.currentPosition,
+                                        currentPositionMs = if (item.index == state.currentLineIndex) {
+                                            playerState.currentPosition
+                                        } else {
+                                            0L
+                                        },
 
                                         onVibrationToast = onVibrationToast,
                                         onTimestampSet = { ms -> viewModel.setTimestamp(item.index, ms) },
                                         onEditStart = { viewModel.startEditing(item.index) },
                                         onEditChange = { viewModel.updateEditingText(it) },
-                                        onEditDone = { viewModel.finishEditing() },
+                                        onEditDone = { viewModel.finishEditing(item.index) },
                                         onClearTimestamp = {
                                             if (state.wordSyncMode) viewModel.clearWordTimestamps(item.index)
                                             else viewModel.clearTimestamp(item.index)
@@ -1366,6 +1401,15 @@ fun EditorScreen(
                                         },
                                         onWordSeek = { wi ->
                                             viewModel.splitWordIntoSyllables(item.index, wi)
+                                        },
+                                        onWordClearTime = { wi ->
+                                            viewModel.clearWordTimestamp(item.index, wi)
+                                        },
+                                        onEditFocus = {
+                                            scope.launch {
+                                                delay(200)
+                                                listState.animateScrollToItem(item.index * 3 + 1)
+                                            }
                                         },
                                         modifier = Modifier.fillMaxWidth().animateItem()
                                     )
@@ -1692,6 +1736,42 @@ fun EditorScreen(
         )
     }
 
+    state.pendingTextEdit?.let { pending ->
+        val oldWords = state.lyrics.getOrNull(pending.lineIndex)?.words?.size ?: 0
+        val newWords = pending.text.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissTextEdit() },
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Line is word-timed") },
+            text = {
+                Text(
+                    "\"${pending.text}\" replaces text that already has word markup.\n\n" +
+                        "Keep timings maps the old word times onto the new words in order, " +
+                        "so most of the markup survives; extra words stay untimed.\n\n" +
+                        "Clear timings drops every word timestamp and leaves line-synced " +
+                        "text only." +
+                        if (oldWords > 0 && newWords != oldWords) {
+                            "\n\nWord count changes from $oldWords to $newWords: the first " +
+                                "${minOf(oldWords, newWords)} words take the old timings, the " +
+                                "rest stay untimed."
+                        } else {
+                            ""
+                        }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.resolveTextEdit(keepTiming = true) }) {
+                    Text("Keep timings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.resolveTextEdit(keepTiming = false) }) {
+                    Text("Clear timings")
+                }
+            }
+        )
+    }
+
     if (showRichsyncIssues) {
         val issues = RichsyncValidator.validate(state.lyrics)
         AlertDialog(
@@ -1947,6 +2027,9 @@ fun EditorScreen(
 private fun RichsyncToolsRow(
     agent: Int,
     isBackground: Boolean,
+    /** Background state of the word under the cursor, or null when there is none. */
+    wordBackground: Boolean? = null,
+    onWordBackgroundToggle: () -> Unit = {},
     issueCount: Int,
     hasSyllables: Boolean,
     onMergeSyllables: () -> Unit,
@@ -1995,14 +2078,24 @@ private fun RichsyncToolsRow(
                 }
             )
         }
+        // One chip, two scopes: with a word cursor it toggles that word only (the
+        // inline [bg: …] block under the line), otherwise the whole line.
         RichsyncChip(
             label = "BG",
-            selected = isBackground,
-            onClick = onBackgroundToggle,
+            selected = wordBackground ?: isBackground,
+            onClick = {
+                if (wordBackground != null) onWordBackgroundToggle() else onBackgroundToggle()
+            },
             onLongPress = {
                 onHint(
-                    "Background vocals: the line is shown quieter and italic, and exported " +
-                        "as a [bg:…] fragment / background agent."
+                    if (wordBackground != null) {
+                        "Background word: it leaves the lead line and is drawn as the smaller " +
+                            "block underneath, lit by its own timestamp. Tap again to restore it."
+                    } else {
+                        "Background vocals: the line is shown quieter and italic, and exported " +
+                            "as a [bg:…] fragment / background agent. Put the word cursor on a word " +
+                            "to mark just that word."
+                    }
                 )
             }
         )
@@ -2195,6 +2288,45 @@ private const val MAX_GROUP_CHARS = 12
  * together. A run longer than one line can hold (a Japanese line has no word
  * spaces, so all its morae are one run) is cut at syllable boundaries.
  */
+/**
+ * How long each chip's karaoke sweep takes. Scanning for the next timed word is
+ * O(n²) for a line, so it is computed once per word list instead of inside the
+ * word composable, which used to run it for every word on every recomposition.
+ */
+private fun wordSweepDurations(
+    words: List<com.lrcstudio.app.data.model.WordTimestamp>
+): LongArray {
+    fun nextTimed(from: Int): Long? {
+        for (j in from until words.size) {
+            val w = words[j]
+            if (!Punctuation.isStandalone(w.text) && w.startTime > 0L) return w.startTime
+        }
+        return null
+    }
+
+    fun previousTimed(from: Int): Long? {
+        for (j in from downTo 0) {
+            val w = words[j]
+            if (!Punctuation.isStandalone(w.text) && w.startTime > 0L) return w.startTime
+        }
+        return null
+    }
+
+    return LongArray(words.size) { i ->
+        val word = words[i]
+        if (Punctuation.isStandalone(word.text)) {
+            val previous = previousTimed(i - 1) ?: word.startTime
+            val next = nextTimed(i + 1) ?: (previous + 500L)
+            (next - previous).coerceAtLeast(30L)
+        } else if (word.startTime > 0L) {
+            val next = nextTimed(i + 1) ?: (word.startTime + 500L)
+            (next - word.startTime).coerceAtLeast(30L)
+        } else {
+            0L
+        }
+    }
+}
+
 private fun groupJoiningWords(words: List<com.lrcstudio.app.data.model.WordTimestamp>): List<IntRange> {
     if (words.isEmpty()) return emptyList()
     val runs = mutableListOf<IntRange>()
@@ -2277,6 +2409,10 @@ private fun LyricLineCard(
     onTimestampPlus100: () -> Unit,
     onWordClick: ((Int) -> Unit)? = null,
     onWordSeek: ((Int) -> Unit)? = null,
+    /** Double tap on a word: drop just that word's timestamp. */
+    onWordClearTime: ((Int) -> Unit)? = null,
+    /** The text field was focused: the keyboard is opening over the list. */
+    onEditFocus: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val hasTimestamp = if (wordSyncMode) {
@@ -2673,8 +2809,13 @@ private fun LyricLineCard(
                     OutlinedTextField(
                         value = editingText,
                         onValueChange = onEditChange,
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { if (it.isFocused) onEditFocus?.invoke() },
+                        // A lyric line can be long: let the field wrap and grow
+                        // instead of scrolling the text sideways in one line.
+                        singleLine = false,
+                        minLines = 1,
                         textStyle = MaterialTheme.typography.bodyMedium,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary
@@ -2699,6 +2840,7 @@ private fun LyricLineCard(
                         horizontalArrangement = if (isSecondVoice) Arrangement.End else Arrangement.Start
                     ) {
                         val wordGroups = remember(line.words) { groupJoiningWords(line.words) }
+                        val wordSweeps = remember(line.words) { wordSweepDurations(line.words) }
                         // A word and its syllables form one row, so wrapping the
                         // chips can never leave half a word on the previous line.
                         wordGroups.forEach { group ->
@@ -2744,30 +2886,7 @@ private fun LyricLineCard(
                                 hasWordTime -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.onSurface
                             }
-                            val animDuration = {
-                                if (hasWordTime) {
-                                    var next = word.startTime + 500L
-                                    var n = wi + 1
-                                    while (n < line.words.size) {
-                                        if (!Punctuation.isStandalone(line.words[n].text) && line.words[n].startTime > 0L) {
-                                            next = line.words[n].startTime
-                                            break
-                                        }
-                                        n++
-                                    }
-                                    (next - word.startTime).coerceAtLeast(30L)
-                                } else if (isPunct) {
-                                    var prevTime = word.startTime
-                                    for (j in wi - 1 downTo 0) {
-                                        if (!Punctuation.isStandalone(line.words[j].text) && line.words[j].startTime > 0L) { prevTime = line.words[j].startTime; break }
-                                    }
-                                    var nextTime = prevTime + 500L
-                                    for (j in wi + 1 until line.words.size) {
-                                        if (!Punctuation.isStandalone(line.words[j].text) && line.words[j].startTime > 0L) { nextTime = line.words[j].startTime; break }
-                                    }
-                                    (nextTime - prevTime).coerceAtLeast(30L)
-                                } else 0L
-                            }()
+                            val animDuration = wordSweeps.getOrElse(wi) { 0L }
                             val canAnimate = if (isPunct) false
                             else hasWordTime && animDuration > 0L
                             val wordProgress = remember { Animatable(0f) }
@@ -2905,6 +3024,7 @@ private fun LyricLineCard(
                                         if (!isPunct) Modifier.pointerInput(wi) {
                                             detectTapGestures(
                                                 onTap = { onWordClick?.invoke(wi) },
+                                                onDoubleTap = { onWordClearTime?.invoke(wi) },
                                                 onLongPress = { onWordSeek?.invoke(wi) }
                                             )
                                         } else Modifier

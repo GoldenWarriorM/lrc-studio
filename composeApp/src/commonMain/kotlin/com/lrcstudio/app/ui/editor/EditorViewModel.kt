@@ -32,7 +32,16 @@ data class EditorState(
     val editingText: String = "",
     val showPlaybackOptions: Boolean = false,
     val canUndo: Boolean = false,
-    val canRedo: Boolean = false
+    val canRedo: Boolean = false,
+    /** A text edit waiting for the user to choose what happens to the word timings. */
+    val pendingTextEdit: PendingTextEdit? = null
+)
+
+/** New text for an already word-timed line, waiting for a timing decision. */
+@Immutable
+data class PendingTextEdit(
+    val lineIndex: Int,
+    val text: String
 )
 
 class EditorViewModel(
@@ -269,16 +278,59 @@ class EditorViewModel(
         _state.value = _state.value.copy(editingText = text)
     }
 
-    fun finishEditing() {
-        val idx = _state.value.editingLineIndex
-        val text = _state.value.editingText
-        if (idx >= 0 && text.isNotBlank()) {
-            pushUndo()
-            val newLyrics = syncUseCase.updateText(_state.value.lyrics, idx, text)
-            _state.value = _state.value.copy(lyrics = newLyrics)
-            saveLyrics(newLyrics)
+    /**
+     * [lineIndex] is the card the text field belongs to; passing it keeps a stale
+     * shared editing index from applying the text to the wrong line.
+     */
+    fun finishEditing(lineIndex: Int = -1) {
+        val state = _state.value
+        val idx = if (lineIndex in state.lyrics.indices) lineIndex else state.editingLineIndex
+        val text = state.editingText.trim()
+        val line = state.lyrics.getOrNull(idx)
+        if (idx < 0 || line == null || text.isBlank() || text == line.text) {
+            _state.value = _state.value.copy(editingLineIndex = -1, editingText = "")
+            return
         }
-        _state.value = _state.value.copy(editingLineIndex = -1, editingText = "")
+        // Any word-level markup is at risk here, not only a fully timed line:
+        // the words would no longer match the text the user just typed.
+        if (line.words.isNotEmpty()) {
+            // A word-timed line cannot silently take new text: the words would no
+            // longer match their timestamps, so ask what to do with the markup.
+            _state.value = _state.value.copy(
+                editingLineIndex = -1,
+                editingText = "",
+                pendingTextEdit = PendingTextEdit(idx, text)
+            )
+            return
+        }
+        pushUndo()
+        // Untimed lines take the new text directly; any stale word split is dropped
+        // so the line is not still showing the words of its previous text.
+        val newLyrics = syncUseCase.retextLine(_state.value.lyrics, idx, text, keepTiming = false)
+        _state.value = _state.value.copy(
+            lyrics = newLyrics,
+            editingLineIndex = -1,
+            editingText = ""
+        )
+        saveLyrics(newLyrics)
+    }
+
+    /** Applies the pending text edit, keeping the old word timings where possible. */
+    fun resolveTextEdit(keepTiming: Boolean) {
+        val pending = _state.value.pendingTextEdit ?: return
+        pushUndo()
+        val newLyrics = syncUseCase.retextLine(
+            _state.value.lyrics,
+            pending.lineIndex,
+            pending.text,
+            keepTiming
+        )
+        _state.value = _state.value.copy(lyrics = newLyrics, pendingTextEdit = null)
+        saveLyrics(newLyrics)
+    }
+
+    fun dismissTextEdit() {
+        _state.value = _state.value.copy(pendingTextEdit = null)
     }
 
     fun deleteLine(lineIndex: Int) {
@@ -488,6 +540,21 @@ class EditorViewModel(
     /** Marks the whole line as a background / harmony vocal ([bg: ...] in ELRC). */
     fun setLineBackground(lineIndex: Int, isBackground: Boolean) {
         updateLine(lineIndex) { it.copy(isBackground = isBackground) }
+    }
+
+    /**
+     * Makes a single word a background vocal, so it leaves the lead line and is
+     * drawn as the smaller [bg: ...] block underneath with its own timing.
+     */
+    fun toggleWordBackground(lineIndex: Int, wordIndex: Int) {
+        val line = _state.value.lyrics.getOrNull(lineIndex) ?: return
+        val word = line.words.getOrNull(wordIndex) ?: return
+        val role = if (word.role == VocalRole.MAIN) VocalRole.BACKGROUND else VocalRole.MAIN
+        updateLine(lineIndex) { current ->
+            val words = current.words.toMutableList()
+            words[wordIndex] = words[wordIndex].copy(role = role)
+            current.copy(words = words)
+        }
     }
 
     /** Syllable pieces are glued together, so "melt"+"ing" reads as "melting". */

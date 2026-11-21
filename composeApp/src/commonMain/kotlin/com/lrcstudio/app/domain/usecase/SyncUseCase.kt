@@ -1,9 +1,12 @@
 package com.lrcstudio.app.domain.usecase
 
 import com.lrcstudio.app.data.model.LrcLine
+import com.lrcstudio.app.data.model.VocalRole
 import com.lrcstudio.app.data.model.WordTimestamp
 
 class SyncUseCase {
+
+    private val WHITESPACE = Regex("\\s+")
 
     fun addTimestamp(lyrics: List<LrcLine>, positionMs: Long, text: String): List<LrcLine> {
         val newLine = LrcLine(
@@ -25,6 +28,38 @@ class SyncUseCase {
         return lyrics.mapIndexed { i, line ->
             if (i == index) line.copy(text = newText) else line
         }
+    }
+
+    /**
+     * Applies new text to a line. With [keepTiming] the existing word times,
+     * roles and seams are mapped onto the new words by position, so a corrected
+     * line keeps as much markup as possible; otherwise every word timing is
+     * dropped and the line becomes line-synced text again.
+     */
+    fun retextLine(
+        lyrics: List<LrcLine>,
+        index: Int,
+        newText: String,
+        keepTiming: Boolean
+    ): List<LrcLine> {
+        val line = lyrics.getOrNull(index) ?: return lyrics
+        val trimmed = newText.trim()
+        val words = if (!keepTiming || line.words.isEmpty()) {
+            emptyList()
+        } else {
+            trimmed.split(WHITESPACE)
+                .filter { it.isNotEmpty() }
+                .mapIndexed { i, token ->
+                    val old = line.words.getOrNull(i)
+                    WordTimestamp(
+                        startTime = old?.startTime ?: 0L,
+                        text = token,
+                        endTime = old?.endTime ?: 0L,
+                        role = old?.role ?: VocalRole.MAIN
+                    )
+                }
+        }
+        return lyrics.toMutableList().apply { set(index, line.copy(text = trimmed, words = words)) }
     }
 
     fun removeLine(lyrics: List<LrcLine>, index: Int): List<LrcLine> {
