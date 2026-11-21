@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
+import com.lrcstudio.app.data.model.VocalRole
 import com.lrcstudio.app.data.model.WordTimestamp
 import kotlin.math.max
 import kotlin.math.min
@@ -308,8 +309,9 @@ private fun buildLayout(
     words: List<WordTimestamp>,
     texts: List<String>,
     measurer: TextMeasurer,
-    style: TextStyle,
-    maxWidth: Float
+    styles: List<TextStyle>,
+    maxWidth: Float,
+    alignment: TextAlign
 ): BraccatoLine {
     val clusters = ArrayList<BraccatoCluster>(words.size)
     for (i in words.indices) {
@@ -340,7 +342,7 @@ private fun buildLayout(
     val layouts = clusters.map { c ->
         measurer.measure(
             text = AnnotatedString(c.text),
-            style = style,
+            style = styles.getOrElse(c.wordIndex) { TextStyle.Default },
             softWrap = false,
             constraints = Constraints()
         )
@@ -348,7 +350,7 @@ private fun buildLayout(
     val widths = FloatArray(clusters.size) { layouts[it].size.width.toFloat() }
     val spaceWidth = measurer.measure(
         text = AnnotatedString(" "),
-        style = style,
+        style = styles.firstOrNull() ?: TextStyle.Default,
         softWrap = false,
         constraints = Constraints()
     ).size.width.toFloat()
@@ -387,7 +389,12 @@ private fun buildLayout(
     val totalHeight = rowTop
     val lineHeight = layouts.maxOfOrNull { it.size.height.toFloat() } ?: 0f
     for ((start, end, top) in rows) {
-        val shift = (maxWidth - (if (end > start) xs[end - 1] + advances[end - 1] else 0f)) / 2f
+        val rowWidthPx = if (end > start) xs[end - 1] + advances[end - 1] else 0f
+        val shift = when (alignment) {
+            TextAlign.Start -> 0f
+            TextAlign.End -> maxWidth - rowWidthPx
+            else -> (maxWidth - rowWidthPx) / 2f
+        }
         for (i in start until end) {
             xs[i] += shift
             ys[i] = top
@@ -439,6 +446,10 @@ internal fun BraccatoWordLine(
     fontSize: TextUnit,
     textColor: Color,
     accent: Color,
+    /** Colour of background-vocal words inside the line. */
+    bgAccent: Color = accent,
+    /** Agent positioning assigns each line a side, like Metrolist's lyric list. */
+    alignment: TextAlign = TextAlign.Center,
     modifier: Modifier = Modifier
 ) {
     val words = line.words
@@ -451,7 +462,7 @@ internal fun BraccatoWordLine(
                 fontWeight = FontWeight.Bold
             ),
             color = textColor,
-            textAlign = TextAlign.Center,
+            textAlign = alignment,
             modifier = modifier
         )
         return
@@ -475,6 +486,7 @@ internal fun BraccatoWordLine(
             fontFamily = fontFamily
         )
     }
+    val wordStyles = remember(words, style) { List(words.size) { style } }
 
     val runtime = remember { BraccatoRuntime() }
     var frameWallMs by remember { mutableLongStateOf(0L) }
@@ -527,8 +539,8 @@ internal fun BraccatoWordLine(
     BoxWithConstraints(modifier = modifier) {
         val widthPx = constraints.maxWidth
         if (widthPx <= 0) return@BoxWithConstraints
-        val layout = remember(words, texts, style, widthPx) {
-            buildLayout(words, texts, measurer, style, widthPx.toFloat())
+        val layout = remember(words, texts, wordStyles, widthPx, alignment) {
+            buildLayout(words, texts, measurer, wordStyles, widthPx.toFloat(), alignment)
         }
         val bst = layout.statics
 
@@ -586,10 +598,6 @@ internal fun BraccatoWordLine(
                 .fillMaxWidth()
                 .height(heightDp)
         ) {
-            val litColor = accent
-            val litTransparent = litColor.copy(alpha = 0f)
-            val unlitColor = accent.copy(alpha = 0.38f)
-            val baseColor = if (drawMode == 0) textColor else unlitColor
             val n = layout.clusters.size
 
             for (pass in 0..2) {
@@ -600,6 +608,11 @@ internal fun BraccatoWordLine(
                     if (kind == KIND_NONE) continue
                     val vc = layout.clusters[i]
                     val textLayout = layout.layouts[i]
+                    val bgWord = words[vc.wordIndex].role != VocalRole.MAIN
+                    val litColor = if (bgWord) bgAccent else accent
+                    val litTransparent = litColor.copy(alpha = 0f)
+                    val unlitColor = litColor.copy(alpha = 0.38f)
+                    val baseColor = if (drawMode == 0) textColor else unlitColor
                     val w = layout.widths[i]
                     val h = textLayout.size.height.toFloat()
                     val letters = bst.letterCount[i]
@@ -720,7 +733,7 @@ internal fun BraccatoWordLine(
                                 textLayoutResult = textLayout,
                                 brush = GlowFillBrush,
                                 shadow = Shadow(
-                                    color = accent.copy(alpha = (cov * GLOW_COLOR_ALPHA * litOpacity).coerceIn(0f, 1f)),
+                                    color = litColor.copy(alpha = (cov * GLOW_COLOR_ALPHA * litOpacity).coerceIn(0f, 1f)),
                                     offset = Offset.Zero,
                                     blurRadius = glowR * GLOW_BLUR_SCALE
                                 )

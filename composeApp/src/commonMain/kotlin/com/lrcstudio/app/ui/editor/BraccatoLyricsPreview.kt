@@ -22,17 +22,78 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lrcstudio.app.data.model.LrcLine
+import com.lrcstudio.app.data.model.VocalRole
 import kotlin.math.abs
 
 /** Metrolist's lyric metrics: 36sp text, 1.3 line height, 12dp insets, 16dp gap. */
 private const val LYRIC_TEXT_SIZE = 36f
 private const val LYRIC_ALPHA_MS = 750
 private const val LYRIC_SCALE_MS = 800
+
+/** Insets for lines on opposite sides when more than one singer is present. */
+private const val MULTI_SINGER_PADDING_RATIO = 0.10f
+
+/**
+ * Metrolist's LyricsUtils.assignLineAlignments: the first singer takes the left
+ * side, a different singer alternates to the other side, groups stay centred,
+ * and a list that is almost entirely right-aligned is mirrored.
+ */
+private fun assignLineAlignments(lyrics: List<LrcLine>): List<TextAlign> {
+    val result = ArrayList<TextAlign>(lyrics.size)
+    var currentSideIsLeft = true
+    var lastPersonId: String? = null
+    var rightCount = 0
+    var totalCount = 0
+
+    lyrics.forEach { line ->
+        val singerId = when {
+            line.isBackground -> null
+            line.agent == 1000 -> "v1000"
+            line.agent == 0 -> null
+            else -> "v${line.agent}"
+        }
+        val align = if (singerId != null) {
+            val isGroup = singerId == "v1000" || singerId.startsWith("g")
+            when {
+                isGroup -> TextAlign.Center
+                lastPersonId == null -> {
+                    currentSideIsLeft = true
+                    if (currentSideIsLeft) TextAlign.Start else TextAlign.End
+                }
+                singerId != lastPersonId -> {
+                    currentSideIsLeft = !currentSideIsLeft
+                    lastPersonId = singerId
+                    if (currentSideIsLeft) TextAlign.Start else TextAlign.End
+                }
+                else -> if (currentSideIsLeft) TextAlign.Start else TextAlign.End
+            }.also { if (!isGroup) lastPersonId = singerId }
+        } else {
+            TextAlign.Center
+        }
+        if (align != TextAlign.Center) {
+            totalCount++
+            if (align == TextAlign.End) rightCount++
+        }
+        result += align
+    }
+
+    if (totalCount > 0 && rightCount.toFloat() / totalCount >= 0.85f) {
+        for (i in result.indices) {
+            result[i] = when (result[i]) {
+                TextAlign.Start -> TextAlign.End
+                TextAlign.End -> TextAlign.Start
+                else -> result[i]
+            }
+        }
+    }
+    return result
+}
 
 /**
  * Beta preview renderer in the spirit of Metrolist's Braccato lyric view:
@@ -56,6 +117,11 @@ fun BraccatoLyricsPreview(
     val activeIndex = if (currentLineIndex in lyrics.indices) currentLineIndex else 0
     val background = MaterialTheme.colorScheme.background
     val accent = MaterialTheme.colorScheme.primary
+    val lineAlignments = remember(lyrics) { assignLineAlignments(lyrics) }
+    val hasMultipleSingers = remember(lyrics, lineAlignments) {
+        lineAlignments.distinct().size > 1 ||
+            lyrics.mapNotNull { it.agent.takeIf { agent -> agent != 0 } }.distinct().size > 1
+    }
 
     LaunchedEffect(activeIndex, lyrics.size) {
         if (lyrics.isEmpty()) return@LaunchedEffect
@@ -174,22 +240,87 @@ fun BraccatoLyricsPreview(
                                 ),
                                 label = "lineScale"
                             )
-                            ActiveLyricLine(
-                                line = line,
-                                romanizedWords = romanizedLines.getOrNull(index),
-                                currentPositionMs = currentPositionMs,
-                                isPlaying = isPlaying,
-                                active = isActive,
-                                fontSize = LYRIC_TEXT_SIZE.sp,
+                            val alignment = lineAlignments.getOrElse(index) { TextAlign.Center }
+                            // Metrolist pulls background fragments out of the line and
+                            // draws them as a smaller block next to the main text.
+                            val mainWords = remember(line) {
+                                line.words.filter { it.role == VocalRole.MAIN }
+                            }
+                            val bgWords = remember(line) {
+                                line.words.filter { it.role != VocalRole.MAIN }
+                            }
+                            val romanized = romanizedLines.getOrNull(index)
+                            val romanizedBg = remember(romanized) {
+                                romanized?.filterIndexed { i, _ ->
+                                    line.words.getOrNull(i)?.role != VocalRole.MAIN
+                                }
+                            }
+                            val romanizedMain = remember(romanized) {
+                                romanized?.filterIndexed { i, _ ->
+                                    line.words.getOrNull(i)?.role == VocalRole.MAIN
+                                }
+                            }
+                            // Singers on opposite sides get an inset so the two
+                            // voices do not overlap (MULTI_SINGER_PADDING_RATIO).
+                            val sideInset = if (hasMultipleSingers) {
+                                maxWidth * MULTI_SINGER_PADDING_RATIO
+                            } else {
+                                0.dp
+                            }
+                            val startInset = when (alignment) {
+                                TextAlign.End -> sideInset
+                                TextAlign.Center -> sideInset / 2
+                                else -> 0.dp
+                            }
+                            val endInset = when (alignment) {
+                                TextAlign.Start -> sideInset
+                                TextAlign.Center -> sideInset / 2
+                                else -> 0.dp
+                            }
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(start = startInset, end = endInset)
                                     .padding(horizontal = 12.dp, vertical = 12.dp)
                                     .graphicsLayer {
                                         alpha = lineAlpha
                                         scaleX = lineScale
                                         scaleY = lineScale
                                     }
-                            )
+                            ) {
+                                if (bgWords.isNotEmpty()) {
+                                    ActiveLyricLine(
+                                        line = line.copy(words = bgWords),
+                                        romanizedWords = romanizedBg,
+                                        currentPositionMs = currentPositionMs,
+                                        isPlaying = isPlaying,
+                                        active = isActive,
+                                        fontSize = (LYRIC_TEXT_SIZE * 0.62f).sp,
+                                        alignment = alignment,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            // LyricsBgReveal: 0.8 while focused, never below 0.65.
+                                            .graphicsLayer { alpha = if (isActive) 0.8f else 0.65f }
+                                            .padding(bottom = 4.dp)
+                                    )
+                                }
+                                if (mainWords.isNotEmpty() || (bgWords.isEmpty() && line.text.isNotBlank())) {
+                                    ActiveLyricLine(
+                                        line = if (mainWords.isEmpty()) {
+                                            line.copy(words = emptyList())
+                                        } else {
+                                            line.copy(words = mainWords)
+                                        },
+                                        romanizedWords = romanizedMain,
+                                        currentPositionMs = currentPositionMs,
+                                        isPlaying = isPlaying,
+                                        active = isActive,
+                                        fontSize = LYRIC_TEXT_SIZE.sp,
+                                        alignment = alignment,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
                         }
                     }
                     // Lines fade into the background at the edges of the list.
@@ -257,6 +388,7 @@ private fun ActiveLyricLine(
     isPlaying: Boolean,
     active: Boolean,
     fontSize: TextUnit,
+    alignment: TextAlign = TextAlign.Center,
     modifier: Modifier = Modifier
 ) {
     BraccatoWordLine(
@@ -268,6 +400,8 @@ private fun ActiveLyricLine(
         fontSize = fontSize,
         textColor = MaterialTheme.colorScheme.onSurface,
         accent = MaterialTheme.colorScheme.primary,
+        bgAccent = MaterialTheme.colorScheme.tertiary,
+        alignment = alignment,
         modifier = modifier
     )
 }
