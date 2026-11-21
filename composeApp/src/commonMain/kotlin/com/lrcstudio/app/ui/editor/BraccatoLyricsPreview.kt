@@ -43,6 +43,9 @@ import kotlin.math.sqrt
 
 /** Metrolist's lyric metrics: 36sp text, 1.3 line height, 12dp insets, 16dp gap. */
 private const val LYRIC_TEXT_SIZE = 36f
+/** Gap between the lead line and the background-voice block (LyricsBgReveal). */
+private val BG_BLOCK_GAP = 16.dp
+
 /** Braccato's unlit word opacity; inactive lines use the same. */
 private const val LYRIC_UNLIT_ALPHA = 0.38f
 private const val LYRIC_SCALE_MS = 800
@@ -315,7 +318,10 @@ fun BraccatoLyricsPreview(
                             )
                             val alignment = lineAlignments.getOrElse(index) { TextAlign.Center }
                             // Metrolist pulls background fragments out of the line and
-                            // draws them as a smaller block next to the main text.
+                            // draws them as a smaller block under the main text (above it
+                            // only when they start before the lead voice), separated by
+                            // 16dp. Both blocks animate from their own word timings, so a
+                            // background phrase can light up at any point of the line.
                             val mainWords = remember(line) {
                                 line.words.filter { it.role == VocalRole.MAIN }
                             }
@@ -363,37 +369,62 @@ fun BraccatoLyricsPreview(
                                         scaleY = lineScale
                                     }
                             ) {
-                                if (bgWords.isNotEmpty()) {
-                                    ActiveLyricLine(
-                                        line = line.copy(words = bgWords),
-                                        romanizedWords = romanizedBg,
-                                        currentPositionMs = currentPositionMs,
-                                        isPlaying = isPlaying,
-                                        active = isActive,
-                                        fontSize = (LYRIC_TEXT_SIZE * 0.62f).sp,
-                                        alignment = alignment,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            // LyricsBgReveal: 0.8 while focused, never below 0.65.
-                                            .graphicsLayer { alpha = if (isActive) 0.8f else 0.65f }
-                                            .padding(bottom = 4.dp)
-                                    )
+                                val bgBeforeMain = remember(line) {
+                                    val mainStart = line.words
+                                        .firstOrNull { it.role == VocalRole.MAIN }?.startTime
+                                    val bgStart = line.words
+                                        .firstOrNull { it.role != VocalRole.MAIN }?.startTime
+                                    mainStart != null && bgStart != null && bgStart < mainStart
                                 }
-                                if (mainWords.isNotEmpty() || (bgWords.isEmpty() && line.text.isNotBlank())) {
-                                    ActiveLyricLine(
-                                        line = if (mainWords.isEmpty()) {
-                                            line.copy(words = emptyList())
-                                        } else {
-                                            line.copy(words = mainWords)
-                                        },
-                                        romanizedWords = romanizedMain,
-                                        currentPositionMs = currentPositionMs,
-                                        isPlaying = isPlaying,
-                                        active = isActive,
-                                        fontSize = LYRIC_TEXT_SIZE.sp,
-                                        alignment = alignment,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                                val mainBlock: @Composable () -> Unit = {
+                                    if (mainWords.isNotEmpty() ||
+                                        (bgWords.isEmpty() && line.text.isNotBlank())
+                                    ) {
+                                        ActiveLyricLine(
+                                            line = if (mainWords.isEmpty()) {
+                                                line.copy(words = emptyList())
+                                            } else {
+                                                line.copy(words = mainWords)
+                                            },
+                                            romanizedWords = romanizedMain,
+                                            currentPositionMs = currentPositionMs,
+                                            isPlaying = isPlaying,
+                                            active = isActive,
+                                            fontSize = LYRIC_TEXT_SIZE.sp,
+                                            alignment = alignment,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                val bgBlock: @Composable () -> Unit = {
+                                    if (bgWords.isNotEmpty()) {
+                                        ActiveLyricLine(
+                                            line = line.copy(words = bgWords),
+                                            romanizedWords = romanizedBg,
+                                            currentPositionMs = currentPositionMs,
+                                            isPlaying = isPlaying,
+                                            active = isActive,
+                                            fontSize = (LYRIC_TEXT_SIZE * 0.62f).sp,
+                                            alignment = alignment,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                // LyricsBgReveal: 0.8 while focused, never below 0.65.
+                                                .graphicsLayer {
+                                                    alpha = if (isActive) 0.8f else 0.65f
+                                                }
+                                                .padding(
+                                                    top = if (bgBeforeMain) 0.dp else BG_BLOCK_GAP,
+                                                    bottom = if (bgBeforeMain) BG_BLOCK_GAP else 0.dp
+                                                )
+                                        )
+                                    }
+                                }
+                                if (bgBeforeMain) {
+                                    bgBlock()
+                                    mainBlock()
+                                } else {
+                                    mainBlock()
+                                    bgBlock()
                                 }
                             }
                         }
