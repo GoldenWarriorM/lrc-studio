@@ -3,7 +3,7 @@ package com.lrcstudio.app.ui.editor
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,10 +60,24 @@ fun BraccatoLyricsPreview(
     LaunchedEffect(activeIndex, lyrics.size) {
         if (lyrics.isEmpty()) return@LaunchedEffect
         val target = activeIndex.coerceIn(lyrics.indices)
-        listState.animateScrollToItem(target)
-        // Metrolist puts the active line's centre on the anchor, not its top.
-        val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
-        if (info != null) listState.scrollBy(info.size / 2f)
+        // Metrolist puts the active line's centre on the anchor, so scroll by the
+        // distance between its current centre and the viewport centre in one
+        // animation; animating to the item and then nudging it caused a hitch.
+        fun centreDelta(): Float? {
+            val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+                ?: return null
+            val viewportCentre = listState.layoutInfo.viewportSize.height / 2f
+            return info.offset + info.size / 2f - viewportCentre
+        }
+        var delta = centreDelta()
+        if (delta == null) {
+            // The target is outside the composed window: place it, then centre it.
+            listState.scrollToItem(target)
+            delta = centreDelta()
+        }
+        if (delta != null && abs(delta) > 1f) {
+            listState.animateScrollBy(delta)
+        }
     }
 
     Box(
